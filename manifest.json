@@ -1,0 +1,24 @@
+{
+  "name": "MediHome — Family Medicine Inventory",
+  "short_name": "MediHome",
+  "description": "Family medicine inventory tracker by Shivam",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F766E",
+  "theme_color": "#0F766E",
+  "icons": [
+    {
+      "src": "https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
