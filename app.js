@@ -1147,7 +1147,7 @@ function editMgmtItem(idx) {
   let current;
   if (currentMgmtField === 'category') current = customCategories[idx];
   else if (currentMgmtField === 'form') current = customForms[idx];
-  else if (currentMgmtField === 'owner') current = customOwners[idx].short;
+  else if (currentMgmtField === 'owner') current = customOwners[idx].label;
   else return;
 
   // Prefill with the icon shown for this item (if any) so preset emojis
@@ -1172,10 +1172,10 @@ function editMgmtItem(idx) {
     customForms[idx] = updated;
     medicines.forEach(m => { if (m.form === oldVal) m.form = updated; });
   } else if (currentMgmtField === 'owner') {
-    const oldKey = customOwners[idx].key;
-    customOwners[idx] = { ...customOwners[idx], label: `${updated}'s Medicines`, short: updated };
-    // Note: owner key itself stays the same to avoid breaking saved medicine.owner references;
-    // only the display label/short text changes.
+    // The whole line (e.g. "Family — Shared by All") is now editable as one
+    // piece; the compact "short" used in chips/dropdowns is derived from it.
+    customOwners[idx] = { ...customOwners[idx], label: updated, short: deriveOwnerShort(updated) };
+    // Note: owner key itself stays the same to avoid breaking saved medicine.owner references.
   }
 
   pushUndo(`Edited ${currentMgmtField} "${current}" → "${updated}"`);
@@ -1244,6 +1244,13 @@ function ownerLabel(o) {
 function ownerRaw(o) {
   const cfg = customOwners.find(x => x.key === o);
   return cfg ? cfg.label : o;
+}
+// Derives the compact "short" display (used in chips/dropdowns) from a full,
+// user-edited owner label like "👨‍👩‍👧 Family — Shared by All" or "Mumma's Medicines".
+function deriveOwnerShort(label) {
+  if (label.includes(' — ')) return label.split(' — ')[0].trim();
+  if (label.endsWith("'s Medicines")) return label.slice(0, -("'s Medicines".length)).trim();
+  return label.trim();
 }
 function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
