@@ -278,7 +278,7 @@ function renderMedicineList(list) {
         </div>
         ${Object.entries(g.categories).map(([cat,meds]) => `
           <div class="category-group">
-            <div class="category-label">${getCategoryIcon(cat)} ${cat}</div>
+            <div class="category-label">${getCategoryIcon(cat)}${cat}</div>
             <div class="medicine-grid">${meds.map(m => renderMedicineCard(m, medicines.indexOf(m) + 1)).join('')}</div>
           </div>`).join('')}
       </div>`;
@@ -528,7 +528,7 @@ function renderMatchList(list) {
     Object.entries(catMap).forEach(([cat, meds]) => {
       catsHtml += `
         <div class="category-group">
-          <div class="category-label">${getCategoryIcon(cat)} ${cat}</div>
+          <div class="category-label">${getCategoryIcon(cat)}${cat}</div>
           <div class="medicine-grid">
             ${meds.map(m => renderMedicineCard(m, medicines.indexOf(m) + 1)).join('')}
           </div>
@@ -728,7 +728,7 @@ function populateCategoryDropdown(selected) {
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
   sel.innerHTML = '<option value="">— Select category —</option>' +
-    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)} ${escHtml(c)}</option>`).join('');
+    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
   if (prev && customCategories.includes(prev)) sel.value = prev;
 }
 
@@ -1087,7 +1087,7 @@ function renderMgmtList() {
   if (currentMgmtField === 'category') {
     listHtml = customCategories.map((c, idx) => `
       <div class="mgmt-item">
-        <span>${getCategoryIcon(c)} ${escHtml(c)}</span>
+        <span>${getCategoryIcon(c)}${escHtml(c)}</span>
         <div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
@@ -1105,7 +1105,7 @@ function renderMgmtList() {
   } else if (currentMgmtField === 'form') {
     listHtml = customForms.map((f, idx) => `
       <div class="mgmt-item">
-        <span>${getFormIcon(f)} ${escHtml(f)}</span>
+        <span>${getFormIcon(f)}${escHtml(f)}</span>
         <div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
@@ -1147,7 +1147,13 @@ function editMgmtItem(idx) {
   else if (currentMgmtField === 'owner') current = customOwners[idx].short;
   else return;
 
-  const newVal = prompt('Edit value:', current);
+  // Prefill with the icon shown for this item (if any) so preset emojis
+  // become part of the editable text too, not just custom ones.
+  let promptDefault = current;
+  if (currentMgmtField === 'category') promptDefault = `${getCategoryIcon(current)}${current}`;
+  else if (currentMgmtField === 'form') promptDefault = `${getFormIcon(current)}${current}`;
+
+  const newVal = prompt('Edit value:', promptDefault);
   if (newVal === null) return; // cancelled
   const updated = newVal.trim();
   if (!updated) { showToast('Value cannot be empty.', 'error'); return; }
@@ -1240,19 +1246,23 @@ function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').repla
 
 function getCategoryIcon(cat) {
   const m = {'Fever, Cold & Cough Care':'🌡️','Mouth Ulcer Care':'🦷','Pain Relief & Injury Care':'🤕','Digestion, Gut Health & Hydration':'🤢','Allergies & Infections':'🛡️',"Uterus & Women's Health":'🩺','Eye Care':'👁️','Jaw Pain Care':'🦴','Hair & Nail Health':'💇‍♀️','Cold & Cough Care':'🌡️','Gut & Appetite Care':'🤢','Hair Care':'💇‍♂️','Debility & Wellness':'💪'};
-  return m[cat] || '📁';
+  // No default folder icon — if the category isn't a known preset, assume any
+  // emoji the user typed is already part of the name itself.
+  return m[cat] ? m[cat] + ' ' : '';
 }
 function getFormIcon(form) {
-  if (!form) return '💊';
+  if (!form) return '💊 ';
   const f = form.toLowerCase();
-  if (f.includes('drop')) return '💧';
-  if (f.includes('tablet')||f.includes('chewy')||f.includes('candy')||f.includes('lozenge')) return '🔵';
-  if (f.includes('cream')||f.includes('ointment')||f.includes('gel')) return '🧴';
-  if (f.includes('tonic')) return '🍶';
-  if (f.includes('bandage')) return '🩹';
-  if (f.includes('pouch')) return '🧃';
-  if (f.includes('oil')) return '🫙';
-  return '💊';
+  if (f.includes('drop')) return '💧 ';
+  if (f.includes('tablet')||f.includes('chewy')||f.includes('candy')||f.includes('lozenge')) return '🔵 ';
+  if (f.includes('cream')||f.includes('ointment')||f.includes('gel')) return '🧴 ';
+  if (f.includes('tonic')) return '🍶 ';
+  if (f.includes('bandage')) return '🩹 ';
+  if (f.includes('pouch')) return '🧃 ';
+  if (f.includes('oil')) return '🫙 ';
+  // No default pill icon for unmatched/custom forms — assume any emoji
+  // the user typed is already part of the form name itself.
+  return '';
 }
 
 // ── Toast ─────────────────────────────────────────────────
@@ -1374,7 +1384,7 @@ function populateBulkDropdowns() {
   ownerSel.innerHTML = '<option value="">Change Owner</option>' +
     customOwners.map(o => `<option value="${escHtml(o.key)}">${escHtml(o.short)}</option>`).join('');
   catSel.innerHTML = '<option value="">Change Category…</option>' +
-    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)} ${escHtml(c)}</option>`).join('');
+    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
   ownerSel.onchange = () => { if (ownerSel.value) bulkChangeOwner(ownerSel.value); ownerSel.value=''; };
   catSel.onchange   = () => { if (catSel.value)   bulkChangeCategory(catSel.value); catSel.value=''; };
 }
