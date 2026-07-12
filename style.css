@@ -1295,18 +1295,21 @@ body.modal-open {
     font-size: 1rem;
   }
 }
-::-webkit-scrollbar {
+/* Styled scrollbar for inner scrollable panels (modals, menus, lists, etc.) —
+   explicitly excludes html/body so the main page scrollbar stays the
+   browser's normal native one. */
+:not(html):not(body)::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+:not(html):not(body)::-webkit-scrollbar-track {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
+:not(html):not(body)::-webkit-scrollbar-thumb {
   background: var(--slate-300);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
+:not(html):not(body)::-webkit-scrollbar-thumb:hover {
   background: var(--slate-400);
 }
 
