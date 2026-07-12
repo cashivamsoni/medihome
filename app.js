@@ -1580,9 +1580,17 @@ function exportToPDF() {
     doc.write(html);
     doc.close();
     iframe.contentWindow.focus();
+
+    // Chrome's "Save as PDF" dialog names the file after the TOP window's
+    // title, not the iframe's — so swap it briefly for the export.
+    const originalTitle = document.title;
+    document.title = fileName;
     setTimeout(() => {
       iframe.contentWindow.print();
-      setTimeout(() => iframe.remove(), 1000);
+      setTimeout(() => {
+        document.title = originalTitle;
+        iframe.remove();
+      }, 1000);
     }, 300);
   } catch (err) {
     console.error('Export PDF failed:', err);
