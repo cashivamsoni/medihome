@@ -1545,10 +1545,10 @@ function exportToPDF() {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${fileName}</title>
     <style>
-      @page{ size:A4; margin:10mm; }
+      @page{ size:A4; margin:6mm; }
       *{box-sizing:border-box;}
       body{font-family:'Times New Roman',Times,serif;color:#000;margin:0;font-size:${fontSize}px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      .sheet{border:1px solid #000;padding:10px;}
+      .sheet{border:1px solid #000;padding:16px 18px;min-height:calc(297mm - 12mm - 2px);}
       h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
       .meta{text-align:center;color:#000;font-size:${fontSize - 1}px;margin-bottom:10px;}
       table{width:100%;border-collapse:collapse;border:1px solid #000;}
