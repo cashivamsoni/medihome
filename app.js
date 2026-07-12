@@ -180,6 +180,11 @@ function getFilteredMedicines() {
 }
 
 function setFilter(type, btn) {
+  // Clicking the already-active chip again clears the filter back to 'all'
+  if (type !== 'all' && activeFilter === type) {
+    type = 'all';
+    btn = document.querySelector('.stat-chip.total');
+  }
   activeFilter = type;
   // Update active chip UI
   document.querySelectorAll('.stat-chip').forEach(c => c.classList.remove('active'));
