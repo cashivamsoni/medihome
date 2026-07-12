@@ -1474,55 +1474,102 @@ function bulkChangeCategory(cat) {
 
 // ── Export to PDF ─────────────────────────────────────────
 function exportToPDF() {
-  const win = window.open('', '_blank');
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
-  const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  try {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateSlash    = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeColon    = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeCompact  = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const fileName     = `MediHome_Stock_${dateSlash}_${timeCompact}`;
 
-  // Sort by serial number (position in medicines array = insertion order)
-  const sorted = medicines.map((m, idx) => ({ m, serial: idx + 1 })).sort((a, b) => a.serial - b.serial);
+    // Build grouped, sequentially-numbered entries (owner → category → medicines)
+    const ownerOrder = customOwners.map(o => o.key);
+    let counter = 0;
+    const entries = [];
+    ownerOrder.forEach(owner => {
+      const ownerMeds = medicines.filter(m => m.owner === owner);
+      if (!ownerMeds.length) return;
+      const ownerCfg = customOwners.find(o => o.key === owner);
+      entries.push({ type: 'owner', text: escHtml(ownerCfg ? ownerCfg.label : owner) });
+      const catMap = {};
+      ownerMeds.forEach(m => { (catMap[m.category] = catMap[m.category] || []).push(m); });
+      Object.keys(catMap).forEach(cat => {
+        entries.push({ type: 'cat', text: getCategoryIcon(cat) + escHtml(cat) });
+        sortMeds(catMap[cat]).forEach(m => {
+          counter++;
+          const exp = m.expiryDate
+            ? new Date(m.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+            : '—';
+          entries.push({
+            type: 'item',
+            id: counter,
+            name: escHtml(m.name),
+            qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
+            expiry: exp,
+            expired: isExpiredMed(m.expiryDate)
+          });
+        });
+      });
+    });
 
-  const rows = sorted.map(({ m, serial }) => {
-    const low = effectiveLowStock(m);
-    return `<tr>
-      <td style="text-align:center;color:#64748b;font-weight:700;">#${String(serial).padStart(2,'0')}</td>
-      <td><strong>${escHtml(m.name)}</strong></td>
-      <td>${escHtml(m.category)}</td>
-      <td>${escHtml(ownerLabel(m.owner))}</td>
-      <td>${m.type.charAt(0).toUpperCase()+m.type.slice(1)}</td>
-      <td>${m.quantity} ${escHtml(m.quantityUnit)}</td>
-      <td>${formatExpiry(m.expiryDate)}</td>
-      <td>${escHtml(m.form)}</td>
-      <td style="text-align:center">${low?'<span style="color:#dc2626;font-weight:700;">⚠ Low</span>':'<span style="color:#16a34a;">✓ OK</span>'}</td>
-    </tr>`;
-  }).join('');
+    // Split into two side-by-side columns so everything fits one page
+    const splitAt = Math.ceil(entries.length / 2);
+    const col1 = entries.slice(0, splitAt);
+    const col2 = entries.slice(splitAt);
+    const rowCount = Math.max(col1.length, col2.length, 1);
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>MediHome — Inventory Extraction ${dateStr}</title>
+    const cellsFor = e => {
+      if (!e) return '<td></td><td></td><td></td><td></td>';
+      if (e.type === 'owner') return `<td colspan="4" class="grp-owner">${e.text}</td>`;
+      if (e.type === 'cat')   return `<td colspan="4" class="grp-cat">${e.text}</td>`;
+      return `<td class="idc">${String(e.id).padStart(2, '0')}</td><td>${e.name}</td><td>${e.qty}</td><td${e.expired ? ' class="exp"' : ''}>${e.expiry}</td>`;
+    };
+
+    let bodyRows = '';
+    for (let i = 0; i < rowCount; i++) bodyRows += `<tr>${cellsFor(col1[i])}${cellsFor(col2[i])}</tr>`;
+
+    const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${fileName}</title>
     <style>
-      body{font-family:Arial,sans-serif;font-size:11px;margin:24px;color:#0f172a;}
-      h1{font-size:18px;margin-bottom:4px;}
-      .meta{color:#64748b;margin-bottom:16px;font-size:10px;}
-      table{width:100%;border-collapse:collapse;}
-      th{background:#0d9488;color:white;padding:7px 8px;text-align:left;font-size:10px;}
-      td{padding:6px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;}
-      tr:nth-child(even) td{background:#f8fafc;}
-      .footer{margin-top:16px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;}
-    </style>
-  </head><body>
-    <h1>💊 MediHome — Family Medicine Inventory</h1>
-    <div class="meta">Extracted on ${dateStr} at ${timeStr} &nbsp;·&nbsp; Total: ${medicines.length} medicines</div>
-    <table>
-      <thead><tr>
-        <th>Serial No.</th><th>Name</th><th>Category</th><th>Owner</th><th>Type</th>
-        <th>Quantity</th><th>Expiry</th><th>Form</th><th>Stock</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="footer">Generated by MediHome &nbsp;·&nbsp; ${window.location.href} &nbsp;·&nbsp; ${dateStr} ${timeStr}</div>
-  </body></html>`);
-  win.document.close();
-  setTimeout(() => win.print(), 400);
+      @page{ size:A4; margin:10mm; }
+      *{box-sizing:border-box;}
+      body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;font-size:${fontSize}px;}
+      h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
+      .meta{text-align:center;color:#64748b;font-size:${fontSize - 1}px;margin-bottom:10px;}
+      table{width:100%;border-collapse:collapse;border:1px solid #333;}
+      th,td{border:1px solid #333;padding:3px 6px;text-align:left;}
+      th{background:#0d9488;color:#fff;text-align:center;}
+      .idc{text-align:center;color:#64748b;}
+      .grp-owner{background:#0f172a;color:#fff;font-weight:700;text-align:center;}
+      .grp-cat{background:#e2e8f0;font-weight:700;text-align:center;}
+      .exp{color:#dc2626;font-weight:700;}
+    </style></head><body>
+      <h1>💊 MediHome - Family Medicine Inventory</h1>
+      <div class="meta">Downloaded from ${window.location.origin}${window.location.pathname} on ${dateSlash} ${timeColon}</div>
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
+        <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
+      </table>
+    </body></html>`;
+
+    // Print via a hidden iframe — avoids popup blockers that break window.open()
+    const iframe = document.createElement('iframe');
+    Object.assign(iframe.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      setTimeout(() => iframe.remove(), 1000);
+    }, 300);
+  } catch (err) {
+    console.error('Export PDF failed:', err);
+    showToast('Could not export PDF. Please try again.', 'error');
+  }
 }
 
 
