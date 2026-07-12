@@ -83,6 +83,13 @@ body.modal-open {
   overflow: hidden;
 }
 
+/* ── Scale down slightly on phones only (not tablets/desktop) ── */
+@media (max-width: 480px) {
+  html {
+    zoom: 0.9;
+  }
+}
+
 /* ── Header ──────────────────────────────────────────────── */
 .site-header {
   background: linear-gradient(
