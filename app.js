@@ -1493,7 +1493,9 @@ function exportToPDF() {
     const dateSlash    = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
     const timeColon    = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const timeCompact  = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const fileName     = `MediHome_Stock_${dateSlash}_${timeCompact}`;
+    const isWindows    = /Win/i.test(navigator.platform || navigator.userAgent);
+    const timeForName  = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
+    const fileName     = `MediHome Stock ${dateSlash} ${timeForName}`;
 
     // Build grouped, sequentially-numbered entries (owner → category → medicines)
     const ownerOrder = customOwners.map(o => o.key);
