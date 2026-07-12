@@ -1065,6 +1065,9 @@ function manageField(fieldType) {
   if (titleEl) titleEl.textContent = titles[fieldType] || 'Manage Items';
   const inp = document.getElementById('mgmtNewValue');
   if (inp) inp.value = '';
+  document.querySelectorAll('#mgmtTabs .mgmt-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.field === fieldType);
+  });
   renderMgmtList();
   const modal = document.getElementById('mgmtModal');
   if (modal) modal.classList.remove('hidden');
