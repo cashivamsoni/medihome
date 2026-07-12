@@ -348,10 +348,10 @@ function renderMedicineCard(m, serialNum) {
         </span>
       </div>
       <div class="card-qty-row">
+        <button class="qty-btn qty-finish" onclick="markFinished('${m.id}')" title="Mark as finished" ${m.quantity===0?'disabled':''}>0️⃣</button>
         <button class="qty-btn qty-minus" onclick="adjustQuantity('${m.id}',-1)" title="Decrease quantity" ${m.quantity===0?'disabled':''}>−</button>
         <span class="qty-display">${m.quantity} <span class="qty-unit">${m.quantityUnit}</span></span>
         <button class="qty-btn qty-plus" onclick="adjustQuantity('${m.id}',1)" title="Increase quantity">+</button>
-        <button class="qty-btn qty-finish" onclick="markFinished('${m.id}')" title="Mark as finished" ${m.quantity===0?'disabled':''}>0️⃣</button>
       </div>
     </div>`;
 }
