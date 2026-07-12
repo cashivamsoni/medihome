@@ -1598,21 +1598,18 @@ body.modal-open {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 2px rgba(13, 148, 136, 0.08);
-  display: grid;
-  grid-template-rows: 1fr;
+  max-height: 600px;
   opacity: 1;
   overflow: hidden;
-  transition: grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 .app-menu.hidden {
-  display: grid;
-  grid-template-rows: 0fr;
+  max-height: 0;
   opacity: 0;
   border-bottom-width: 0;
+  box-shadow: none;
 }
 .app-menu-inner {
-  min-height: 0;
-  overflow: hidden;
   max-width: 1280px;
   margin: 0 auto;
   padding: 10px 24px;
