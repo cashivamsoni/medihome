@@ -351,6 +351,7 @@ function renderMedicineCard(m, serialNum) {
         <button class="qty-btn qty-minus" onclick="adjustQuantity('${m.id}',-1)" title="Decrease quantity" ${m.quantity===0?'disabled':''}>−</button>
         <span class="qty-display">${m.quantity} <span class="qty-unit">${m.quantityUnit}</span></span>
         <button class="qty-btn qty-plus" onclick="adjustQuantity('${m.id}',1)" title="Increase quantity">+</button>
+        <button class="qty-btn qty-finish" onclick="markFinished('${m.id}')" title="Mark as finished" ${m.quantity===0?'disabled':''}>🏁</button>
       </div>
     </div>`;
 }
@@ -1050,6 +1051,13 @@ function adjustQuantity(id, delta) {
   renderReorderAlert(base);
   updateStats();
   showToast(delta > 0 ? `+1 → ${newQty} ${m.quantityUnit}` : (newQty === 0 ? `${m.name} finished` : `-1 → ${newQty} ${m.quantityUnit}`), 'info');
+}
+
+// Quick action: jump straight to 0 instead of tapping "−" repeatedly.
+function markFinished(id) {
+  const m = medicines.find(x => x.id === id);
+  if (!m || m.quantity === 0) return;
+  adjustQuantity(id, -m.quantity);
 }
 
 // ═══════════════════════════════════════════════════════════
