@@ -1599,13 +1599,11 @@ body.modal-open {
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 2px rgba(13, 148, 136, 0.08);
   max-height: 600px;
-  opacity: 1;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .app-menu.hidden {
   max-height: 0;
-  opacity: 0;
   border-bottom-width: 0;
   box-shadow: none;
 }
