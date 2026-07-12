@@ -1543,22 +1543,25 @@ function exportToPDF() {
       @page{ size:A4; margin:10mm; }
       *{box-sizing:border-box;}
       body{font-family:'Times New Roman',Times,serif;color:#000;margin:0;font-size:${fontSize}px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      .sheet{border:1px solid #000;padding:10px;}
       h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
-      .meta{text-align:center;color:#64748b;font-size:${fontSize - 1}px;margin-bottom:10px;}
-      table{width:100%;border-collapse:collapse;border:1px solid #333;}
-      th,td{border:1px solid #333;padding:3px 6px;text-align:left;}
-      th{background:#99e6dc;color:#000;text-align:center;font-weight:700;}
+      .meta{text-align:center;color:#000;font-size:${fontSize - 1}px;margin-bottom:10px;}
+      table{width:100%;border-collapse:collapse;border:1px solid #000;}
+      th,td{border:1px solid #000;padding:3px 6px;text-align:left;}
+      th{background:#e8e8e8;color:#000;text-align:center;font-weight:700;}
       .idc{text-align:center;color:#000;}
-      .grp-owner{background:#cbd5e1;color:#000;font-weight:700;text-align:center;}
-      .grp-cat{background:#e2e8f0;color:#000;font-weight:700;text-align:center;}
-      .exp{color:#dc2626;font-weight:700;}
+      .grp-owner{background:#d0d0d0;color:#000;font-weight:700;text-align:center;}
+      .grp-cat{background:#eeeeee;color:#000;font-weight:700;text-align:center;}
+      .exp{color:#000;font-weight:700;text-decoration:underline;}
     </style></head><body>
-      <h1>💊 MediHome - Family Medicine Inventory</h1>
-      <div class="meta">Downloaded from ${window.location.origin}${window.location.pathname} on ${dateSlash} ${timeColon}</div>
-      <table>
-        <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
-        <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
-      </table>
+      <div class="sheet">
+        <h1>💊 MediHome - Family Medicine Inventory</h1>
+        <div class="meta">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
+          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
+        </table>
+      </div>
     </body></html>`;
 
     // Print via a hidden iframe — avoids popup blockers that break window.open()
