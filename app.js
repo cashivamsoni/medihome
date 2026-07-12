@@ -1472,6 +1472,14 @@ function bulkChangeCategory(cat) {
   showUndoToast(`✏️ Category changed to ${cat}`);
 }
 
+// Ctrl+P / Cmd+P triggers the same custom export
+window.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+    e.preventDefault();
+    exportToPDF();
+  }
+});
+
 // ── Export to PDF ─────────────────────────────────────────
 function exportToPDF() {
   try {
@@ -1534,15 +1542,15 @@ function exportToPDF() {
     <style>
       @page{ size:A4; margin:10mm; }
       *{box-sizing:border-box;}
-      body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;font-size:${fontSize}px;}
+      body{font-family:'Times New Roman',Times,serif;color:#000;margin:0;font-size:${fontSize}px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
       h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
       .meta{text-align:center;color:#64748b;font-size:${fontSize - 1}px;margin-bottom:10px;}
       table{width:100%;border-collapse:collapse;border:1px solid #333;}
       th,td{border:1px solid #333;padding:3px 6px;text-align:left;}
-      th{background:#0d9488;color:#fff;text-align:center;}
-      .idc{text-align:center;color:#64748b;}
-      .grp-owner{background:#0f172a;color:#fff;font-weight:700;text-align:center;}
-      .grp-cat{background:#e2e8f0;font-weight:700;text-align:center;}
+      th{background:#99e6dc;color:#000;text-align:center;font-weight:700;}
+      .idc{text-align:center;color:#000;}
+      .grp-owner{background:#cbd5e1;color:#000;font-weight:700;text-align:center;}
+      .grp-cat{background:#e2e8f0;color:#000;font-weight:700;text-align:center;}
       .exp{color:#dc2626;font-weight:700;}
     </style></head><body>
       <h1>💊 MediHome - Family Medicine Inventory</h1>
