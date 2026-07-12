@@ -16,16 +16,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
-    <!-- PWA -->
-    <link rel="manifest" href="manifest.js" />
-    <meta name="theme-color" content="#0F766E" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
-    <meta name="apple-mobile-web-app-title" content="MediHome" />
     <!-- Open Graph tags -->
     <meta property="og:title" content="MediHome - Family Medicine Inventory" />
     <meta
@@ -196,24 +186,6 @@
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- ── PWA Install Banner ────────────────────────────── -->
-    <div class="install-banner hidden" id="installBanner">
-      <span class="install-banner-icon">💊</span>
-      <span class="install-banner-text"
-        >Install MediHome as an app for quick access</span
-      >
-      <button class="install-banner-btn" onclick="triggerInstall()">
-        Install
-      </button>
-      <button
-        class="install-banner-dismiss"
-        onclick="dismissInstallBanner()"
-        title="Dismiss"
-      >
-        ✕
-      </button>
     </div>
 
     <!-- ── Main ───────────────────────────────────────────── -->
@@ -727,14 +699,15 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
 
-    <!-- PWA: register service worker -->
+    <!-- Unregister any previously installed service worker / clear old PWA caches -->
     <script>
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("./sw.js")
-            .catch((err) => console.warn("SW registration failed:", err));
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((reg) => reg.unregister());
         });
+      }
+      if (window.caches) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
       }
     </script>
   </body>
