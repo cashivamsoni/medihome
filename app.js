@@ -105,10 +105,24 @@ function loadData() {
 
     // Absorb any stray values already present in the data that aren't in the lists yet
     reconcileDynamicLists();
+    backfillSerialIds();
     populateAllDropdowns();
     renderOwnerNavChips();
     renderAll();
     updateStats();
+  });
+}
+
+// Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
+function nextAvailableSerialId() {
+  const used = medicines.map(m => Number(m.serialId)).filter(n => !isNaN(n));
+  return used.length ? Math.max(...used) + 1 : 1;
+}
+function backfillSerialIds() {
+  medicines.forEach((m, idx) => {
+    if (m.serialId === undefined || m.serialId === null || m.serialId === '') {
+      m.serialId = idx + 1;
+    }
   });
 }
 
@@ -281,7 +295,7 @@ function renderMedicineList(list) {
         ${Object.entries(g.categories).map(([cat,meds]) => `
           <div class="category-group">
             <div class="category-label">${getCategoryIcon(cat)}${cat}</div>
-            <div class="medicine-grid">${meds.map(m => renderMedicineCard(m, medicines.indexOf(m) + 1)).join('')}</div>
+            <div class="medicine-grid">${meds.map(m => renderMedicineCard(m, m.serialId != null ? m.serialId : (medicines.indexOf(m) + 1))).join('')}</div>
           </div>`).join('')}
       </div>`;
   }).join('');
@@ -456,7 +470,7 @@ function medicineMatches(med, query) {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
   // Serial number search: e.g. "#01", "01", "#1", "1"
-  const serialNum = medicines.indexOf(med) + 1;
+  const serialNum = med.serialId != null ? med.serialId : (medicines.indexOf(med) + 1);
   const serialStr = String(serialNum).padStart(2, '0');
   const serialFull = `#${serialStr}`;
   const queryClean = query.trim().replace(/^#/, '');
@@ -533,7 +547,7 @@ function renderMatchList(list) {
         <div class="category-group">
           <div class="category-label">${getCategoryIcon(cat)}${cat}</div>
           <div class="medicine-grid">
-            ${meds.map(m => renderMedicineCard(m, medicines.indexOf(m) + 1)).join('')}
+            ${meds.map(m => renderMedicineCard(m, m.serialId != null ? m.serialId : (medicines.indexOf(m) + 1))).join('')}
           </div>
         </div>`;
     });
@@ -841,6 +855,7 @@ function openAdd() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'Add Medicine';
   document.getElementById('medId').value = '';
+  document.getElementById('medSerialId').value = '';
   document.getElementById('medName').value = '';
   document.getElementById('medDesc').value = '';
   document.getElementById('medType').value = 'homeopathic';
@@ -878,6 +893,7 @@ function openEdit(id) {
   editingId = id;
   document.getElementById('modalTitle').textContent = 'Edit Medicine';
   document.getElementById('medId').value = m.id;
+  document.getElementById('medSerialId').value = (m.serialId != null) ? m.serialId : '';
   document.getElementById('medName').value = m.name;
   document.getElementById('medDesc').value = m.description;
   document.getElementById('medType').value = m.type;
@@ -985,6 +1001,15 @@ function saveMedicine() {
     showToast('Please fill all required fields.', 'error'); return;
   }
 
+  // Serial ID: user-entered value always wins; otherwise auto-assign the
+  // next available number (or keep the existing one when editing).
+  const serialInput = document.getElementById('medSerialId').value.trim();
+  let serialId = serialInput !== '' ? parseInt(serialInput, 10) : NaN;
+  if (isNaN(serialId)) {
+    const existing = editingId ? medicines.find(x => x.id === editingId) : null;
+    serialId = (existing && existing.serialId != null) ? existing.serialId : nextAvailableSerialId();
+  }
+
   if (catSel === '__new__' && !catCustom) {
     showToast('Please type a category name.', 'error'); return;
   }
@@ -1003,10 +1028,10 @@ function saveMedicine() {
   if (editingId) {
     pushUndo(`Edited "${name}"`);
     const idx = medicines.findIndex(m => m.id === editingId);
-    if (idx !== -1) medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image };
+    if (idx !== -1) medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
     showUndoToast(`✏️ "${name}" updated — tap Undo within 6s`);
   } else {
-    medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image });
+    medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId });
     showToast('Medicine added ✓', 'success');
   }
 
@@ -1045,7 +1070,7 @@ function adjustQuantity(id, delta) {
   // Partial re-render: just replace this card's HTML in place
   const el = document.getElementById(`med-${id}`);
   if (el) {
-    const serialNum = medicines.indexOf(medicines[idx]) + 1;
+    const serialNum = medicines[idx].serialId != null ? medicines[idx].serialId : (medicines.indexOf(medicines[idx]) + 1);
     const newHtml = renderMedicineCard(medicines[idx], serialNum);
     const tmp = document.createElement('div');
     tmp.innerHTML = newHtml;
