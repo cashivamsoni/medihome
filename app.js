@@ -1076,11 +1076,13 @@ function manageField(fieldType) {
   renderMgmtList();
   const modal = document.getElementById('mgmtModal');
   if (modal) modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
 }
 
 function closeMgmtModal() {
   const modal = document.getElementById('mgmtModal');
   if (modal) modal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
   // Refresh the underlying add/edit form dropdowns to reflect any changes made
   populateAllDropdowns();
   renderOwnerNavChips();
