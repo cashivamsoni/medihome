@@ -873,6 +873,17 @@ body.modal-open {
 .form-group.full {
   grid-column: 1 / -1;
 }
+.name-id-row {
+  display: flex;
+  gap: 11px;
+}
+.name-id-row .name-field {
+  flex: 4;
+}
+.name-id-row .id-field {
+  flex: 1;
+  min-width: 64px;
+}
 .form-label {
   font-size: 0.75rem;
   font-weight: 700;
