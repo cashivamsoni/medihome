@@ -1255,6 +1255,23 @@ body.modal-open {
   cursor: not-allowed;
   transform: none;
 }
+.qty-finish {
+  background: var(--slate-600);
+  color: #FFF;
+  box-shadow: 0 2px 6px rgba(51, 65, 85, 0.3);
+  font-size: 0.95rem;
+}
+.qty-finish:hover {
+  background: var(--slate-700);
+  transform: scale(1.1);
+}
+.qty-finish:disabled {
+  background: #D1D5DB;
+  color: #9CA3AF;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
 .qty-display {
   font-size: 0.85rem;
   font-weight: 700;
