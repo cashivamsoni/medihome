@@ -1936,7 +1936,12 @@ body.bulk-mode .medicine-card {
   text-align: center;
 }
 
-[data-theme="dark"] .card-serial {
+[data-theme="dark"] .owner-title {
+  color: var(--teal-100);
+}
+[data-theme="dark"] .category-label {
+  color: #cbd5e1;
+}
   background: #1E293B;
   border-color: #334155;
   color: #64748B;
