@@ -1419,6 +1419,32 @@ body.modal-open {
   gap: 12px;
   overflow-y: auto;
 }
+.mgmt-tabs {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mgmt-tab-btn {
+  flex: 1;
+  height: 34px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.mgmt-tab-btn:hover {
+  background: var(--teal-50);
+  border-color: var(--teal-200);
+}
+.mgmt-tab-btn.active {
+  background: var(--teal-600);
+  border-color: var(--teal-600);
+  color: white;
+}
 .mgmt-add-row {
   display: flex;
   gap: 8px;
