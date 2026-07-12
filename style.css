@@ -1945,6 +1945,20 @@ body.bulk-mode .medicine-card {
   background: #1A3D35;
   border-color: #2D6B5E;
 }
+[data-theme="dark"] .mgmt-tab-btn {
+  background: #16302C;
+  color: #5EEAD4;
+  border-color: #1F4641;
+}
+[data-theme="dark"] .mgmt-tab-btn:hover {
+  background: #1A3D35;
+  border-color: #2D6B5E;
+}
+[data-theme="dark"] .mgmt-tab-btn.active {
+  background: var(--teal-700);
+  border-color: var(--teal-700);
+  color: white;
+}
 [data-theme="dark"] .menu-section-label {
   color: var(--text-muted);
 }
