@@ -137,16 +137,13 @@ function saveData() {
 }
 
 function resetToDefault() {
-  if (confirm('Reset all data to default? This cannot be undone.')) {
-    medicines = JSON.parse(JSON.stringify(MEDICINE_DB));
-    customCategories = DEFAULT_CATEGORIES.slice();
-    customForms      = DEFAULT_FORMS.slice();
-    customOwners     = DEFAULT_OWNERS.slice();
+  if (confirm('Empty the entire medicine database? All medicines will be deleted. This cannot be undone.')) {
+    medicines = [];
     saveData();
     populateAllDropdowns();
     renderOwnerNavChips();
     renderAll();
-    showToast('Data reset to default.', 'info');
+    showToast('Database emptied.', 'info');
   }
 }
 
