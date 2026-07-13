@@ -1604,6 +1604,7 @@ function exportToPDF() {
         #pdfPrintRoot {
           font-family:'Times New Roman',Times,serif; color:#000;
           font-size:${fontSize}px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+          padding: 3mm; /* real inset from the physical page edge — not just around the table */
         }
         #pdfPrintRoot .sheet{ border:1px solid #000; padding:16px 18px; }
         #pdfPrintRoot h1{ font-size:${fontSize + 8}px; text-align:center; margin:0 0 2px; }
@@ -1615,7 +1616,7 @@ function exportToPDF() {
         #pdfPrintRoot .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
         #pdfPrintRoot .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
         #pdfPrintRoot .exp{ color:#000; font-weight:700; text-decoration:underline; }
-        @page { size: A4; margin: 6mm; }
+        @page { size: A4; margin: 0; }
       </style>
       <div class="sheet">
         <h1>💊 MediHome - Family Medicine Inventory</h1>
