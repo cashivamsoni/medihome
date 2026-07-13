@@ -1709,6 +1709,14 @@ body.modal-open {
 .bulk-action-bar.hidden {
   display: none;
 }
+/* Bulk bar sits fixed at bottom and can grow tall on phones (two-row
+   layout) — tall enough to overlap the floating share / go-top buttons
+   (both anchored at bottom:90px). Simplest fix: hide them while the
+   bulk bar is open; the bulk bar already covers the actions users need. */
+body.bulk-mode #shareBtn,
+body.bulk-mode .go-top-btn {
+  display: none !important;
+}
 /* push page content above the fixed bar */
 body.bulk-mode .main {
   padding-bottom: 120px;
@@ -1869,8 +1877,11 @@ body.bulk-mode .main {
   }
   .app-menu-inner {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
+  }
+  .menu-actions-row {
+    justify-content: center;
   }
   .menu-divider {
     width: 100%;
@@ -2354,11 +2365,11 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .hamburger-box {
   position: relative;
-  width: 18px;
-  height: 14px;   /* space for 3 bars */
+  width: 16px;
+  height: 16px;   /* square box = symmetric, proportionate ✕ */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
 }
 .hb-bar {
   display: block;
@@ -2368,28 +2379,28 @@ body.compact-view.bulk-mode .medicine-card {
   background: white;
   transform-origin: center center;
   transition:
-    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity   0.22s ease,
-    top       0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity   0.18s ease;
   position: absolute;
   left: 0;
+  will-change: transform;
 }
-.hb-top { top: 0; }
-.hb-mid { top: 6px; }
-.hb-bot { top: 12px; }
+.hb-top { top: 1px; }
+.hb-mid { top: 7px; }
+.hb-bot { top: 13px; }
 
-/* Active (open) state — morphs into ✕ */
+/* Active (open) state — morphs into ✕
+   Uses translateY (not "top") so the whole animation stays on the
+   compositor/GPU — this is what makes it smooth on phones. */
 .btn-menu-toggle.active .hb-top {
-  top: 6px;                         /* slide to centre */
-  transform: rotate(45deg);
+  transform: translateY(6px) rotate(45deg);
 }
 .btn-menu-toggle.active .hb-mid {
   opacity: 0;
   transform: scaleX(0);
 }
 .btn-menu-toggle.active .hb-bot {
-  top: 6px;                         /* slide to centre */
-  transform: rotate(-45deg);
+  transform: translateY(-6px) rotate(-45deg);
 }
 /* ── Quantity History Modal ──────────────────────────────── */
 #histModal {
