@@ -1585,22 +1585,18 @@ function exportToPDF() {
 
     const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${fileName}</title>
-    <style>
-      @page{ size:A4; margin:3mm; }
-      *{box-sizing:border-box;}
-      body{font-family:'Times New Roman',Times,serif;color:#000;margin:0;font-size:${fontSize}px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      .sheet{border:1px solid #000;padding:8px 10px;min-height:calc(297mm - 6mm - 2px);}
-      h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
-      .meta{text-align:center;color:#000;font-size:${fontSize - 1}px;margin-bottom:10px;}
-      table{width:100%;border-collapse:collapse;border:1px solid #000;}
-      th,td{border:1px solid #000;padding:3px 6px;text-align:left;}
-      th{background:#e8e8e8;color:#000;text-align:center;font-weight:700;}
-      .idc{text-align:center;color:#000;}
-      .grp-owner{background:#d0d0d0;color:#000;font-weight:700;text-align:center;}
-      .grp-cat{background:#eeeeee;color:#000;font-weight:700;text-align:center;}
-      .exp{color:#000;font-weight:700;text-decoration:underline;}
-    </style></head><body>
+    // Print the CURRENT tab directly — inject the export sheet into this
+    // document, hide everything else during print, then call window.print().
+    // No iframe, no new window/tab, so there's nothing for a popup blocker
+    // to block (Ctrl+P stays instant) and nothing for a mobile browser to
+    // fail to render — it's just the native print of the page already open.
+    let sheet = document.getElementById('pdfExportSheet');
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'pdfExportSheet';
+      document.body.appendChild(sheet);
+    }
+    sheet.innerHTML = `
       <div class="sheet">
         <h1>💊 MediHome - Family Medicine Inventory</h1>
         <div class="meta">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
@@ -1608,39 +1604,52 @@ function exportToPDF() {
           <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
           <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
         </table>
-      </div>
-    </body></html>`;
+      </div>`;
 
-    // Print via a hidden iframe — this never triggers a popup blocker
-    // (unlike window.open), which is why Ctrl+P used to go straight to the
-    // print dialog with no "allow pop-ups" prompt. The only real bug in the
-    // old version was that the iframe had width/height:0 — some mobile
-    // browsers refuse to paint (and therefore print) a zero-size iframe.
-    // Giving it real off-screen dimensions fixes that while keeping the
-    // instant, no-popup-blocker behaviour on desktop.
-    const iframe = document.createElement('iframe');
-    Object.assign(iframe.style, {
-      position: 'fixed', top: '-10000px', left: '-10000px',
-      width: '794px', height: '1123px', border: '0'
-    });
-    document.body.appendChild(iframe);
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    iframe.contentWindow.focus();
+    let styleTag = document.getElementById('pdfExportStyles');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'pdfExportStyles';
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = `
+      #pdfExportSheet{ display:none; }
+      @media print {
+        @page{ size:A4; margin:3mm; }
+        body.exporting-pdf > *:not(#pdfExportSheet){ display:none !important; }
+        body.exporting-pdf #pdfExportSheet{
+          display:block !important;
+          font-family:'Times New Roman',Times,serif;
+          color:#000; font-size:${fontSize}px;
+          -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        #pdfExportSheet *{ box-sizing:border-box; }
+        #pdfExportSheet .sheet{ border:1px solid #000; padding:8px 10px; }
+        #pdfExportSheet h1{ font-size:${fontSize + 8}px; text-align:center; margin:0 0 2px; }
+        #pdfExportSheet .meta{ text-align:center; color:#000; font-size:${fontSize - 1}px; margin-bottom:10px; }
+        #pdfExportSheet table{ width:100%; border-collapse:collapse; border:1px solid #000; }
+        #pdfExportSheet th, #pdfExportSheet td{ border:1px solid #000; padding:3px 6px; text-align:left; }
+        #pdfExportSheet th{ background:#e8e8e8; color:#000; text-align:center; font-weight:700; }
+        #pdfExportSheet .idc{ text-align:center; color:#000; }
+        #pdfExportSheet .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
+        #pdfExportSheet .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
+        #pdfExportSheet .exp{ color:#000; font-weight:700; text-decoration:underline; }
+      }`;
 
-    // Chrome's "Save as PDF" dialog names the file after the TOP window's
-    // title, not the iframe's — so swap it briefly for the export.
     const originalTitle = document.title;
     document.title = fileName;
-    setTimeout(() => {
-      iframe.contentWindow.print();
-      setTimeout(() => {
-        document.title = originalTitle;
-        iframe.remove();
-      }, 1000);
-    }, 300);
+    document.body.classList.add('exporting-pdf');
+
+    const cleanup = () => {
+      document.body.classList.remove('exporting-pdf');
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    // Fallback in case 'afterprint' doesn't fire (some mobile browsers skip it)
+    setTimeout(cleanup, 4000);
+
+    setTimeout(() => window.print(), 50);
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
