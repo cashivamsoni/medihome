@@ -1380,6 +1380,14 @@ body.bulk-mode .go-top-btn {
     font-size: 0.7rem;
     padding: 4px 9px;
   }
+  /* Stat chips and owner chips center as a group on phones */
+  .stats-inner {
+    justify-content: center;
+  }
+  .chip-group {
+    width: 100%;
+    justify-content: center;
+  }
 }
 /* ── Select + manage gear button row ──────────────────────── */
 .select-mgmt-row {
@@ -1633,6 +1641,7 @@ body.bulk-mode .go-top-btn {
   padding: 10px 24px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -1878,17 +1887,13 @@ body.bulk-mode .main {
   }
   .app-menu-inner {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     gap: 10px;
   }
   .menu-actions-row {
     width: 100%;
-    justify-content: flex-start;
-  }
-  .menu-action-btn,
-  .menu-sort-wrap {
-    align-self: flex-start;
-    width: auto;
+    justify-content: center;
   }
   .menu-divider {
     width: 100%;
@@ -2186,14 +2191,6 @@ body.bulk-mode .medicine-card {
 .menu-sort-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-.menu-sort-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  white-space: nowrap;
 }
 .menu-sort-select {
   display: flex;
@@ -2414,19 +2411,6 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .btn-menu-toggle.active .hb-bot {
   transform: translateY(0) rotate(-45deg);
-}
-
-/* Slightly smaller icon on phones so the ✕ doesn't look oversized */
-@media (max-width: 480px) {
-  .btn-menu-toggle {
-    padding: 7px 9px;
-  }
-  .hamburger-box {
-    width: 16px;
-    height: 12px;
-  }
-  .hb-top { transform: translateY(-5px); }
-  .hb-bot { transform: translateY(5px); }
 }
 /* ── Quantity History Modal ──────────────────────────────── */
 #histModal {
