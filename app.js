@@ -243,7 +243,7 @@ function sortMeds(arr) {
   if (sortOrder === 'name') {
     copy.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortOrder === 'quantity') {
-    copy.sort((a, b) => a.quantity - b.quantity);
+    copy.sort((a, b) => b.quantity - a.quantity);
   } else if (sortOrder === 'added') {
     // higher index in original medicines array = added later
     copy.sort((a, b) => medicines.indexOf(b) - medicines.indexOf(a));
@@ -1407,6 +1407,7 @@ function exitBulkMode() {
   document.getElementById('bulkActionBar').classList.add('hidden');
   const legacyBtn = document.getElementById('bulkToggleBtn');
   if (legacyBtn) legacyBtn.classList.remove('active');
+  window.removeEventListener('resize', syncBulkBarOffset);
   updateMenuBulkLabel();
 }
 
@@ -1423,6 +1424,19 @@ function toggleBulkMode() {
   updateMenuBulkLabel();
   closeAppMenu();
   renderAll();
+  syncBulkBarOffset();
+  window.addEventListener('resize', syncBulkBarOffset);
+}
+
+// Measures the bulk bar's real rendered height (it varies by screen width —
+// two-row wrap on phones, single row on desktop) and exposes it as a CSS
+// variable so the floating share/go-top buttons can sit just above it.
+function syncBulkBarOffset() {
+  const bar = document.getElementById('bulkActionBar');
+  if (!bar || bar.classList.contains('hidden')) return;
+  requestAnimationFrame(() => {
+    document.documentElement.style.setProperty('--bulk-bar-h', `${bar.offsetHeight}px`);
+  });
 }
 
 function populateBulkDropdowns() {
@@ -1596,27 +1610,26 @@ function exportToPDF() {
       </div>
     </body></html>`;
 
-    // Print via a hidden iframe — avoids popup blockers that break window.open()
-    const iframe = document.createElement('iframe');
-    Object.assign(iframe.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
-    document.body.appendChild(iframe);
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    iframe.contentWindow.focus();
+    // Open a blank new tab and write the export sheet directly into it.
+    // (blob: URLs opened via window.open get blocked/rewritten by several
+    // mobile browsers, which is why it was printing the live site instead
+    // of the export sheet — writing straight into a real new window avoids
+    // that restriction and works consistently on phones and desktop.)
+    const printWin = window.open('', '_blank');
 
-    // Chrome's "Save as PDF" dialog names the file after the TOP window's
-    // title, not the iframe's — so swap it briefly for the export.
-    const originalTitle = document.title;
-    document.title = fileName;
+    if (!printWin) {
+      showToast('Please allow pop-ups to export PDF.', 'error');
+      return;
+    }
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+
     setTimeout(() => {
-      iframe.contentWindow.print();
-      setTimeout(() => {
-        document.title = originalTitle;
-        iframe.remove();
-      }, 1000);
-    }, 300);
+      printWin.focus();
+      printWin.print();
+    }, 250);
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
