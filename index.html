@@ -92,15 +92,16 @@
               📋 Compact View
             </button>
             <div class="menu-sort-wrap">
+              <span class="menu-sort-label">Sort by</span>
               <select
                 class="menu-sort-select"
                 id="menuSortSel"
                 onchange="setSortOrder(this.value)"
               >
-                <option value="expiry">⏳ Sort by: Expiry (Soonest→Latest)</option>
-                <option value="name">🔤 Sort by: Name (A→Z)</option>
-                <option value="quantity">📦 Sort by: Quantity (High→Low)</option>
-                <option value="added">🕐 Sort by: Recently Added</option>
+                <option value="expiry">⏳ Expiry: Soonest → Latest</option>
+                <option value="name">🔤 Name: A → Z</option>
+                <option value="quantity">📦 Quantity: High → Low</option>
+                <option value="added">🕐 Recently Added First</option>
               </select>
             </div>
             <button
@@ -729,13 +730,6 @@
       window._fbSet = (data) => set(dbRef, data);
       window._fbListen = (cb) => onValue(dbRef, (snap) => cb(snap.val()));
     </script>
-
-    <!-- PDF export: jsPDF draws the PDF directly with text/line commands
-         (via the AutoTable plugin) rather than rendering a screenshot of
-         the page, so it can't come out blank and behaves the same on any
-         device/browser -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
     <script src="data.js"></script>
     <script src="app.js"></script>
