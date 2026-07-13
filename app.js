@@ -1536,121 +1536,75 @@ function exportToPDF() {
     const timeForName  = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
     const fileName     = `MediHome Stock ${dateSlash} ${timeForName}`;
 
-    // Build grouped entries (owner → category → medicines), ordered using
-    // the currently selected sort (sortMeds) — but each row keeps its own
-    // real saved serial ID rather than a re-numbered running count.
+    // Build a flat, grouped row list (owner header → category header →
+    // items) for AutoTable. Kept as one column-set spanning the full page
+    // width — AutoTable paginates automatically across multiple pages if
+    // the list is long, so the earlier two-column same-page-fit trick
+    // (which only mattered for print-preview) isn't needed here.
     const ownerOrder = customOwners.map(o => o.key);
-    const entries = [];
+    const body = [];
     ownerOrder.forEach(owner => {
       const ownerMeds = medicines.filter(m => m.owner === owner);
       if (!ownerMeds.length) return;
       const ownerCfg = customOwners.find(o => o.key === owner);
-      entries.push({ type: 'owner', text: escHtml(ownerCfg ? ownerCfg.label : owner) });
+      body.push([{
+        content: ownerCfg ? ownerCfg.label : owner, colSpan: 4,
+        styles: { fillColor: [208, 208, 208], fontStyle: 'bold', halign: 'center' }
+      }]);
       const catMap = {};
       ownerMeds.forEach(m => { (catMap[m.category] = catMap[m.category] || []).push(m); });
       Object.keys(catMap).forEach(cat => {
-        entries.push({ type: 'cat', text: getCategoryIcon(cat) + escHtml(cat) });
+        body.push([{
+          content: cat, colSpan: 4,
+          styles: { fillColor: [238, 238, 238], fontStyle: 'bold', halign: 'center' }
+        }]);
         sortMeds(catMap[cat]).forEach(m => {
           const exp = m.expiryDate
             ? new Date(m.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
             : '—';
           const serialNum = m.serialId != null ? m.serialId : (medicines.indexOf(m) + 1);
-          entries.push({
-            type: 'item',
-            id: serialNum,
-            name: escHtml(m.name),
-            qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
-            expiry: exp,
-            expired: isExpiredMed(m.expiryDate)
-          });
+          const expired = isExpiredMed(m.expiryDate);
+          const expStyles = expired ? { textColor: [180, 0, 0], fontStyle: 'bold' } : {};
+          body.push([
+            { content: String(serialNum).padStart(2, '0'), styles: { halign: 'center' } },
+            m.name,
+            `${m.quantity} ${m.quantityUnit}`,
+            { content: exp, styles: expStyles }
+          ]);
         });
       });
     });
 
-    // Split into two side-by-side columns so everything fits one page
-    const splitAt = Math.ceil(entries.length / 2);
-    const col1 = entries.slice(0, splitAt);
-    const col2 = entries.slice(splitAt);
-    const rowCount = Math.max(col1.length, col2.length, 1);
-
-    const cellsFor = e => {
-      if (!e) return '<td></td><td></td><td></td><td></td>';
-      if (e.type === 'owner') return `<td colspan="4" class="grp-owner">${e.text}</td>`;
-      if (e.type === 'cat')   return `<td colspan="4" class="grp-cat">${e.text}</td>`;
-      return `<td class="idc">${String(e.id).padStart(2, '0')}</td><td>${e.name}</td><td>${e.qty}</td><td${e.expired ? ' class="exp"' : ''}>${e.expiry}</td>`;
-    };
-
-    let bodyRows = '';
-    for (let i = 0; i < rowCount; i++) bodyRows += `<tr>${cellsFor(col1[i])}${cellsFor(col2[i])}</tr>`;
-
-    const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
-
-    // Build a real PDF file directly and download it — no browser print
-    // dialog involved at all. Print-dialog-based export was reliable on
-    // desktop but not on this phone's browser; generating the PDF as an
-    // actual file (via jsPDF + html2canvas) and downloading it works the
-    // same way on any device, since it doesn't depend on the browser's
-    // print pipeline at all.
-    if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
+    // jsPDF + AutoTable draws the PDF directly with text/line commands —
+    // no screenshot of the page is taken, so it can't come out blank, and
+    // it behaves identically on desktop and mobile.
+    if (typeof window.jspdf === 'undefined') {
       showToast('PDF export is still loading — please try again in a moment.', 'error');
       return;
     }
 
-    let sheet = document.getElementById('pdfExportSheet');
-    if (!sheet) {
-      sheet = document.createElement('div');
-      sheet.id = 'pdfExportSheet';
-      document.body.appendChild(sheet);
-    }
-    // Off-screen (not display:none) so html2canvas can actually render it
-    Object.assign(sheet.style, {
-      position: 'fixed', top: '0', left: '-99999px', width: '794px',
-      background: '#fff', fontFamily: "'Times New Roman',Times,serif", color: '#000'
-    });
-    const th = `border:1px solid #000;padding:3px 6px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;`;
-    sheet.innerHTML = `
-      <div style="font-size:${fontSize}px;border:1px solid #000;padding:8px 10px;box-sizing:border-box;">
-        <h1 style="font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;">💊 MediHome - Family Medicine Inventory</h1>
-        <div style="text-align:center;font-size:${fontSize - 1}px;margin-bottom:10px;">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #000;font-size:${fontSize}px;">
-          <thead><tr>
-            <th style="${th}">ID</th><th style="${th}">Name</th><th style="${th}">Quantity</th><th style="${th}">Expiry</th>
-            <th style="${th}">ID</th><th style="${th}">Name</th><th style="${th}">Quantity</th><th style="${th}">Expiry</th>
-          </tr></thead>
-          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;border:1px solid #000;">No medicines yet.</td></tr>'}</tbody>
-        </table>
-      </div>`;
-    // Inline table cell borders (bodyRows only carries classes, no inline
-    // border styles, since it was originally written for the <style> sheet
-    // approach) — add a scoped stylesheet so html2canvas still sees them.
-    let styleTag = document.getElementById('pdfExportStyles');
-    if (!styleTag) {
-      styleTag = document.createElement('style');
-      styleTag.id = 'pdfExportStyles';
-      document.head.appendChild(styleTag);
-    }
-    styleTag.textContent = `
-      #pdfExportSheet td{ border:1px solid #000; padding:3px 6px; text-align:left; color:#000; }
-      #pdfExportSheet .idc{ text-align:center; }
-      #pdfExportSheet .grp-owner{ background:#d0d0d0; font-weight:700; text-align:center; }
-      #pdfExportSheet .grp-cat{ background:#eeeeee; font-weight:700; text-align:center; }
-      #pdfExportSheet .exp{ font-weight:700; text-decoration:underline; }
-    `;
-
     const { jsPDF } = window.jspdf;
-    const pdfDoc = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
 
-    pdfDoc.html(sheet, {
-      x: 3, y: 3,
-      width: 204,          // 210mm A4 width minus 3mm margins each side
-      windowWidth: 794,    // matches sheet's fixed px width above
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      callback: (pdf) => {
-        pdf.save(`${fileName}.pdf`);
-        sheet.remove();
-        styleTag.remove();
-      }
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(16);
+    pdf.text('MediHome - Family Medicine Inventory', pageWidth / 2, 12, { align: 'center' });
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(9);
+    pdf.text(`Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`, pageWidth / 2, 18, { align: 'center' });
+
+    pdf.autoTable({
+      startY: 23,
+      margin: { left: 8, right: 8 },
+      head: [['ID', 'Name', 'Quantity', 'Expiry']],
+      body: body.length ? body : [[{ content: 'No medicines yet.', colSpan: 4, styles: { halign: 'center' } }]],
+      styles: { font: 'times', fontSize: 9, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, cellPadding: 1.5 },
+      headStyles: { fillColor: [232, 232, 232], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      columnStyles: { 0: { cellWidth: 16 }, 2: { cellWidth: 30 }, 3: { cellWidth: 30 } }
     });
+
+    pdf.save(`${fileName}.pdf`);
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
