@@ -1346,6 +1346,10 @@ body.modal-open {
   }
   .stats-inner {
     padding: 8px 12px;
+    justify-content: center;
+  }
+  .chip-group {
+    justify-content: center;
   }
   .reorder-section {
     padding: 16px 14px;
