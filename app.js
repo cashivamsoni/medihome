@@ -1536,9 +1536,10 @@ function exportToPDF() {
     const timeForName  = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
     const fileName     = `MediHome Stock ${dateSlash} ${timeForName}`;
 
-    // Build grouped, sequentially-numbered entries (owner → category → medicines)
+    // Build grouped entries (owner → category → medicines), ordered using
+    // the currently selected sort (sortMeds) — but each row keeps its own
+    // real saved serial ID rather than a re-numbered running count.
     const ownerOrder = customOwners.map(o => o.key);
-    let counter = 0;
     const entries = [];
     ownerOrder.forEach(owner => {
       const ownerMeds = medicines.filter(m => m.owner === owner);
@@ -1550,13 +1551,13 @@ function exportToPDF() {
       Object.keys(catMap).forEach(cat => {
         entries.push({ type: 'cat', text: getCategoryIcon(cat) + escHtml(cat) });
         sortMeds(catMap[cat]).forEach(m => {
-          counter++;
           const exp = m.expiryDate
             ? new Date(m.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
             : '—';
+          const serialNum = m.serialId != null ? m.serialId : (medicines.indexOf(m) + 1);
           entries.push({
             type: 'item',
-            id: counter,
+            id: serialNum,
             name: escHtml(m.name),
             qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
             expiry: exp,
