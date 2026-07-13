@@ -1585,27 +1585,44 @@ function exportToPDF() {
 
     const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
 
-    // Print the CURRENT tab directly — inject the export sheet into this
-    // document, hide everything else during print, then call window.print().
-    // No iframe, no new window/tab, so there's nothing for a popup blocker
-    // to block (Ctrl+P stays instant) and nothing for a mobile browser to
-    // fail to render — it's just the native print of the page already open.
+    // Build a real PDF file directly and download it — no browser print
+    // dialog involved at all. Print-dialog-based export was reliable on
+    // desktop but not on this phone's browser; generating the PDF as an
+    // actual file (via jsPDF + html2canvas) and downloading it works the
+    // same way on any device, since it doesn't depend on the browser's
+    // print pipeline at all.
+    if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
+      showToast('PDF export is still loading — please try again in a moment.', 'error');
+      return;
+    }
+
     let sheet = document.getElementById('pdfExportSheet');
     if (!sheet) {
       sheet = document.createElement('div');
       sheet.id = 'pdfExportSheet';
       document.body.appendChild(sheet);
     }
+    // Off-screen (not display:none) so html2canvas can actually render it
+    Object.assign(sheet.style, {
+      position: 'fixed', top: '0', left: '-99999px', width: '794px',
+      background: '#fff', fontFamily: "'Times New Roman',Times,serif", color: '#000'
+    });
+    const th = `border:1px solid #000;padding:3px 6px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;`;
     sheet.innerHTML = `
-      <div class="sheet">
-        <h1>💊 MediHome - Family Medicine Inventory</h1>
-        <div class="meta">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
-        <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
-          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
+      <div style="font-size:${fontSize}px;border:1px solid #000;padding:8px 10px;box-sizing:border-box;">
+        <h1 style="font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;">💊 MediHome - Family Medicine Inventory</h1>
+        <div style="text-align:center;font-size:${fontSize - 1}px;margin-bottom:10px;">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #000;font-size:${fontSize}px;">
+          <thead><tr>
+            <th style="${th}">ID</th><th style="${th}">Name</th><th style="${th}">Quantity</th><th style="${th}">Expiry</th>
+            <th style="${th}">ID</th><th style="${th}">Name</th><th style="${th}">Quantity</th><th style="${th}">Expiry</th>
+          </tr></thead>
+          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;border:1px solid #000;">No medicines yet.</td></tr>'}</tbody>
         </table>
       </div>`;
-
+    // Inline table cell borders (bodyRows only carries classes, no inline
+    // border styles, since it was originally written for the <style> sheet
+    // approach) — add a scoped stylesheet so html2canvas still sees them.
     let styleTag = document.getElementById('pdfExportStyles');
     if (!styleTag) {
       styleTag = document.createElement('style');
@@ -1613,43 +1630,27 @@ function exportToPDF() {
       document.head.appendChild(styleTag);
     }
     styleTag.textContent = `
-      #pdfExportSheet{ display:none; }
-      @media print {
-        @page{ size:A4; margin:3mm; }
-        body.exporting-pdf > *:not(#pdfExportSheet){ display:none !important; }
-        body.exporting-pdf #pdfExportSheet{
-          display:block !important;
-          font-family:'Times New Roman',Times,serif;
-          color:#000; font-size:${fontSize}px;
-          -webkit-print-color-adjust:exact; print-color-adjust:exact;
-        }
-        #pdfExportSheet *{ box-sizing:border-box; }
-        #pdfExportSheet .sheet{ border:1px solid #000; padding:8px 10px; }
-        #pdfExportSheet h1{ font-size:${fontSize + 8}px; text-align:center; margin:0 0 2px; }
-        #pdfExportSheet .meta{ text-align:center; color:#000; font-size:${fontSize - 1}px; margin-bottom:10px; }
-        #pdfExportSheet table{ width:100%; border-collapse:collapse; border:1px solid #000; }
-        #pdfExportSheet th, #pdfExportSheet td{ border:1px solid #000; padding:3px 6px; text-align:left; }
-        #pdfExportSheet th{ background:#e8e8e8; color:#000; text-align:center; font-weight:700; }
-        #pdfExportSheet .idc{ text-align:center; color:#000; }
-        #pdfExportSheet .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
-        #pdfExportSheet .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
-        #pdfExportSheet .exp{ color:#000; font-weight:700; text-decoration:underline; }
-      }`;
+      #pdfExportSheet td{ border:1px solid #000; padding:3px 6px; text-align:left; color:#000; }
+      #pdfExportSheet .idc{ text-align:center; }
+      #pdfExportSheet .grp-owner{ background:#d0d0d0; font-weight:700; text-align:center; }
+      #pdfExportSheet .grp-cat{ background:#eeeeee; font-weight:700; text-align:center; }
+      #pdfExportSheet .exp{ font-weight:700; text-decoration:underline; }
+    `;
 
-    const originalTitle = document.title;
-    document.title = fileName;
-    document.body.classList.add('exporting-pdf');
+    const { jsPDF } = window.jspdf;
+    const pdfDoc = new jsPDF('p', 'mm', 'a4');
 
-    const cleanup = () => {
-      document.body.classList.remove('exporting-pdf');
-      document.title = originalTitle;
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    // Fallback in case 'afterprint' doesn't fire (some mobile browsers skip it)
-    setTimeout(cleanup, 4000);
-
-    setTimeout(() => window.print(), 50);
+    pdfDoc.html(sheet, {
+      x: 3, y: 3,
+      width: 204,          // 210mm A4 width minus 3mm margins each side
+      windowWidth: 794,    // matches sheet's fixed px width above
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      callback: (pdf) => {
+        pdf.save(`${fileName}.pdf`);
+        sheet.remove();
+        styleTag.remove();
+      }
+    });
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
