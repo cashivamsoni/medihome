@@ -552,7 +552,11 @@ body.modal-open {
   box-shadow: 0 0 14px rgba(13, 148, 136, 0.4);
   font-size: 18px; /* slightly smaller text so pill isn't oversized */
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, bottom 0.25s ease;
+}
+/* When the bulk selection bar is open, float above it instead of hiding behind it */
+body.bulk-mode #shareBtn {
+  bottom: calc(var(--bulk-bar-h, 130px) + 14px);
 }
 #shareBtn:hover {
   transform: translateY(-2px) scale(1.1);
@@ -1204,7 +1208,8 @@ body.modal-open {
   transition:
     opacity 0.25s ease,
     transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.15s ease;
+    background 0.15s ease,
+    bottom 0.25s ease;
 }
 .go-top-btn.visible {
   opacity: 1;
@@ -1215,6 +1220,10 @@ body.modal-open {
   background: var(--teal-700);
   box-shadow: 0 6px 22px rgba(13, 148, 136, 0.5);
   transform: translateY(-2px) scale(1.05);
+}
+/* When the bulk selection bar is open, float above it instead of behind it */
+body.bulk-mode .go-top-btn {
+  bottom: calc(var(--bulk-bar-h, 130px) + 14px);
 }
 
 /* ── Quantity ± row on card ───────────────────────────────── */
@@ -1346,10 +1355,6 @@ body.modal-open {
   }
   .stats-inner {
     padding: 8px 12px;
-    justify-content: center;
-  }
-  .chip-group {
-    justify-content: center;
   }
   .reorder-section {
     padding: 16px 14px;
@@ -1628,7 +1633,6 @@ body.modal-open {
   padding: 10px 24px;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -1713,16 +1717,6 @@ body.modal-open {
 }
 .bulk-action-bar.hidden {
   display: none;
-}
-/* Bulk bar sits fixed at bottom and can grow tall on phones (two-row
-   layout), which would otherwise sit on top of the floating share / go-top
-   buttons (normally anchored at bottom:90px). Instead of hiding them, lift
-   them to sit just above the bar — its live height is written to
-   --bulk-bar-h by JS whenever bulk mode opens or the viewport resizes. */
-body.bulk-mode #shareBtn,
-body.bulk-mode .go-top-btn {
-  bottom: calc(var(--bulk-bar-h, 260px) + 14px);
-  transition: bottom 0.15s ease;
 }
 /* push page content above the fixed bar */
 body.bulk-mode .main {
@@ -1884,11 +1878,17 @@ body.bulk-mode .main {
   }
   .app-menu-inner {
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
   }
   .menu-actions-row {
-    justify-content: center;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .menu-action-btn,
+  .menu-sort-wrap {
+    align-self: flex-start;
+    width: auto;
   }
   .menu-divider {
     width: 100%;
@@ -2186,6 +2186,14 @@ body.bulk-mode .medicine-card {
 .menu-sort-wrap {
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+.menu-sort-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 .menu-sort-select {
   display: flex;
@@ -2372,11 +2380,11 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .hamburger-box {
   position: relative;
-  width: 16px;
-  height: 16px;   /* square box = symmetric, proportionate ✕ */
+  width: 18px;
+  height: 14px;   /* space for 3 bars */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
 }
 .hb-bar {
   display: block;
@@ -2386,28 +2394,39 @@ body.compact-view.bulk-mode .medicine-card {
   background: white;
   transform-origin: center center;
   transition:
-    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     opacity   0.18s ease;
   position: absolute;
   left: 0;
-  will-change: transform;
+  top: 6px; /* all bars share the same vertical anchor; position is set via transform */
 }
-.hb-top { top: 1px; }
-.hb-mid { top: 7px; }
-.hb-bot { top: 13px; }
+.hb-top { transform: translateY(-6px); }
+.hb-mid { transform: translateY(0); }
+.hb-bot { transform: translateY(6px); }
 
-/* Active (open) state — morphs into ✕
-   Uses translateY (not "top") so the whole animation stays on the
-   compositor/GPU — this is what makes it smooth on phones. */
+/* Active (open) state — morphs into ✕ */
 .btn-menu-toggle.active .hb-top {
-  transform: translateY(6px) rotate(45deg);
+  transform: translateY(0) rotate(45deg);
 }
 .btn-menu-toggle.active .hb-mid {
   opacity: 0;
-  transform: scaleX(0);
+  transform: translateY(0) scaleX(0);
 }
 .btn-menu-toggle.active .hb-bot {
-  transform: translateY(-6px) rotate(-45deg);
+  transform: translateY(0) rotate(-45deg);
+}
+
+/* Slightly smaller icon on phones so the ✕ doesn't look oversized */
+@media (max-width: 480px) {
+  .btn-menu-toggle {
+    padding: 7px 9px;
+  }
+  .hamburger-box {
+    width: 16px;
+    height: 12px;
+  }
+  .hb-top { transform: translateY(-5px); }
+  .hb-bot { transform: translateY(5px); }
 }
 /* ── Quantity History Modal ──────────────────────────────── */
 #histModal {
