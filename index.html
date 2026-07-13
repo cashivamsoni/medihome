@@ -411,11 +411,21 @@
               <label class="form-label" for="medType"
                 >Type <span class="req">*</span></label
               >
-              <select class="form-select" id="medType">
-                <option value="homeopathic">Homeopathic</option>
-                <option value="allopathic">Allopathic</option>
-                <option value="ayurvedic">Ayurvedic</option>
-              </select>
+              <div class="select-mgmt-row">
+                <select class="form-select" id="medType">
+                  <option value="homeopathic">Homeopathic</option>
+                  <option value="allopathic">Allopathic</option>
+                  <option value="ayurvedic">Ayurvedic</option>
+                </select>
+                <button
+                  type="button"
+                  class="btn-manage-inline"
+                  onclick="manageField('type')"
+                  title="Add/Edit/Remove Types"
+                >
+                  ⚙️
+                </button>
+              </div>
             </div>
 
             <div class="form-group">
@@ -623,6 +633,7 @@
             <button class="mgmt-tab-btn" onclick="manageField('owner')" data-field="owner">👤 Owners</button>
             <button class="mgmt-tab-btn" onclick="manageField('category')" data-field="category">📂 Categories</button>
             <button class="mgmt-tab-btn" onclick="manageField('form')" data-field="form">💊 Forms</button>
+            <button class="mgmt-tab-btn" onclick="manageField('type')" data-field="type">🧬 Types</button>
           </div>
           <div class="mgmt-add-row">
             <input
