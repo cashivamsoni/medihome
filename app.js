@@ -13,17 +13,19 @@ let compactView = false;
 let customCategories = [];
 let customForms = [];
 let customOwners = [];      // [{key, label, short}]
-let currentMgmtField = '';  // 'category' | 'owner' | 'form' — which manage modal is open
+let customTypes = [];
+let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
 // Units that are countable → auto low-stock
 const COUNTABLE_UNITS = ['tablets','tablet','pieces','piece','pouches','pouch','capsules','capsule','lozenges','lozenge'];
 // Thresholds for auto low-stock by unit type
 const LOW_THRESHOLDS = { tablets:5, tablet:5, pieces:3, piece:3, pouches:2, pouch:2, capsules:5, capsule:5, lozenges:3, lozenge:3 };
 
-// Fallback defaults used only if a deleted category/form/owner needs somewhere to land
+// Fallback defaults used only if a deleted category/form/owner/type needs somewhere to land
 const FALLBACK_CATEGORY = 'Debility & Wellness';
 const FALLBACK_FORM = 'Edible Drops';
 const FALLBACK_OWNER = 'shared';
+const FALLBACK_TYPE = 'homeopathic';
 
 const DEFAULT_OWNERS = [
   { key:'shared', label:"👨‍👩‍👧 Family — Shared by All", short:'👨‍👩‍👧 Family' },
@@ -40,6 +42,7 @@ const DEFAULT_FORMS = [
   'Eye Drops','Drops','Edible Drops','Tablets','Chewable Tablets','Cream','Ointment',
   'Gel/Liquid','Tonic','Bandage','Rehydration Pouch','Candy/Lozenges','Hair Oil',
 ];
+const DEFAULT_TYPES = ['homeopathic','allopathic','ayurvedic'];
 
 // ── Init ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -88,18 +91,21 @@ function loadData() {
       customCategories = (data.categories && data.categories.length) ? data.categories : DEFAULT_CATEGORIES.slice();
       customForms      = (data.forms && data.forms.length) ? data.forms : DEFAULT_FORMS.slice();
       customOwners     = (data.owners && data.owners.length) ? data.owners : DEFAULT_OWNERS.slice();
+      customTypes      = (data.types && data.types.length) ? data.types : DEFAULT_TYPES.slice();
     } else if (data && Array.isArray(data) && data.length > 0) {
       // Legacy shape: plain array of medicines (old saves) — adopt, build lists from defaults+data
       medicines = data;
       customCategories = DEFAULT_CATEGORIES.slice();
       customForms      = DEFAULT_FORMS.slice();
       customOwners     = DEFAULT_OWNERS.slice();
+      customTypes      = DEFAULT_TYPES.slice();
     } else {
       // First time ever — seed with defaults and save to Firebase
       medicines = JSON.parse(JSON.stringify(MEDICINE_DB));
       customCategories = DEFAULT_CATEGORIES.slice();
       customForms      = DEFAULT_FORMS.slice();
       customOwners     = DEFAULT_OWNERS.slice();
+      customTypes      = DEFAULT_TYPES.slice();
       saveData();
     }
 
@@ -130,11 +136,13 @@ function backfillSerialIds() {
 function reconcileDynamicLists() {
   const catSet = new Set(customCategories);
   const formSet = new Set(customForms);
+  const typeSet = new Set(customTypes);
   const ownerKeys = new Set(customOwners.map(o => o.key));
 
   medicines.forEach(m => {
     if (m.category && !catSet.has(m.category)) { catSet.add(m.category); customCategories.push(m.category); }
     if (m.form && !formSet.has(m.form)) { formSet.add(m.form); customForms.push(m.form); }
+    if (m.type && !typeSet.has(m.type)) { typeSet.add(m.type); customTypes.push(m.type); }
     if (m.owner && !ownerKeys.has(m.owner)) {
       ownerKeys.add(m.owner);
       customOwners.push({ key: m.owner, label: m.owner.charAt(0).toUpperCase() + m.owner.slice(1) + "'s Medicines", short: m.owner.charAt(0).toUpperCase() + m.owner.slice(1) });
@@ -143,7 +151,7 @@ function reconcileDynamicLists() {
 }
 
 function saveData() {
-  const payload = { medicines, categories: customCategories, forms: customForms, owners: customOwners };
+  const payload = { medicines, categories: customCategories, forms: customForms, owners: customOwners, types: customTypes };
   window._fbSet(payload).catch(err => {
     showToast('Cloud save failed — check connection.', 'error');
     console.error(err);
@@ -336,7 +344,7 @@ function renderMedicineCard(m, serialNum) {
       <div class="card-top">
         <div class="card-form-icon">${getFormIcon(m.form)}</div>
         <div class="card-badges">
-          <span class="badge badge-${m.type}">${m.type==='homeopathic'?'Homeopathic':m.type==='ayurvedic'?'Ayurvedic':'Allopathic'}</span>
+          <span class="badge badge-${m.type}">${formatTypeLabel(m.type)}</span>
           ${m.frequentlyUsed?'<span class="badge badge-freq">⭐ Frequent</span>':''}
           ${isLow?'<span class="badge badge-low">⚠ Low Stock</span>':''}
           ${isExpired?'<span class="badge badge-expired">Expired</span>':''}
@@ -738,6 +746,15 @@ function populateAllDropdowns() {
   populateCategoryDropdown();
   populateOwnerDropdown();
   populateFormDropdown();
+  populateTypeDropdown();
+}
+
+function populateTypeDropdown(selected) {
+  const sel = document.getElementById('medType');
+  if (!sel) return;
+  const prev = selected !== undefined ? selected : sel.value;
+  sel.innerHTML = customTypes.map(t => `<option value="${escHtml(t)}">${escHtml(formatTypeLabel(t))}</option>`).join('');
+  if (prev && customTypes.includes(prev)) sel.value = prev;
 }
 
 function populateCategoryDropdown(selected) {
@@ -858,7 +875,8 @@ function openAdd() {
   document.getElementById('medSerialId').value = '';
   document.getElementById('medName').value = '';
   document.getElementById('medDesc').value = '';
-  document.getElementById('medType').value = 'homeopathic';
+  populateTypeDropdown('');
+  document.getElementById('medType').value = customTypes[0] || FALLBACK_TYPE;
 
   populateFormDropdown('');
   document.getElementById('medFormField').value = '';
@@ -896,7 +914,7 @@ function openEdit(id) {
   document.getElementById('medSerialId').value = (m.serialId != null) ? m.serialId : '';
   document.getElementById('medName').value = m.name;
   document.getElementById('medDesc').value = m.description;
-  document.getElementById('medType').value = m.type;
+  populateTypeDropdown(m.type);
 
   // Form: known option or custom text (same pattern as category)
   populateFormDropdown();
@@ -1008,6 +1026,14 @@ function saveMedicine() {
   if (isNaN(serialId)) {
     const existing = editingId ? medicines.find(x => x.id === editingId) : null;
     serialId = (existing && existing.serialId != null) ? existing.serialId : nextAvailableSerialId();
+  } else {
+    // User typed a specific ID — make sure it isn't already used by another medicine.
+    const dupe = medicines.some(m => m.serialId === serialId && m.id !== editingId);
+    if (dupe) {
+      const reassigned = nextAvailableSerialId();
+      showToast(`ID ${serialId} already exists — assigned ID ${reassigned} instead.`, 'error');
+      serialId = reassigned;
+    }
   }
 
   if (catSel === '__new__' && !catCustom) {
@@ -1096,7 +1122,7 @@ function markFinished(id) {
 function manageField(fieldType) {
   currentMgmtField = fieldType;
   const titleEl = document.getElementById('mgmtModalTitle');
-  const titles = { category:'Manage Categories', owner:'Manage Owners', form:'Manage Forms' };
+  const titles = { category:'Manage Categories', owner:'Manage Owners', form:'Manage Forms', type:'Manage Types' };
   if (titleEl) titleEl.textContent = titles[fieldType] || 'Manage Items';
   const inp = document.getElementById('mgmtNewValue');
   if (inp) inp.value = '';
@@ -1151,6 +1177,15 @@ function renderMgmtList() {
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
         </div>
       </div>`).join('');
+  } else if (currentMgmtField === 'type') {
+    listHtml = customTypes.map((t, idx) => `
+      <div class="mgmt-item">
+        <span>${escHtml(formatTypeLabel(t))}</span>
+        <div class="mgmt-actions">
+          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
+          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
+        </div>
+      </div>`).join('');
   }
 
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
@@ -1171,6 +1206,9 @@ function addMgmtItem() {
     const key = val.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
     if (!key || customOwners.some(o => o.key === key)) return showToast('Owner already exists or name invalid.', 'error');
     customOwners.push({ key, label: `${val}'s Medicines`, short: val });
+  } else if (currentMgmtField === 'type') {
+    if (customTypes.includes(val)) return showToast('Type already exists.', 'error');
+    customTypes.push(val);
   }
 
   input.value = '';
@@ -1184,6 +1222,7 @@ function editMgmtItem(idx) {
   let current;
   if (currentMgmtField === 'category') current = customCategories[idx];
   else if (currentMgmtField === 'form') current = customForms[idx];
+  else if (currentMgmtField === 'type') current = customTypes[idx];
   else if (currentMgmtField === 'owner') current = customOwners[idx].label;
   else return;
 
@@ -1213,6 +1252,11 @@ function editMgmtItem(idx) {
     // piece; the compact "short" used in chips/dropdowns is derived from it.
     customOwners[idx] = { ...customOwners[idx], label: updated, short: deriveOwnerShort(updated) };
     // Note: owner key itself stays the same to avoid breaking saved medicine.owner references.
+  } else if (currentMgmtField === 'type') {
+    const oldVal = customTypes[idx];
+    if (oldVal === updated) return;
+    customTypes[idx] = updated;
+    medicines.forEach(m => { if (m.type === oldVal) m.type = updated; });
   }
 
   pushUndo(`Edited ${currentMgmtField} "${current}" → "${updated}"`);
@@ -1243,6 +1287,13 @@ function deleteMgmtItem(idx) {
     customOwners.splice(idx, 1);
     const fallbackKey = customOwners.some(o => o.key === FALLBACK_OWNER) ? FALLBACK_OWNER : customOwners[0].key;
     medicines.forEach(m => { if (m.owner === removed.key) m.owner = fallbackKey; });
+  } else if (currentMgmtField === 'type') {
+    if (customTypes.length <= 1) { showToast('At least one type must remain.', 'error'); return; }
+    const removed = customTypes[idx];
+    if (!confirm(`Delete type "${formatTypeLabel(removed)}"? Medicines using it will move to "${formatTypeLabel(FALLBACK_TYPE)}".`)) return;
+    customTypes.splice(idx, 1);
+    if (!customTypes.includes(FALLBACK_TYPE)) customTypes.push(FALLBACK_TYPE);
+    medicines.forEach(m => { if (m.type === removed) m.type = FALLBACK_TYPE; });
   }
 
   pushUndo(`Deleted ${currentMgmtField}`);
@@ -1291,6 +1342,10 @@ function deriveOwnerShort(label) {
 }
 function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function formatTypeLabel(t) {
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 function getCategoryIcon(cat) {
   const m = {'Fever, Cold & Cough Care':'🌡️','Mouth Ulcer Care':'🦷','Pain Relief & Injury Care':'🤕','Digestion, Gut Health & Hydration':'🤢','Allergies & Infections':'🛡️',"Uterus & Women's Health":'🩺','Eye Care':'👁️','Jaw Pain Care':'🦴','Hair & Nail Health':'💇‍♀️','Cold & Cough Care':'🌡️','Gut & Appetite Care':'🤢','Hair Care':'💇‍♂️','Debility & Wellness':'💪'};
   // No default folder icon — if the category isn't a known preset, assume any
@@ -1333,7 +1388,8 @@ function pushUndo(msg) {
       medicines,
       categories: customCategories,
       forms: customForms,
-      owners: customOwners
+      owners: customOwners,
+      types: customTypes
     }))
   };
 }
@@ -1384,6 +1440,7 @@ function commitUndo() {
   customCategories = s.categories;
   customForms      = s.forms;
   customOwners     = s.owners;
+  customTypes      = s.types || customTypes;
   _undoStack = null;
   clearTimeout(_undoTimer);
   clearInterval(_undoCountdownInterval);
@@ -1557,7 +1614,7 @@ function exportToPDF() {
             : '—';
           entries.push({
             type: 'item',
-            id: counter,
+            id: (m.serialId != null ? m.serialId : counter),
             name: escHtml(m.name),
             qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
             expiry: exp,
