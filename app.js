@@ -1615,7 +1615,7 @@ function exportToPDF() {
         #pdfPrintRoot .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
         #pdfPrintRoot .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
         #pdfPrintRoot .exp{ color:#000; font-weight:700; text-decoration:underline; }
-        @page { size: A4; margin: 3mm; }
+        @page { size: A4; margin: 6mm; }
       </style>
       <div class="sheet">
         <h1>💊 MediHome - Family Medicine Inventory</h1>
