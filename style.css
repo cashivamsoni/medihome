@@ -1624,6 +1624,7 @@ body.modal-open {
   padding: 10px 24px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -1710,12 +1711,14 @@ body.modal-open {
   display: none;
 }
 /* Bulk bar sits fixed at bottom and can grow tall on phones (two-row
-   layout) — tall enough to overlap the floating share / go-top buttons
-   (both anchored at bottom:90px). Simplest fix: hide them while the
-   bulk bar is open; the bulk bar already covers the actions users need. */
+   layout), which would otherwise sit on top of the floating share / go-top
+   buttons (normally anchored at bottom:90px). Instead of hiding them, lift
+   them to sit just above the bar — its live height is written to
+   --bulk-bar-h by JS whenever bulk mode opens or the viewport resizes. */
 body.bulk-mode #shareBtn,
 body.bulk-mode .go-top-btn {
-  display: none !important;
+  bottom: calc(var(--bulk-bar-h, 260px) + 14px);
+  transition: bottom 0.15s ease;
 }
 /* push page content above the fixed bar */
 body.bulk-mode .main {
