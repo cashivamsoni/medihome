@@ -243,7 +243,7 @@ function sortMeds(arr) {
   if (sortOrder === 'name') {
     copy.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortOrder === 'quantity') {
-    copy.sort((a, b) => b.quantity - a.quantity);
+    copy.sort((a, b) => b.quantity - a.quantity); // High → Low
   } else if (sortOrder === 'added') {
     // higher index in original medicines array = added later
     copy.sort((a, b) => medicines.indexOf(b) - medicines.indexOf(a));
@@ -1405,9 +1405,9 @@ function exitBulkMode() {
   bulkSelected.clear();
   document.body.classList.remove('bulk-mode');
   document.getElementById('bulkActionBar').classList.add('hidden');
+  document.documentElement.style.removeProperty('--bulk-bar-h');
   const legacyBtn = document.getElementById('bulkToggleBtn');
   if (legacyBtn) legacyBtn.classList.remove('active');
-  window.removeEventListener('resize', syncBulkBarOffset);
   updateMenuBulkLabel();
 }
 
@@ -1424,20 +1424,21 @@ function toggleBulkMode() {
   updateMenuBulkLabel();
   closeAppMenu();
   renderAll();
-  syncBulkBarOffset();
-  window.addEventListener('resize', syncBulkBarOffset);
+  updateBulkBarHeightVar();
 }
 
-// Measures the bulk bar's real rendered height (it varies by screen width —
-// two-row wrap on phones, single row on desktop) and exposes it as a CSS
-// variable so the floating share/go-top buttons can sit just above it.
-function syncBulkBarOffset() {
-  const bar = document.getElementById('bulkActionBar');
-  if (!bar || bar.classList.contains('hidden')) return;
+// Keeps the share/go-top buttons floating just above the bulk bar, whatever
+// its actual rendered height is (it varies between 1-row desktop and
+// 2-row mobile layouts).
+function updateBulkBarHeightVar() {
   requestAnimationFrame(() => {
-    document.documentElement.style.setProperty('--bulk-bar-h', `${bar.offsetHeight}px`);
+    const bar = document.getElementById('bulkActionBar');
+    if (bar && !bar.classList.contains('hidden')) {
+      document.documentElement.style.setProperty('--bulk-bar-h', bar.offsetHeight + 'px');
+    }
   });
 }
+window.addEventListener('resize', () => { if (bulkMode) updateBulkBarHeightVar(); });
 
 function populateBulkDropdowns() {
   const ownerSel = document.getElementById('bulkOwnerSel');
@@ -1536,75 +1537,116 @@ function exportToPDF() {
     const timeForName  = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
     const fileName     = `MediHome Stock ${dateSlash} ${timeForName}`;
 
-    // Build a flat, grouped row list (owner header → category header →
-    // items) for AutoTable. Kept as one column-set spanning the full page
-    // width — AutoTable paginates automatically across multiple pages if
-    // the list is long, so the earlier two-column same-page-fit trick
-    // (which only mattered for print-preview) isn't needed here.
+    // Build grouped, sequentially-numbered entries (owner → category → medicines)
     const ownerOrder = customOwners.map(o => o.key);
-    const body = [];
+    let counter = 0;
+    const entries = [];
     ownerOrder.forEach(owner => {
       const ownerMeds = medicines.filter(m => m.owner === owner);
       if (!ownerMeds.length) return;
       const ownerCfg = customOwners.find(o => o.key === owner);
-      body.push([{
-        content: ownerCfg ? ownerCfg.label : owner, colSpan: 4,
-        styles: { fillColor: [208, 208, 208], fontStyle: 'bold', halign: 'center' }
-      }]);
+      entries.push({ type: 'owner', text: escHtml(ownerCfg ? ownerCfg.label : owner) });
       const catMap = {};
       ownerMeds.forEach(m => { (catMap[m.category] = catMap[m.category] || []).push(m); });
       Object.keys(catMap).forEach(cat => {
-        body.push([{
-          content: cat, colSpan: 4,
-          styles: { fillColor: [238, 238, 238], fontStyle: 'bold', halign: 'center' }
-        }]);
+        entries.push({ type: 'cat', text: getCategoryIcon(cat) + escHtml(cat) });
         sortMeds(catMap[cat]).forEach(m => {
+          counter++;
           const exp = m.expiryDate
             ? new Date(m.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
             : '—';
-          const serialNum = m.serialId != null ? m.serialId : (medicines.indexOf(m) + 1);
-          const expired = isExpiredMed(m.expiryDate);
-          const expStyles = expired ? { textColor: [180, 0, 0], fontStyle: 'bold' } : {};
-          body.push([
-            { content: String(serialNum).padStart(2, '0'), styles: { halign: 'center' } },
-            m.name,
-            `${m.quantity} ${m.quantityUnit}`,
-            { content: exp, styles: expStyles }
-          ]);
+          entries.push({
+            type: 'item',
+            id: counter,
+            name: escHtml(m.name),
+            qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
+            expiry: exp,
+            expired: isExpiredMed(m.expiryDate)
+          });
         });
       });
     });
 
-    // jsPDF + AutoTable draws the PDF directly with text/line commands —
-    // no screenshot of the page is taken, so it can't come out blank, and
-    // it behaves identically on desktop and mobile.
-    if (typeof window.jspdf === 'undefined') {
-      showToast('PDF export is still loading — please try again in a moment.', 'error');
-      return;
-    }
+    // Split into two side-by-side columns so everything fits one page
+    const splitAt = Math.ceil(entries.length / 2);
+    const col1 = entries.slice(0, splitAt);
+    const col2 = entries.slice(splitAt);
+    const rowCount = Math.max(col1.length, col2.length, 1);
 
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
+    const cellsFor = e => {
+      if (!e) return '<td></td><td></td><td></td><td></td>';
+      if (e.type === 'owner') return `<td colspan="4" class="grp-owner">${e.text}</td>`;
+      if (e.type === 'cat')   return `<td colspan="4" class="grp-cat">${e.text}</td>`;
+      return `<td class="idc">${String(e.id).padStart(2, '0')}</td><td>${e.name}</td><td>${e.qty}</td><td${e.expired ? ' class="exp"' : ''}>${e.expiry}</td>`;
+    };
 
-    pdf.setFont('times', 'bold');
-    pdf.setFontSize(16);
-    pdf.text('MediHome - Family Medicine Inventory', pageWidth / 2, 12, { align: 'center' });
-    pdf.setFont('times', 'normal');
-    pdf.setFontSize(9);
-    pdf.text(`Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`, pageWidth / 2, 18, { align: 'center' });
+    let bodyRows = '';
+    for (let i = 0; i < rowCount; i++) bodyRows += `<tr>${cellsFor(col1[i])}${cellsFor(col2[i])}</tr>`;
 
-    pdf.autoTable({
-      startY: 23,
-      margin: { left: 8, right: 8 },
-      head: [['ID', 'Name', 'Quantity', 'Expiry']],
-      body: body.length ? body : [[{ content: 'No medicines yet.', colSpan: 4, styles: { halign: 'center' } }]],
-      styles: { font: 'times', fontSize: 9, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, cellPadding: 1.5 },
-      headStyles: { fillColor: [232, 232, 232], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
-      columnStyles: { 0: { cellWidth: 16 }, 2: { cellWidth: 30 }, 3: { cellWidth: 30 } }
-    });
+    const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
 
-    pdf.save(`${fileName}.pdf`);
+    // Print from the main document itself instead of a nested iframe.
+    // Mobile browsers (Android Chrome, iOS Safari) frequently fail to print
+    // iframe content properly — the print/share sheet opens but produces a
+    // blank or broken PDF. Printing an overlay in the top-level document,
+    // with the rest of the page hidden via @media print, works reliably
+    // everywhere including mobile.
+    const printRoot = document.createElement('div');
+    printRoot.id = 'pdfPrintRoot';
+    printRoot.innerHTML = `
+      <style>
+        @media print {
+          body > *:not(#pdfPrintRoot) { display: none !important; }
+          #pdfPrintRoot { display: block !important; }
+        }
+        #pdfPrintRoot { display: none; }
+        #pdfPrintRoot, #pdfPrintRoot * { box-sizing: border-box; }
+        #pdfPrintRoot {
+          font-family:'Times New Roman',Times,serif; color:#000;
+          font-size:${fontSize}px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        #pdfPrintRoot .sheet{ border:1px solid #000; padding:16px 18px; }
+        #pdfPrintRoot h1{ font-size:${fontSize + 8}px; text-align:center; margin:0 0 2px; }
+        #pdfPrintRoot .meta{ text-align:center; color:#000; font-size:${fontSize - 1}px; margin-bottom:10px; }
+        #pdfPrintRoot table{ width:100%; border-collapse:collapse; border:1px solid #000; }
+        #pdfPrintRoot th, #pdfPrintRoot td{ border:1px solid #000; padding:3px 6px; text-align:left; }
+        #pdfPrintRoot th{ background:#e8e8e8; color:#000; text-align:center; font-weight:700; }
+        #pdfPrintRoot .idc{ text-align:center; color:#000; }
+        #pdfPrintRoot .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
+        #pdfPrintRoot .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
+        #pdfPrintRoot .exp{ color:#000; font-weight:700; text-decoration:underline; }
+        @page { size: A4; margin: 6mm; }
+      </style>
+      <div class="sheet">
+        <h1>💊 MediHome - Family Medicine Inventory</h1>
+        <div class="meta">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
+          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
+        </table>
+      </div>`;
+    document.body.appendChild(printRoot);
+
+    // The browser's "Save as PDF" dialog names the file after the document title.
+    const originalTitle = document.title;
+    document.title = fileName;
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.title = originalTitle;
+      printRoot.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    // Small delay lets mobile browsers finish laying out the overlay first.
+    setTimeout(() => {
+      window.print();
+      // Some mobile browsers never fire 'afterprint' — clean up anyway.
+      setTimeout(cleanup, 2000);
+    }, 150);
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
