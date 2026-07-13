@@ -730,11 +730,12 @@
       window._fbListen = (cb) => onValue(dbRef, (snap) => cb(snap.val()));
     </script>
 
-    <!-- PDF export: generates a real PDF file directly (download), instead
-         of relying on the browser's print dialog, which behaved
-         inconsistently across mobile browsers -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- PDF export: jsPDF draws the PDF directly with text/line commands
+         (via the AutoTable plugin) rather than rendering a screenshot of
+         the page, so it can't come out blank and behaves the same on any
+         device/browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
     <script src="data.js"></script>
     <script src="app.js"></script>
