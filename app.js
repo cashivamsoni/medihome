@@ -1587,10 +1587,10 @@ function exportToPDF() {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${fileName}</title>
     <style>
-      @page{ size:A4; margin:6mm; }
+      @page{ size:A4; margin:3mm; }
       *{box-sizing:border-box;}
       body{font-family:'Times New Roman',Times,serif;color:#000;margin:0;font-size:${fontSize}px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      .sheet{border:1px solid #000;padding:16px 18px;min-height:calc(297mm - 12mm - 2px);}
+      .sheet{border:1px solid #000;padding:8px 10px;min-height:calc(297mm - 6mm - 2px);}
       h1{font-size:${fontSize + 8}px;text-align:center;margin:0 0 2px;}
       .meta{text-align:center;color:#000;font-size:${fontSize - 1}px;margin-bottom:10px;}
       table{width:100%;border-collapse:collapse;border:1px solid #000;}
@@ -1611,26 +1611,36 @@ function exportToPDF() {
       </div>
     </body></html>`;
 
-    // Open a blank new tab and write the export sheet directly into it.
-    // (blob: URLs opened via window.open get blocked/rewritten by several
-    // mobile browsers, which is why it was printing the live site instead
-    // of the export sheet — writing straight into a real new window avoids
-    // that restriction and works consistently on phones and desktop.)
-    const printWin = window.open('', '_blank');
+    // Print via a hidden iframe — this never triggers a popup blocker
+    // (unlike window.open), which is why Ctrl+P used to go straight to the
+    // print dialog with no "allow pop-ups" prompt. The only real bug in the
+    // old version was that the iframe had width/height:0 — some mobile
+    // browsers refuse to paint (and therefore print) a zero-size iframe.
+    // Giving it real off-screen dimensions fixes that while keeping the
+    // instant, no-popup-blocker behaviour on desktop.
+    const iframe = document.createElement('iframe');
+    Object.assign(iframe.style, {
+      position: 'fixed', top: '-10000px', left: '-10000px',
+      width: '794px', height: '1123px', border: '0'
+    });
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    iframe.contentWindow.focus();
 
-    if (!printWin) {
-      showToast('Please allow pop-ups to export PDF.', 'error');
-      return;
-    }
-
-    printWin.document.open();
-    printWin.document.write(html);
-    printWin.document.close();
-
+    // Chrome's "Save as PDF" dialog names the file after the TOP window's
+    // title, not the iframe's — so swap it briefly for the export.
+    const originalTitle = document.title;
+    document.title = fileName;
     setTimeout(() => {
-      printWin.focus();
-      printWin.print();
-    }, 250);
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+        iframe.remove();
+      }, 1000);
+    }, 300);
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
