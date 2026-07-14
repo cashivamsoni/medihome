@@ -903,6 +903,20 @@ body.bulk-mode #shareBtn {
   color: var(--red-500);
   margin-left: 2px;
 }
+.field-error {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--red-600);
+  margin-top: 4px;
+}
+.field-error.hidden {
+  display: none;
+}
+.form-input.input-error {
+  border-color: var(--red-500);
+  background: var(--red-50);
+}
 .form-input,
 .form-select,
 .form-textarea {
