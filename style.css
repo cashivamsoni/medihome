@@ -2297,6 +2297,12 @@ body.compact-view .medicine-card:hover {
   box-shadow: none !important;
   transform: none !important;
 }
+/* has-image cards are flex-column in normal card view (to stack the image
+   below content) — compact view must force them back to a single horizontal
+   row, otherwise the name/meta stack and center instead of sitting inline. */
+body.compact-view .medicine-card.has-image {
+  flex-direction: row;
+}
 /* Hide everything except the compact row in compact view */
 body.compact-view .card-top,
 body.compact-view .card-desc,
