@@ -694,6 +694,11 @@ body.bulk-mode #shareBtn {
   color: #15803D;
   border: 1px solid #BBF7D0;
 }
+.badge-type-custom {
+  background: var(--slate-100);
+  color: var(--slate-700);
+  border: 1px solid var(--slate-200);
+}
 .badge-freq {
   background: #FEF9C3;
   color: #854D0E;
@@ -1439,7 +1444,7 @@ body.bulk-mode .go-top-btn {
   background: var(--surface);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 400px;
+  max-width: 480px;
   max-height: 80vh;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -1475,6 +1480,8 @@ body.bulk-mode .go-top-btn {
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
+  min-width: 0;
+  padding: 0 4px;
   border-radius: 20px;
   border: 1.5px solid var(--border);
   background: var(--surface-2);
@@ -1483,6 +1490,9 @@ body.bulk-mode .go-top-btn {
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mgmt-tab-btn:hover {
   background: var(--teal-50);
@@ -1545,6 +1555,10 @@ body.bulk-mode .go-top-btn {
 @media (max-width: 480px) {
   .mgmt-modal-box {
     max-width: 100%;
+  }
+  .mgmt-tab-btn {
+    font-size: 0.7rem;
+    padding: 0 2px;
   }
 }
 
