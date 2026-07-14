@@ -253,7 +253,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
+  padding: 6.5px 13px;
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 600;
