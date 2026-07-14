@@ -1645,36 +1645,36 @@ window.addEventListener('keydown', e => {
 });
 
 // ── Export to PDF ─────────────────────────────────────────
-// Generates an actual PDF with jsPDF and downloads it directly via doc.save() —
-// the same approach used by Babita Classes' result.js. We moved off the old
-// window.print()-based overlay because print-to-PDF behaves inconsistently
-// across mobile browsers/webviews (blank output, share sheet not appearing,
-// 'afterprint' never firing) whereas doc.save() reliably triggers a real
-// file download everywhere, including phones.
-function stripEmoji(str) {
-  // jsPDF's built-in fonts (Times/Helvetica/Courier) can't render emoji —
-  // they show up as blank boxes or broken glyphs — so strip them before
-  // placing any owner/category/medicine label into the PDF.
-  return String(str)
-    .replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
+// Renders the exact same HTML/CSS layout used before (Times New Roman,
+// 3mm page margin, two-column table, emoji category icons) into an
+// off-screen element, rasterizes it with html2canvas, and places that into
+// a jsPDF document via doc.html() — then downloads it with doc.save().
+// This keeps the visual format identical to a browser print-to-PDF (which
+// is why emojis still render correctly — html2canvas uses the real browser
+// font/emoji rendering, unlike jsPDF's own vector text), while actually
+// producing a real PDF file. That's the key difference from the old
+// window.print() version: doc.save() always triggers a genuine file
+// download, whereas window.print() depends on the mobile browser's print
+// dialog/share-sheet behaving correctly, which is exactly what was failing
+// on phones.
 function exportToPDF() {
   try {
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('The PDF tool did not load — check your connection and try again.', 'error');
       return;
     }
+    if (!window.html2canvas) {
+      showToast('The PDF renderer did not load — check your connection and try again.', 'error');
+      return;
+    }
     const { jsPDF } = window.jspdf;
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
-    const dateSlash   = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
-    const timeColon   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const isWindows   = /Win/i.test(navigator.platform || navigator.userAgent);
-    const timeForName = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
-    const fileName    = `MediHome Stock ${dateSlash} ${timeForName}`;
+    const dateSlash    = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeColon    = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const isWindows    = /Win/i.test(navigator.platform || navigator.userAgent);
+    const timeForName  = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
+    const fileName     = `MediHome Stock ${dateSlash} ${timeForName}`;
 
     // Build grouped, sequentially-numbered entries (owner → category → medicines)
     const ownerOrder = customOwners.map(o => o.key);
@@ -1684,11 +1684,11 @@ function exportToPDF() {
       const ownerMeds = medicines.filter(m => m.owner === owner);
       if (!ownerMeds.length) return;
       const ownerCfg = customOwners.find(o => o.key === owner);
-      entries.push({ type: 'owner', text: stripEmoji(ownerCfg ? ownerCfg.label : owner) });
+      entries.push({ type: 'owner', text: escHtml(ownerCfg ? ownerCfg.label : owner) });
       const catMap = {};
       ownerMeds.forEach(m => { (catMap[m.category] = catMap[m.category] || []).push(m); });
       Object.keys(catMap).forEach(cat => {
-        entries.push({ type: 'cat', text: stripEmoji(getCategoryIcon(cat) + cat) });
+        entries.push({ type: 'cat', text: getCategoryIcon(cat) + escHtml(cat) });
         sortMeds(catMap[cat]).forEach(m => {
           counter++;
           const exp = m.expiryDate
@@ -1697,8 +1697,8 @@ function exportToPDF() {
           entries.push({
             type: 'item',
             id: (m.serialId != null ? m.serialId : counter),
-            name: stripEmoji(m.name),
-            qty: stripEmoji(`${m.quantity} ${m.quantityUnit}`),
+            name: escHtml(m.name),
+            qty: escHtml(`${m.quantity} ${m.quantityUnit}`),
             expiry: exp,
             expired: isExpiredMed(m.expiryDate)
           });
@@ -1706,99 +1706,76 @@ function exportToPDF() {
       });
     });
 
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageWidth = 210, pageHeight = 297;
-    const marginX = 12, marginBottom = 16;
-    const contentWidth = pageWidth - marginX * 2;
-    const FONT = 'times';
-    const rowHeight = 7;
+    // Split into two side-by-side columns so everything fits one page
+    const splitAt = Math.ceil(entries.length / 2);
+    const col1 = entries.slice(0, splitAt);
+    const col2 = entries.slice(splitAt);
+    const rowCount = Math.max(col1.length, col2.length, 1);
 
-    // Column widths: ID | Name | Quantity | Expiry
-    const colX = {
-      id:     marginX,
-      name:   marginX + 14,
-      qty:    marginX + 14 + 92,
-      expiry: marginX + 14 + 92 + 44
+    const cellsFor = e => {
+      if (!e) return '<td></td><td></td><td></td><td></td>';
+      if (e.type === 'owner') return `<td colspan="4" class="grp-owner">${e.text}</td>`;
+      if (e.type === 'cat')   return `<td colspan="4" class="grp-cat">${e.text}</td>`;
+      return `<td class="idc">${String(e.id).padStart(2, '0')}</td><td>${e.name}</td><td>${e.qty}</td><td${e.expired ? ' class="exp"' : ''}>${e.expiry}</td>`;
     };
-    const colW = { id: 14, name: 92, qty: 44, expiry: contentWidth - 14 - 92 - 44 };
 
-    function drawTableHeader(y) {
-      doc.setFont(FONT, 'bold');
-      doc.setFontSize(10);
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.3);
-      doc.rect(colX.id, y, colW.id, rowHeight);
-      doc.rect(colX.name, y, colW.name, rowHeight);
-      doc.rect(colX.qty, y, colW.qty, rowHeight);
-      doc.rect(colX.expiry, y, colW.expiry, rowHeight);
-      doc.text('ID', colX.id + colW.id / 2, y + rowHeight / 2 + 3, { align: 'center' });
-      doc.text('Name', colX.name + 3, y + rowHeight / 2 + 3);
-      doc.text('Quantity', colX.qty + 3, y + rowHeight / 2 + 3);
-      doc.text('Expiry', colX.expiry + 3, y + rowHeight / 2 + 3);
-      return y + rowHeight;
-    }
+    let bodyRows = '';
+    for (let i = 0; i < rowCount; i++) bodyRows += `<tr>${cellsFor(col1[i])}${cellsFor(col2[i])}</tr>`;
 
-    function newPage() {
-      doc.addPage();
-      let y = 16;
-      doc.setFont(FONT, 'normal'); doc.setFontSize(9);
-      doc.text(`MediHome Stock — continued`, marginX, y);
-      y += 6;
-      return drawTableHeader(y);
-    }
+    const fontSize = entries.length > 55 ? 8 : entries.length > 35 ? 9 : 10;
 
-    // ── Page 1 header ──
-    doc.setFont(FONT, 'bold');
-    doc.setFontSize(18);
-    doc.text('MediHome - Family Medicine Inventory', pageWidth / 2, 18, { align: 'center' });
-    doc.setFont(FONT, 'normal');
-    doc.setFontSize(9);
-    doc.text(
-      `Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`,
-      pageWidth / 2, 25, { align: 'center' }
-    );
-
-    let y = drawTableHeader(32);
-
-    if (!entries.length) {
-      doc.setFont(FONT, 'normal');
-      doc.setFontSize(10);
-      doc.text('No medicines yet.', pageWidth / 2, y + 10, { align: 'center' });
-    }
-
-    entries.forEach(e => {
-      if (y + rowHeight > pageHeight - marginBottom) y = newPage();
-
-      if (e.type === 'owner' || e.type === 'cat') {
-        doc.setFillColor(e.type === 'owner' ? 208 : 236, e.type === 'owner' ? 208 : 236, e.type === 'owner' ? 208 : 236);
-        doc.rect(colX.id, y, contentWidth, rowHeight, 'FD');
-        doc.setFont(FONT, 'bold');
-        doc.setFontSize(10);
-        doc.text(e.text, marginX + contentWidth / 2, y + rowHeight / 2 + 3, { align: 'center' });
-      } else {
-        doc.setDrawColor(0);
-        doc.rect(colX.id, y, colW.id, rowHeight);
-        doc.rect(colX.name, y, colW.name, rowHeight);
-        doc.rect(colX.qty, y, colW.qty, rowHeight);
-        doc.rect(colX.expiry, y, colW.expiry, rowHeight);
-
-        doc.setFont(FONT, 'normal'); doc.setFontSize(9.5);
-        doc.text(String(e.id).padStart(2, '0'), colX.id + colW.id / 2, y + rowHeight / 2 + 3, { align: 'center' });
-        doc.text(e.name, colX.name + 3, y + rowHeight / 2 + 3, { maxWidth: colW.name - 6 });
-        doc.text(e.qty, colX.qty + 3, y + rowHeight / 2 + 3, { maxWidth: colW.qty - 6 });
-
-        doc.setFont(FONT, e.expired ? 'bold' : 'normal');
-        doc.text(e.expiry, colX.expiry + 3, y + rowHeight / 2 + 3);
-        if (e.expired) {
-          const tw = doc.getTextWidth(e.expiry);
-          doc.setLineWidth(0.25);
-          doc.line(colX.expiry + 3, y + rowHeight / 2 + 3.7, colX.expiry + 3 + tw, y + rowHeight / 2 + 3.7);
+    // Off-screen render root (kept in the DOM — html2canvas needs real layout —
+    // but pushed far outside the viewport so nothing flashes on screen).
+    const printRoot = document.createElement('div');
+    printRoot.id = 'pdfRenderRoot';
+    printRoot.style.cssText = 'position:fixed; top:0; left:-99999px; width:210mm; background:#fff;';
+    printRoot.innerHTML = `
+      <style>
+        #pdfRenderRoot, #pdfRenderRoot * { box-sizing: border-box; }
+        #pdfRenderRoot {
+          font-family:'Times New Roman',Times,serif; color:#000;
+          font-size:${fontSize}px; padding:3mm;
         }
-      }
-      y += rowHeight;
-    });
+        #pdfRenderRoot .sheet{ border:1px solid #000; padding:16px 18px; }
+        #pdfRenderRoot h1{ font-size:${fontSize + 8}px; text-align:center; margin:0 0 2px; }
+        #pdfRenderRoot .meta{ text-align:center; color:#000; font-size:${fontSize - 1}px; margin-bottom:10px; }
+        #pdfRenderRoot table{ width:100%; border-collapse:collapse; border:1px solid #000; }
+        #pdfRenderRoot th, #pdfRenderRoot td{ border:1px solid #000; padding:3px 6px; text-align:left; }
+        #pdfRenderRoot th{ background:#e8e8e8; color:#000; text-align:center; font-weight:700; }
+        #pdfRenderRoot .idc{ text-align:center; color:#000; }
+        #pdfRenderRoot .grp-owner{ background:#d0d0d0; color:#000; font-weight:700; text-align:center; }
+        #pdfRenderRoot .grp-cat{ background:#eeeeee; color:#000; font-weight:700; text-align:center; }
+        #pdfRenderRoot .exp{ color:#000; font-weight:700; text-decoration:underline; }
+      </style>
+      <div class="sheet">
+        <h1>💊 MediHome - Family Medicine Inventory</h1>
+        <div class="meta">Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}</div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th><th>ID</th><th>Name</th><th>Quantity</th><th>Expiry</th></tr></thead>
+          <tbody>${bodyRows || '<tr><td colspan="8" style="text-align:center;padding:20px;">No medicines yet.</td></tr>'}</tbody>
+        </table>
+      </div>`;
+    document.body.appendChild(printRoot);
 
-    doc.save(fileName + '.pdf');
+    const cleanup = () => printRoot.remove();
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pxWidth = printRoot.getBoundingClientRect().width; // real rendered px width of the 210mm box
+    doc.html(printRoot, {
+      x: 0, y: 0,
+      width: 210,
+      windowWidth: pxWidth,
+      autoPaging: 'slice', // safety net: spills to page 2 rather than clipping if it ever runs long
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      callback: (doc) => {
+        doc.save(fileName + '.pdf');
+        cleanup();
+      }
+    }).catch(err => {
+      console.error('Export PDF failed:', err);
+      showToast('Could not export PDF. Please try again.', 'error');
+      cleanup();
+    });
   } catch (err) {
     console.error('Export PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
