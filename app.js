@@ -132,6 +132,33 @@ function backfillSerialIds() {
   });
 }
 
+// Live validation for the ID field: blocks Save (and shows an inline error)
+// while a duplicate is entered, instead of silently reassigning a different ID.
+function validateSerialIdField() {
+  const input = document.getElementById('medSerialId');
+  const errorEl = document.getElementById('medSerialIdError');
+  const saveBtn = document.getElementById('saveBtn');
+  const val = input.value.trim();
+
+  let isDupe = false;
+  if (val !== '') {
+    const num = parseInt(val, 10);
+    isDupe = !isNaN(num) && medicines.some(m => m.serialId === num && m.id !== editingId);
+  }
+
+  if (isDupe) {
+    errorEl.textContent = `ID ${val} is already in use — choose another or clear the field for auto-assign.`;
+    errorEl.classList.remove('hidden');
+    input.classList.add('input-error');
+    saveBtn.disabled = true;
+  } else {
+    errorEl.classList.add('hidden');
+    input.classList.remove('input-error');
+    saveBtn.disabled = false;
+  }
+  return !isDupe;
+}
+
 // Make sure every category/form/owner actually used by a medicine exists in its list
 function reconcileDynamicLists() {
   const catSet = new Set(customCategories);
@@ -431,6 +458,9 @@ function bindEvents() {
     e.preventDefault();
     saveMedicine();
   });
+
+  // Live duplicate-ID check as the user types
+  document.getElementById('medSerialId').addEventListener('input', validateSerialIdField);
 
   // Live filter as user types
   inp.addEventListener('input', () => {
@@ -873,6 +903,9 @@ function openAdd() {
   document.getElementById('modalTitle').textContent = 'Add Medicine';
   document.getElementById('medId').value = '';
   document.getElementById('medSerialId').value = '';
+  document.getElementById('medSerialIdError').classList.add('hidden');
+  document.getElementById('medSerialId').classList.remove('input-error');
+  document.getElementById('saveBtn').disabled = false;
   document.getElementById('medName').value = '';
   document.getElementById('medDesc').value = '';
   populateTypeDropdown('');
@@ -912,6 +945,9 @@ function openEdit(id) {
   document.getElementById('modalTitle').textContent = 'Edit Medicine';
   document.getElementById('medId').value = m.id;
   document.getElementById('medSerialId').value = (m.serialId != null) ? m.serialId : '';
+  document.getElementById('medSerialIdError').classList.add('hidden');
+  document.getElementById('medSerialId').classList.remove('input-error');
+  document.getElementById('saveBtn').disabled = false;
   document.getElementById('medName').value = m.name;
   document.getElementById('medDesc').value = m.description;
   populateTypeDropdown(m.type);
@@ -1020,20 +1056,17 @@ function saveMedicine() {
   }
 
   // Serial ID: user-entered value always wins; otherwise auto-assign the
-  // next available number (or keep the existing one when editing).
+  // next available number (or keep the existing one when editing). A
+  // duplicate ID blocks saving entirely — it's never silently swapped,
+  // since these IDs commonly match a physical label on the medicine box.
   const serialInput = document.getElementById('medSerialId').value.trim();
   let serialId = serialInput !== '' ? parseInt(serialInput, 10) : NaN;
   if (isNaN(serialId)) {
     const existing = editingId ? medicines.find(x => x.id === editingId) : null;
     serialId = (existing && existing.serialId != null) ? existing.serialId : nextAvailableSerialId();
-  } else {
-    // User typed a specific ID — make sure it isn't already used by another medicine.
-    const dupe = medicines.some(m => m.serialId === serialId && m.id !== editingId);
-    if (dupe) {
-      const reassigned = nextAvailableSerialId();
-      showToast(`ID ${serialId} already exists — assigned ID ${reassigned} instead.`, 'error');
-      serialId = reassigned;
-    }
+  } else if (!validateSerialIdField()) {
+    document.getElementById('medSerialId').focus();
+    return;
   }
 
   if (catSel === '__new__' && !catCustom) {
