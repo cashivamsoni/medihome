@@ -344,7 +344,7 @@ function renderMedicineCard(m, serialNum) {
       <div class="card-top">
         <div class="card-form-icon">${getFormIcon(m.form)}</div>
         <div class="card-badges">
-          <span class="badge badge-${m.type}">${formatTypeLabel(m.type)}</span>
+          <span class="badge ${typeBadgeClass(m.type)}">${formatTypeLabel(m.type)}</span>
           ${m.frequentlyUsed?'<span class="badge badge-freq">⭐ Frequent</span>':''}
           ${isLow?'<span class="badge badge-low">⚠ Low Stock</span>':''}
           ${isExpired?'<span class="badge badge-expired">Expired</span>':''}
@@ -1345,6 +1345,15 @@ function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').repla
 function formatTypeLabel(t) {
   if (!t) return '';
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function typeBadgeClass(type) {
+  const known = ['homeopathic', 'allopathic', 'ayurvedic'];
+  if (known.includes(type)) return `badge-${type}`;
+  // Custom types (e.g. "First Aid/Medical Supplies") may contain spaces/slashes
+  // which break unquoted class names — slugify for a valid class, and fall back
+  // to a generic pill style since there's no dedicated color for custom types.
+  const slug = String(type).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `badge-type-custom badge-${slug}`;
 }
 function getCategoryIcon(cat) {
   const m = {'Fever, Cold & Cough Care':'🌡️','Mouth Ulcer Care':'🦷','Pain Relief & Injury Care':'🤕','Digestion, Gut Health & Hydration':'🤢','Allergies & Infections':'🛡️',"Uterus & Women's Health":'🩺','Eye Care':'👁️','Jaw Pain Care':'🦴','Hair & Nail Health':'💇‍♀️','Cold & Cough Care':'🌡️','Gut & Appetite Care':'🤢','Hair Care':'💇‍♂️','Debility & Wellness':'💪'};
