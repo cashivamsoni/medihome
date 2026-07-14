@@ -371,7 +371,7 @@ function renderMedicineCard(m, serialNum) {
       <div class="card-top">
         <div class="card-form-icon">${getFormIcon(m.form)}</div>
         <div class="card-badges">
-          <span class="badge ${typeBadgeClass(m.type)}">${formatTypeLabel(m.type)}</span>
+          <span class="badge ${typeBadgeClass(m.type)}"${typeBadgeStyle(m.type)}>${formatTypeLabel(m.type)}</span>
           ${m.frequentlyUsed?'<span class="badge badge-freq">⭐ Frequent</span>':''}
           ${isLow?'<span class="badge badge-low">⚠ Low Stock</span>':''}
           ${isExpired?'<span class="badge badge-expired">Expired</span>':''}
@@ -1383,10 +1383,30 @@ function typeBadgeClass(type) {
   const known = ['homeopathic', 'allopathic', 'ayurvedic'];
   if (known.includes(type)) return `badge-${type}`;
   // Custom types (e.g. "First Aid/Medical Supplies") may contain spaces/slashes
-  // which break unquoted class names — slugify for a valid class, and fall back
-  // to a generic pill style since there's no dedicated color for custom types.
+  // which break unquoted class names — slugify for a valid class.
   const slug = String(type).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return `badge-type-custom badge-${slug}`;
+}
+// Deterministic "random" color per custom type name, so each new type reads
+// distinctly instead of all sharing one flat gray. Built-in types are untouched.
+const CUSTOM_BADGE_PALETTE = [
+  { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' }, // blue
+  { bg: '#FDF2F8', color: '#BE185D', border: '#FBCFE8' }, // pink
+  { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' }, // orange
+  { bg: '#FEFCE8', color: '#854D0E', border: '#FEF08A' }, // yellow
+  { bg: '#EEF2FF', color: '#4338CA', border: '#C7D2FE' }, // indigo
+  { bg: '#FFF1F2', color: '#BE123C', border: '#FECDD3' }, // rose
+  { bg: '#ECFEFF', color: '#0E7490', border: '#A5F3FC' }, // cyan
+  { bg: '#F7FEE7', color: '#3F6212', border: '#D9F99D' }, // lime
+];
+function typeBadgeStyle(type) {
+  const known = ['homeopathic', 'allopathic', 'ayurvedic'];
+  if (known.includes(type)) return '';
+  let hash = 0;
+  const s = String(type);
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0;
+  const c = CUSTOM_BADGE_PALETTE[Math.abs(hash) % CUSTOM_BADGE_PALETTE.length];
+  return ` style="background:${c.bg};color:${c.color};border:1px solid ${c.border};"`;
 }
 function getCategoryIcon(cat) {
   const m = {'Fever, Cold & Cough Care':'🌡️','Mouth Ulcer Care':'🦷','Pain Relief & Injury Care':'🤕','Digestion, Gut Health & Hydration':'🤢','Allergies & Infections':'🛡️',"Uterus & Women's Health":'🩺','Eye Care':'👁️','Jaw Pain Care':'🦴','Hair & Nail Health':'💇‍♀️','Cold & Cough Care':'🌡️','Gut & Appetite Care':'🤢','Hair Care':'💇‍♂️','Debility & Wellness':'💪'};
