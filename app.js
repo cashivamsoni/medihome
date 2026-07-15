@@ -1645,16 +1645,15 @@ window.addEventListener('keydown', e => {
 });
 
 // ── Export to PDF ─────────────────────────────────────────
-// Generates an actual PDF with jsPDF and downloads it directly via doc.save() —
-// the same approach used by Babita Classes' result.js. We moved off the old
-// window.print()-based overlay because print-to-PDF behaves inconsistently
-// across mobile browsers/webviews (blank output, share sheet not appearing,
-// 'afterprint' never firing) whereas doc.save() reliably triggers a real
-// file download everywhere, including phones.
+// Pure jsPDF vector drawing (doc.rect + doc.text), same technique as
+// Babita Classes' result.js — no html2canvas, no window.print(). Both of
+// those depend on the mobile browser/webview's own rendering engine, which
+// is exactly what was producing inconsistent results across phones.
+// doc.save() always triggers a genuine file download, identically on
+// desktop and mobile.
 function stripEmoji(str) {
   // jsPDF's built-in fonts (Times/Helvetica/Courier) can't render emoji —
-  // they show up as blank boxes or broken glyphs — so strip them before
-  // placing any owner/category/medicine label into the PDF.
+  // they show as blank boxes or broken glyphs — so every label is plain text.
   return String(str)
     .replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
     .replace(/\s+/g, ' ')
@@ -1706,97 +1705,122 @@ function exportToPDF() {
       });
     });
 
+    // Split into two side-by-side columns by index — same as before —
+    // so the whole inventory fits on one page.
+    const splitAt = Math.ceil(entries.length / 2) || 1;
+    const col1 = entries.slice(0, splitAt);
+    const col2 = entries.slice(splitAt);
+    const rowCount = Math.max(col1.length, col2.length, 1);
+
+    // Font/row size tiers so larger inventories still fit one A4 page.
+    const fontSize  = entries.length > 55 ? 8   : entries.length > 35 ? 9   : 10;
+    const rowHeight = entries.length > 55 ? 5.5 : entries.length > 35 ? 6.2 : 7;
+
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageWidth = 210, pageHeight = 297;
-    const marginX = 12, marginBottom = 16;
-    const contentWidth = pageWidth - marginX * 2;
+    const pageW = 210, pageH = 297;
+    const MARGIN = 3;   // thin outer margin, per request
+    const PAD = 4;      // inner breathing room between the border and the content
+    const contentX = MARGIN + PAD;
+    const contentW = pageW - 2 * contentX;
     const FONT = 'times';
-    const rowHeight = 7;
 
-    // Column widths: ID | Name | Quantity | Expiry
-    const colX = {
-      id:     marginX,
-      name:   marginX + 14,
-      qty:    marginX + 14 + 92,
-      expiry: marginX + 14 + 92 + 44
-    };
-    const colW = { id: 14, name: 92, qty: 44, expiry: contentWidth - 14 - 92 - 44 };
+    // Outer border frame (thin, 3mm from the page edge)
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
 
-    function drawTableHeader(y) {
-      doc.setFont(FONT, 'bold');
-      doc.setFontSize(10);
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.3);
-      doc.rect(colX.id, y, colW.id, rowHeight);
-      doc.rect(colX.name, y, colW.name, rowHeight);
-      doc.rect(colX.qty, y, colW.qty, rowHeight);
-      doc.rect(colX.expiry, y, colW.expiry, rowHeight);
-      doc.text('ID', colX.id + colW.id / 2, y + rowHeight / 2 + 3, { align: 'center' });
-      doc.text('Name', colX.name + 3, y + rowHeight / 2 + 3);
-      doc.text('Quantity', colX.qty + 3, y + rowHeight / 2 + 3);
-      doc.text('Expiry', colX.expiry + 3, y + rowHeight / 2 + 3);
-      return y + rowHeight;
-    }
-
-    function newPage() {
-      doc.addPage();
-      let y = 16;
-      doc.setFont(FONT, 'normal'); doc.setFontSize(9);
-      doc.text(`MediHome Stock — continued`, marginX, y);
-      y += 6;
-      return drawTableHeader(y);
-    }
-
-    // ── Page 1 header ──
+    // Title + meta
+    let y = contentX + 3;
     doc.setFont(FONT, 'bold');
-    doc.setFontSize(18);
-    doc.text('MediHome - Family Medicine Inventory', pageWidth / 2, 18, { align: 'center' });
+    doc.setFontSize(fontSize + 8);
+    doc.text('MediHome - Family Medicine Inventory', pageW / 2, y, { align: 'center' });
+    y += fontSize * 0.5 + 3;
     doc.setFont(FONT, 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(fontSize - 1);
     doc.text(
       `Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`,
-      pageWidth / 2, 25, { align: 'center' }
+      pageW / 2, y, { align: 'center' }
     );
+    y += 5;
 
-    let y = drawTableHeader(32);
+    // Two column-groups: ID | Name | Quantity | Expiry, side by side
+    const half = contentW / 2;
+    const idW = 8, qtyW = 19, expW = 19;
+    const nameW = half - idW - qtyW - expW;
+    const groups = [
+      { id: contentX,               name: contentX + idW,               qty: contentX + idW + nameW,               expiry: contentX + idW + nameW + qtyW },
+      { id: contentX + half,        name: contentX + half + idW,        qty: contentX + half + idW + nameW,        expiry: contentX + half + idW + nameW + qtyW }
+    ];
+
+    function drawHeaderRow(rowY) {
+      doc.setFont(FONT, 'bold');
+      doc.setFontSize(fontSize);
+      doc.setFillColor(232, 232, 232);
+      groups.forEach(g => {
+        doc.rect(g.id, rowY, idW, rowHeight, 'FD');
+        doc.rect(g.name, rowY, nameW, rowHeight, 'FD');
+        doc.rect(g.qty, rowY, qtyW, rowHeight, 'FD');
+        doc.rect(g.expiry, rowY, expW, rowHeight, 'FD');
+        doc.text('ID', g.id + idW / 2, rowY + rowHeight / 2 + fontSize * 0.15, { align: 'center' });
+        doc.text('Name', g.name + nameW / 2, rowY + rowHeight / 2 + fontSize * 0.15, { align: 'center' });
+        doc.text('Quantity', g.qty + qtyW / 2, rowY + rowHeight / 2 + fontSize * 0.15, { align: 'center' });
+        doc.text('Expiry', g.expiry + expW / 2, rowY + rowHeight / 2 + fontSize * 0.15, { align: 'center' });
+      });
+    }
+
+    function drawCell(g, e, rowY) {
+      if (!e) {
+        doc.setDrawColor(0);
+        doc.rect(g.id, rowY, idW, rowHeight);
+        doc.rect(g.name, rowY, nameW, rowHeight);
+        doc.rect(g.qty, rowY, qtyW, rowHeight);
+        doc.rect(g.expiry, rowY, expW, rowHeight);
+        return;
+      }
+      const groupW = idW + nameW + qtyW + expW;
+      if (e.type === 'owner' || e.type === 'cat') {
+        doc.setFillColor(e.type === 'owner' ? 208 : 238, e.type === 'owner' ? 208 : 238, e.type === 'owner' ? 208 : 238);
+        doc.rect(g.id, rowY, groupW, rowHeight, 'FD');
+        doc.setFont(FONT, 'bold');
+        doc.setFontSize(fontSize);
+        doc.text(e.text, g.id + groupW / 2, rowY + rowHeight / 2 + fontSize * 0.15, { align: 'center', maxWidth: groupW - 4 });
+        return;
+      }
+      doc.setDrawColor(0);
+      doc.rect(g.id, rowY, idW, rowHeight);
+      doc.rect(g.name, rowY, nameW, rowHeight);
+      doc.rect(g.qty, rowY, qtyW, rowHeight);
+      doc.rect(g.expiry, rowY, expW, rowHeight);
+
+      const textY = rowY + rowHeight / 2 + fontSize * 0.15;
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      doc.text(String(e.id).padStart(2, '0'), g.id + idW / 2, textY, { align: 'center' });
+      doc.text(e.name, g.name + 1.5, textY, { maxWidth: nameW - 3 });
+      doc.text(e.qty, g.qty + 1.5, textY, { maxWidth: qtyW - 3 });
+
+      doc.setFont(FONT, e.expired ? 'bold' : 'normal');
+      doc.text(e.expiry, g.expiry + 1.5, textY, { maxWidth: expW - 3 });
+      if (e.expired) {
+        const tw = Math.min(doc.getTextWidth(e.expiry), expW - 3);
+        doc.setLineWidth(0.2);
+        doc.line(g.expiry + 1.5, textY + 0.6, g.expiry + 1.5 + tw, textY + 0.6);
+      }
+    }
+
+    drawHeaderRow(y);
+    y += rowHeight;
 
     if (!entries.length) {
       doc.setFont(FONT, 'normal');
-      doc.setFontSize(10);
-      doc.text('No medicines yet.', pageWidth / 2, y + 10, { align: 'center' });
+      doc.setFontSize(fontSize);
+      doc.text('No medicines yet.', pageW / 2, y + 10, { align: 'center' });
     }
 
-    entries.forEach(e => {
-      if (y + rowHeight > pageHeight - marginBottom) y = newPage();
-
-      if (e.type === 'owner' || e.type === 'cat') {
-        doc.setFillColor(e.type === 'owner' ? 208 : 236, e.type === 'owner' ? 208 : 236, e.type === 'owner' ? 208 : 236);
-        doc.rect(colX.id, y, contentWidth, rowHeight, 'FD');
-        doc.setFont(FONT, 'bold');
-        doc.setFontSize(10);
-        doc.text(e.text, marginX + contentWidth / 2, y + rowHeight / 2 + 3, { align: 'center' });
-      } else {
-        doc.setDrawColor(0);
-        doc.rect(colX.id, y, colW.id, rowHeight);
-        doc.rect(colX.name, y, colW.name, rowHeight);
-        doc.rect(colX.qty, y, colW.qty, rowHeight);
-        doc.rect(colX.expiry, y, colW.expiry, rowHeight);
-
-        doc.setFont(FONT, 'normal'); doc.setFontSize(9.5);
-        doc.text(String(e.id).padStart(2, '0'), colX.id + colW.id / 2, y + rowHeight / 2 + 3, { align: 'center' });
-        doc.text(e.name, colX.name + 3, y + rowHeight / 2 + 3, { maxWidth: colW.name - 6 });
-        doc.text(e.qty, colX.qty + 3, y + rowHeight / 2 + 3, { maxWidth: colW.qty - 6 });
-
-        doc.setFont(FONT, e.expired ? 'bold' : 'normal');
-        doc.text(e.expiry, colX.expiry + 3, y + rowHeight / 2 + 3);
-        if (e.expired) {
-          const tw = doc.getTextWidth(e.expiry);
-          doc.setLineWidth(0.25);
-          doc.line(colX.expiry + 3, y + rowHeight / 2 + 3.7, colX.expiry + 3 + tw, y + rowHeight / 2 + 3.7);
-        }
-      }
+    for (let i = 0; i < rowCount; i++) {
+      drawCell(groups[0], col1[i], y);
+      drawCell(groups[1], col2[i], y);
       y += rowHeight;
-    });
+    }
 
     doc.save(fileName + '.pdf');
   } catch (err) {
