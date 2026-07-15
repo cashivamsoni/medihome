@@ -1422,6 +1422,13 @@ body.bulk-mode .go-top-btn {
     top: 100%;
     margin-top: 6px;
   }
+  /* The error is absolutely positioned so it can span full width, which
+     means it no longer pushes the following section down and can overlap
+     it. Reserve space for it (only while it's actually shown) so nothing
+     below gets covered. */
+  .name-id-row:has(.field-error:not(.hidden)) {
+    margin-bottom: 42px;
+  }
   /* All pill chips identical on mobile */
   .stat-chip,
   .owner-chip,
