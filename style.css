@@ -1530,7 +1530,7 @@ body.bulk-mode .go-top-btn {
   height: 38px;
 }
 .mgmt-list {
-  max-height: 280px;
+  height: 280px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
