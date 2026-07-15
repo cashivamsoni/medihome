@@ -1394,10 +1394,13 @@ body.bulk-mode .go-top-btn {
   }
   /* All pill chips identical on mobile */
   .stat-chip,
-  .owner-chip,
   .menu-action-btn {
     font-size: 0.7rem;
     padding: 4px 9px;
+  }
+  .owner-chip {
+    font-size: 0.7rem;
+    padding: 6px 9px;
   }
   /* Stat chips and owner chips center as a group on phones */
   .stats-inner {
