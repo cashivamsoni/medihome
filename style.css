@@ -1408,16 +1408,19 @@ body.bulk-mode .go-top-btn {
   .header-actions .btn-ghost {
     display: none;
   }
-  /* Name/ID share a narrow flex row on desktop (ID gets ~1/5 width) —
-     on phones that shrinks too far, cramming the duplicate-ID error
-     into a very narrow column. Stack them instead so ID gets full width. */
+  /* Name/ID inputs stay side-by-side (4:1) on phones too, matching desktop.
+     Only the duplicate-ID error message breaks out of the narrow ID column
+     to span the full row edge-to-edge, since it has too little room to
+     wrap legibly inside that ~1/5-width column on a small screen. */
   .name-id-row {
-    flex-direction: column;
-    gap: 14px;
+    position: relative;
   }
-  .name-id-row .id-field {
-    flex: none;
-    min-width: 0;
+  .name-id-row .field-error {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 6px;
   }
   /* All pill chips identical on mobile */
   .stat-chip,
