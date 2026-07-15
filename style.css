@@ -385,6 +385,20 @@ body.modal-open {
   margin-left: px;
   margin-bottom: 5px;
 }
+.app-credit {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 18px 16px 90px;
+}
+.app-credit a {
+  color: var(--teal-600);
+  font-weight: 600;
+  text-decoration: none;
+}
+.app-credit a:hover {
+  text-decoration: underline;
+}
 #clearSearch.hidden {
   display: none;
 }
@@ -1530,7 +1544,7 @@ body.bulk-mode .go-top-btn {
   height: 38px;
 }
 .mgmt-list {
-  height: 280px;
+  height: 210px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
