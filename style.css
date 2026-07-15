@@ -1408,6 +1408,17 @@ body.bulk-mode .go-top-btn {
   .header-actions .btn-ghost {
     display: none;
   }
+  /* Name/ID share a narrow flex row on desktop (ID gets ~1/5 width) —
+     on phones that shrinks too far, cramming the duplicate-ID error
+     into a very narrow column. Stack them instead so ID gets full width. */
+  .name-id-row {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .name-id-row .id-field {
+    flex: none;
+    min-width: 0;
+  }
   /* All pill chips identical on mobile */
   .stat-chip,
   .owner-chip,
