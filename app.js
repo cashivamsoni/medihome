@@ -1671,8 +1671,7 @@ function exportToPDF() {
     const pad = n => String(n).padStart(2, '0');
     const dateSlash   = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
     const timeColon   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const isWindows   = /Win/i.test(navigator.platform || navigator.userAgent);
-    const timeForName = isWindows ? timeColon.replace(/:/g, '-') : timeColon;
+    const timeForName = timeColon.replace(/:/g, '-');
     const fileName    = `MediHome Stock ${dateSlash} ${timeForName}`;
 
     // Build grouped, sequentially-numbered entries (owner → category → medicines)
@@ -1755,8 +1754,8 @@ function exportToPDF() {
     function drawHeaderRow(rowY) {
       doc.setFont(FONT, 'bold');
       doc.setFontSize(fontSize);
-      doc.setFillColor(232, 232, 232);
       groups.forEach(g => {
+        doc.setFillColor(232, 232, 232);
         doc.rect(g.id, rowY, idW, rowHeight, 'FD');
         doc.rect(g.name, rowY, nameW, rowHeight, 'FD');
         doc.rect(g.qty, rowY, qtyW, rowHeight, 'FD');
