@@ -206,7 +206,8 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
+  height: 30px;
+  padding: 0 13px;
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -253,7 +254,8 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6.5px 13px;
+  height: 30px;
+  padding: 0 13px;
   border-radius: 20px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -1394,13 +1396,11 @@ body.bulk-mode .go-top-btn {
   }
   /* All pill chips identical on mobile */
   .stat-chip,
+  .owner-chip,
   .menu-action-btn {
     font-size: 0.7rem;
-    padding: 4px 9px;
-  }
-  .owner-chip {
-    font-size: 0.7rem;
-    padding: 6px 9px;
+    height: 26px;
+    padding: 0 9px;
   }
   /* Stat chips and owner chips center as a group on phones */
   .stats-inner {
