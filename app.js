@@ -682,15 +682,27 @@ function initScrollFeatures() {
 }
 
 // ── Modal open/close with body-scroll lock ────────────────
+// Reference-counted so that closing one modal never unlocks the body
+// while another modal (e.g. Add/Edit opened underneath Manage) is still open.
+let openModalCount = 0;
+function lockBodyScroll() {
+  openModalCount++;
+  document.body.classList.add('modal-open');
+}
+function unlockBodyScroll() {
+  openModalCount = Math.max(0, openModalCount - 1);
+  if (openModalCount === 0) document.body.classList.remove('modal-open');
+}
+
 function openModal() {
   document.getElementById('modal').classList.remove('hidden');
   setTimeout(() => document.getElementById('modal').classList.add('active'), 10);
-  document.body.classList.add('modal-open');
+  lockBodyScroll();
 }
 function closeModal() {
   document.getElementById('modal').classList.remove('active');
   setTimeout(() => document.getElementById('modal').classList.add('hidden'), 250);
-  document.body.classList.remove('modal-open');
+  unlockBodyScroll();
   editingId = null;
 }
 document.getElementById('modal').addEventListener('click', e => {
@@ -706,13 +718,13 @@ function openImgViewer(src, name) {
   const modal = document.getElementById('imgViewerModal');
   modal.classList.remove('hidden');
   setTimeout(() => modal.classList.add('active'), 10);
-  document.body.classList.add('modal-open');
+  lockBodyScroll();
 }
 function closeImgViewer() {
   const modal = document.getElementById('imgViewerModal');
   modal.classList.remove('active');
   setTimeout(() => modal.classList.add('hidden'), 250);
-  document.body.classList.remove('modal-open');
+  unlockBodyScroll();
 }
 
 document.getElementById('imgViewerModal').addEventListener('click', closeImgViewer);
@@ -1165,13 +1177,13 @@ function manageField(fieldType) {
   renderMgmtList();
   const modal = document.getElementById('mgmtModal');
   if (modal) modal.classList.remove('hidden');
-  document.body.classList.add('modal-open');
+  lockBodyScroll();
 }
 
 function closeMgmtModal() {
   const modal = document.getElementById('mgmtModal');
   if (modal) modal.classList.add('hidden');
-  document.body.classList.remove('modal-open');
+  unlockBodyScroll();
   // Refresh the underlying add/edit form dropdowns to reflect any changes made
   populateAllDropdowns();
   renderOwnerNavChips();
