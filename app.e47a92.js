@@ -1201,11 +1201,7 @@ function fuzzyMatch(query, text) {
   query = (query || '').toLowerCase().trim();
   if (!query) return true;
   text = (text || '').toLowerCase();
-  let qi = 0;
-  for (let i = 0; i < text.length && qi < query.length; i++) {
-    if (text[i] === query[qi]) qi++;
-  }
-  return qi === query.length;
+  return text.includes(query);
 }
 
 function filterMgmtList() { renderMgmtList(); }
