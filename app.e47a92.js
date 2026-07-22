@@ -1174,7 +1174,7 @@ function manageField(fieldType) {
   const titleEl = document.getElementById('mgmtModalTitle');
   const titles = { category:'Manage Categories', owner:'Manage Owners', form:'Manage Forms', type:'Manage Types' };
   if (titleEl) titleEl.textContent = titles[fieldType] || 'Manage Items';
-  const inp = document.getElementById('mgmtNewValue');
+  const inp = document.getElementById('mgmtSearchInput');
   if (inp) inp.value = '';
   document.querySelectorAll('#mgmtTabs .mgmt-tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.field === fieldType);
@@ -1195,13 +1195,32 @@ function closeMgmtModal() {
   renderAll();
 }
 
+// Lightweight fuzzy match: true if every typed character appears in order
+// somewhere in the text (not necessarily contiguous). Empty query matches all.
+function fuzzyMatch(query, text) {
+  query = (query || '').toLowerCase().trim();
+  if (!query) return true;
+  text = (text || '').toLowerCase();
+  let qi = 0;
+  for (let i = 0; i < text.length && qi < query.length; i++) {
+    if (text[i] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
+function filterMgmtList() { renderMgmtList(); }
+
 function renderMgmtList() {
   const container = document.getElementById('mgmtListContainer');
   if (!container) return;
+  const searchEl = document.getElementById('mgmtSearchInput');
+  const query = searchEl ? searchEl.value : '';
   let listHtml = '';
 
   if (currentMgmtField === 'category') {
-    const catOrder = customCategories.map((c, idx) => idx).sort((a, b) => sortKey(customCategories[a]).localeCompare(sortKey(customCategories[b])));
+    const catOrder = customCategories.map((c, idx) => idx)
+      .filter(idx => fuzzyMatch(query, sortKey(customCategories[idx])))
+      .sort((a, b) => sortKey(customCategories[a]).localeCompare(sortKey(customCategories[b])));
     listHtml = catOrder.map(idx => { const c = customCategories[idx]; return `
       <div class="mgmt-item">
         <span>${getCategoryIcon(c)}${escHtml(c)}</span>
@@ -1211,7 +1230,7 @@ function renderMgmtList() {
         </div>
       </div>`; }).join('');
   } else if (currentMgmtField === 'owner') {
-    listHtml = customOwners.map((o, idx) => `
+    listHtml = customOwners.map((o, idx) => ({ o, idx })).filter(({ o }) => fuzzyMatch(query, o.short)).map(({ o, idx }) => `
       <div class="mgmt-item">
         <span>${escHtml(o.label)}</span>
         <div class="mgmt-actions">
@@ -1220,7 +1239,9 @@ function renderMgmtList() {
         </div>
       </div>`).join('');
   } else if (currentMgmtField === 'form') {
-    const formOrder = customForms.map((f, idx) => idx).sort((a, b) => sortKey(customForms[a]).localeCompare(sortKey(customForms[b])));
+    const formOrder = customForms.map((f, idx) => idx)
+      .filter(idx => fuzzyMatch(query, sortKey(customForms[idx])))
+      .sort((a, b) => sortKey(customForms[a]).localeCompare(sortKey(customForms[b])));
     listHtml = formOrder.map(idx => { const f = customForms[idx]; return `
       <div class="mgmt-item">
         <span>${getFormIcon(f)}${escHtml(f)}</span>
@@ -1230,7 +1251,9 @@ function renderMgmtList() {
         </div>
       </div>`; }).join('');
   } else if (currentMgmtField === 'type') {
-    const typeOrder = customTypes.map((t, idx) => idx).sort((a, b) => sortKey(customTypes[a]).localeCompare(sortKey(customTypes[b])));
+    const typeOrder = customTypes.map((t, idx) => idx)
+      .filter(idx => fuzzyMatch(query, formatTypeLabel(customTypes[idx])))
+      .sort((a, b) => sortKey(customTypes[a]).localeCompare(sortKey(customTypes[b])));
     listHtml = typeOrder.map(idx => { const t = customTypes[idx]; return `
       <div class="mgmt-item">
         <span>${escHtml(formatTypeLabel(t))}</span>
@@ -1244,9 +1267,14 @@ function renderMgmtList() {
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
 }
 
-function addMgmtItem() {
-  const input = document.getElementById('mgmtNewValue');
-  const val = input.value.trim();
+function promptAddMgmtItem() {
+  const labels = { category:'category', form:'form', type:'type', owner:'owner' };
+  const val = prompt(`Add new ${labels[currentMgmtField] || 'entry'}:`);
+  if (val === null) return; // cancelled
+  addMgmtValue(val.trim());
+}
+
+function addMgmtValue(val) {
   if (!val) return;
 
   if (currentMgmtField === 'category') {
@@ -1264,7 +1292,6 @@ function addMgmtItem() {
     customTypes.push(val);
   }
 
-  input.value = '';
   pushUndo(`Added "${val}" to ${currentMgmtField}`);
   saveData();
   renderMgmtList();
