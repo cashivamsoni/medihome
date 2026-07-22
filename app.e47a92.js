@@ -707,12 +707,19 @@ function closeModal() {
   unlockBodyScroll();
   editingId = null;
 }
-document.getElementById('modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal')) closeModal();
-});
-document.getElementById('mgmtModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('mgmtModal')) closeMgmtModal();
-});
+// Close-on-outside-click, but ignore text-selection drags: only close if
+// BOTH the mousedown and the click landed directly on the backdrop itself,
+// not if the drag started inside the modal box and was released outside.
+function bindOverlayClose(overlayEl, closeFn) {
+  if (!overlayEl) return;
+  let downOnOverlay = false;
+  overlayEl.addEventListener('mousedown', e => { downOnOverlay = (e.target === overlayEl); });
+  overlayEl.addEventListener('click', e => {
+    if (downOnOverlay && e.target === overlayEl) closeFn();
+  });
+}
+bindOverlayClose(document.getElementById('modal'), closeModal);
+bindOverlayClose(document.getElementById('mgmtModal'), closeMgmtModal);
 
 function openImgViewer(src, name) {
   document.getElementById('imgViewerImg').src = src;
@@ -729,7 +736,7 @@ function closeImgViewer() {
   unlockBodyScroll();
 }
 
-document.getElementById('imgViewerModal').addEventListener('click', closeImgViewer);
+bindOverlayClose(document.getElementById('imgViewerModal'), closeImgViewer);
 
 // ── Category custom input ─────────────────────────────────
 function onCategoryChange() {
