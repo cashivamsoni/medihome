@@ -1502,6 +1502,7 @@ body.bulk-mode .go-top-btn {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 .mgmt-modal-header {
   padding: 14px 18px;
@@ -1571,6 +1572,7 @@ body.bulk-mode .go-top-btn {
   flex-direction: column;
   gap: 6px;
   padding-right: 4px;
+  padding-bottom: 56px;
 }
 .mgmt-item {
   display: flex;
@@ -1602,6 +1604,30 @@ body.bulk-mode .go-top-btn {
 }
 .mgmt-btn:hover {
   background: var(--slate-200);
+}
+.mgmt-fab {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--teal-600);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  z-index: 5;
+}
+.mgmt-fab:hover {
+  background: var(--teal-700);
+  transform: scale(1.06);
 }
 
 @media (max-width: 480px) {
