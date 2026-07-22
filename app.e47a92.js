@@ -1318,35 +1318,72 @@ function editMgmtItem(idx) {
   showUndoToast(`✏️ "${updated}" saved — tap Undo within 6s`);
 }
 
+// When deleting a category/form/type/owner that's in use, ask the user where
+// the affected medicines should move instead of silently picking a fallback.
+// choices: array of {label, value}. Returns the chosen value, or undefined if
+// the user cancelled or entered something that didn't match any option.
+function promptMoveDestination(count, itemType, removedLabel, choices) {
+  const list = choices.map((c, i) => `${i + 1}. ${c.label}`).join('\n');
+  const msg = `${count} medicine${count === 1 ? '' : 's'} ${count === 1 ? 'is' : 'are'} currently in "${removedLabel}".\n` +
+    `Which ${itemType} would you like to move ${count === 1 ? 'it' : 'them'} to?\n\n${list}`;
+  const answer = prompt(msg, '1');
+  if (answer === null) return undefined; // cancelled
+  const trimmed = answer.trim();
+  const num = parseInt(trimmed, 10);
+  if (!isNaN(num) && num >= 1 && num <= choices.length) return choices[num - 1].value;
+  const match = choices.find(c => c.label.toLowerCase() === trimmed.toLowerCase());
+  return match ? match.value : undefined;
+}
+
 function deleteMgmtItem(idx) {
   if (currentMgmtField === 'category') {
     if (customCategories.length <= 1) { showToast('At least one category must remain.', 'error'); return; }
     const removed = customCategories[idx];
-    if (!confirm(`Delete category "${removed}"? Medicines using it will move to "${FALLBACK_CATEGORY}".`)) return;
+    const affected = medicines.filter(m => m.category === removed);
+    const remaining = customCategories.filter((c, i) => i !== idx);
+    let dest = FALLBACK_CATEGORY;
+    if (affected.length) {
+      dest = promptMoveDestination(affected.length, 'category', removed, remaining.map(c => ({ label: c, value: c })));
+      if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
+    } else if (!confirm(`Delete category "${removed}"? No medicines are using it.`)) return;
     customCategories.splice(idx, 1);
-    if (!customCategories.includes(FALLBACK_CATEGORY)) customCategories.push(FALLBACK_CATEGORY);
-    medicines.forEach(m => { if (m.category === removed) m.category = FALLBACK_CATEGORY; });
+    medicines.forEach(m => { if (m.category === removed) m.category = dest; });
   } else if (currentMgmtField === 'form') {
     if (customForms.length <= 1) { showToast('At least one form must remain.', 'error'); return; }
     const removed = customForms[idx];
-    if (!confirm(`Delete form "${removed}"? Medicines using it will move to "${FALLBACK_FORM}".`)) return;
+    const affected = medicines.filter(m => m.form === removed);
+    const remaining = customForms.filter((f, i) => i !== idx);
+    let dest = FALLBACK_FORM;
+    if (affected.length) {
+      dest = promptMoveDestination(affected.length, 'form', removed, remaining.map(f => ({ label: f, value: f })));
+      if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
+    } else if (!confirm(`Delete form "${removed}"? No medicines are using it.`)) return;
     customForms.splice(idx, 1);
-    if (!customForms.includes(FALLBACK_FORM)) customForms.push(FALLBACK_FORM);
-    medicines.forEach(m => { if (m.form === removed) m.form = FALLBACK_FORM; });
+    medicines.forEach(m => { if (m.form === removed) m.form = dest; });
   } else if (currentMgmtField === 'owner') {
     if (customOwners.length <= 1) { showToast('At least one owner must remain.', 'error'); return; }
     const removed = customOwners[idx];
-    if (!confirm(`Delete owner "${removed.short}"? Their medicines will move to the first remaining owner.`)) return;
+    const affected = medicines.filter(m => m.owner === removed.key);
+    const remaining = customOwners.filter((o, i) => i !== idx);
+    let dest = customOwners.some(o => o.key === FALLBACK_OWNER) ? FALLBACK_OWNER : remaining[0].key;
+    if (affected.length) {
+      dest = promptMoveDestination(affected.length, 'owner', removed.short, remaining.map(o => ({ label: o.short, value: o.key })));
+      if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
+    } else if (!confirm(`Delete owner "${removed.short}"? No medicines are assigned to them.`)) return;
     customOwners.splice(idx, 1);
-    const fallbackKey = customOwners.some(o => o.key === FALLBACK_OWNER) ? FALLBACK_OWNER : customOwners[0].key;
-    medicines.forEach(m => { if (m.owner === removed.key) m.owner = fallbackKey; });
+    medicines.forEach(m => { if (m.owner === removed.key) m.owner = dest; });
   } else if (currentMgmtField === 'type') {
     if (customTypes.length <= 1) { showToast('At least one type must remain.', 'error'); return; }
     const removed = customTypes[idx];
-    if (!confirm(`Delete type "${formatTypeLabel(removed)}"? Medicines using it will move to "${formatTypeLabel(FALLBACK_TYPE)}".`)) return;
+    const affected = medicines.filter(m => m.type === removed);
+    const remaining = customTypes.filter((t, i) => i !== idx);
+    let dest = FALLBACK_TYPE;
+    if (affected.length) {
+      dest = promptMoveDestination(affected.length, 'type', formatTypeLabel(removed), remaining.map(t => ({ label: formatTypeLabel(t), value: t })));
+      if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
+    } else if (!confirm(`Delete type "${formatTypeLabel(removed)}"? No medicines are using it.`)) return;
     customTypes.splice(idx, 1);
-    if (!customTypes.includes(FALLBACK_TYPE)) customTypes.push(FALLBACK_TYPE);
-    medicines.forEach(m => { if (m.type === removed) m.type = FALLBACK_TYPE; });
+    medicines.forEach(m => { if (m.type === removed) m.type = dest; });
   }
 
   pushUndo(`Deleted ${currentMgmtField}`);
