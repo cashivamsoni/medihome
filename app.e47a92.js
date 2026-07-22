@@ -795,7 +795,7 @@ function populateTypeDropdown(selected) {
   const sel = document.getElementById('medType');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
-  const sortedTypes = customTypes.slice().sort((a, b) => a.localeCompare(b));
+  const sortedTypes = customTypes.slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   sel.innerHTML = sortedTypes.map(t => `<option value="${escHtml(t)}">${escHtml(formatTypeLabel(t))}</option>`).join('');
   if (prev && customTypes.includes(prev)) sel.value = prev;
 }
@@ -804,7 +804,7 @@ function populateCategoryDropdown(selected) {
   const sel = document.getElementById('medCategory');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
-  const sortedCategories = customCategories.slice().sort((a, b) => a.localeCompare(b));
+  const sortedCategories = customCategories.slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   sel.innerHTML = '<option value="">— Select category —</option>' +
     sortedCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
   if (prev && customCategories.includes(prev)) sel.value = prev;
@@ -822,7 +822,7 @@ function populateFormDropdown(selected) {
   const sel = document.getElementById('medFormField');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
-  const sortedForms = customForms.slice().sort((a, b) => a.localeCompare(b));
+  const sortedForms = customForms.slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   sel.innerHTML = '<option value="">— Select form —</option>' +
     sortedForms.map(f => `<option value="${escHtml(f)}">${getFormIcon(f)}${escHtml(f)}</option>`).join('');
   if (prev && customForms.includes(prev)) sel.value = prev;
@@ -1199,7 +1199,7 @@ function renderMgmtList() {
   let listHtml = '';
 
   if (currentMgmtField === 'category') {
-    const catOrder = customCategories.map((c, idx) => idx).sort((a, b) => customCategories[a].localeCompare(customCategories[b]));
+    const catOrder = customCategories.map((c, idx) => idx).sort((a, b) => sortKey(customCategories[a]).localeCompare(sortKey(customCategories[b])));
     listHtml = catOrder.map(idx => { const c = customCategories[idx]; return `
       <div class="mgmt-item">
         <span>${getCategoryIcon(c)}${escHtml(c)}</span>
@@ -1218,7 +1218,7 @@ function renderMgmtList() {
         </div>
       </div>`).join('');
   } else if (currentMgmtField === 'form') {
-    const formOrder = customForms.map((f, idx) => idx).sort((a, b) => customForms[a].localeCompare(customForms[b]));
+    const formOrder = customForms.map((f, idx) => idx).sort((a, b) => sortKey(customForms[a]).localeCompare(sortKey(customForms[b])));
     listHtml = formOrder.map(idx => { const f = customForms[idx]; return `
       <div class="mgmt-item">
         <span>${getFormIcon(f)}${escHtml(f)}</span>
@@ -1228,7 +1228,7 @@ function renderMgmtList() {
         </div>
       </div>`; }).join('');
   } else if (currentMgmtField === 'type') {
-    const typeOrder = customTypes.map((t, idx) => idx).sort((a, b) => customTypes[a].localeCompare(customTypes[b]));
+    const typeOrder = customTypes.map((t, idx) => idx).sort((a, b) => sortKey(customTypes[a]).localeCompare(sortKey(customTypes[b])));
     listHtml = typeOrder.map(idx => { const t = customTypes[idx]; return `
       <div class="mgmt-item">
         <span>${escHtml(formatTypeLabel(t))}</span>
@@ -1392,6 +1392,12 @@ function deriveOwnerShort(label) {
   return label.trim();
 }
 function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Some category/form names have a user-typed emoji baked into the start of
+// the string (e.g. "🍎 Skin Care"). Emoji sort before/after letters by
+// codepoint, which breaks plain A-Z ordering — so sort by the text with any
+// leading emoji/symbols stripped, not the raw string.
+function sortKey(s) { return (s || '').toString().replace(/^[^\p{L}\p{N}]+/u, '').trim().toLowerCase(); }
 
 function formatTypeLabel(t) {
   if (!t) return '';
