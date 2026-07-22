@@ -795,7 +795,8 @@ function populateTypeDropdown(selected) {
   const sel = document.getElementById('medType');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
-  sel.innerHTML = customTypes.map(t => `<option value="${escHtml(t)}">${escHtml(formatTypeLabel(t))}</option>`).join('');
+  const sortedTypes = customTypes.slice().sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = sortedTypes.map(t => `<option value="${escHtml(t)}">${escHtml(formatTypeLabel(t))}</option>`).join('');
   if (prev && customTypes.includes(prev)) sel.value = prev;
 }
 
@@ -803,8 +804,9 @@ function populateCategoryDropdown(selected) {
   const sel = document.getElementById('medCategory');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
+  const sortedCategories = customCategories.slice().sort((a, b) => a.localeCompare(b));
   sel.innerHTML = '<option value="">— Select category —</option>' +
-    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
+    sortedCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
   if (prev && customCategories.includes(prev)) sel.value = prev;
 }
 
@@ -820,8 +822,9 @@ function populateFormDropdown(selected) {
   const sel = document.getElementById('medFormField');
   if (!sel) return;
   const prev = selected !== undefined ? selected : sel.value;
+  const sortedForms = customForms.slice().sort((a, b) => a.localeCompare(b));
   sel.innerHTML = '<option value="">— Select form —</option>' +
-    customForms.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('');
+    sortedForms.map(f => `<option value="${escHtml(f)}">${getFormIcon(f)}${escHtml(f)}</option>`).join('');
   if (prev && customForms.includes(prev)) sel.value = prev;
 }
 
@@ -1196,14 +1199,15 @@ function renderMgmtList() {
   let listHtml = '';
 
   if (currentMgmtField === 'category') {
-    listHtml = customCategories.map((c, idx) => `
+    const catOrder = customCategories.map((c, idx) => idx).sort((a, b) => customCategories[a].localeCompare(customCategories[b]));
+    listHtml = catOrder.map(idx => { const c = customCategories[idx]; return `
       <div class="mgmt-item">
         <span>${getCategoryIcon(c)}${escHtml(c)}</span>
         <div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
         </div>
-      </div>`).join('');
+      </div>`; }).join('');
   } else if (currentMgmtField === 'owner') {
     listHtml = customOwners.map((o, idx) => `
       <div class="mgmt-item">
@@ -1214,23 +1218,25 @@ function renderMgmtList() {
         </div>
       </div>`).join('');
   } else if (currentMgmtField === 'form') {
-    listHtml = customForms.map((f, idx) => `
+    const formOrder = customForms.map((f, idx) => idx).sort((a, b) => customForms[a].localeCompare(customForms[b]));
+    listHtml = formOrder.map(idx => { const f = customForms[idx]; return `
       <div class="mgmt-item">
         <span>${getFormIcon(f)}${escHtml(f)}</span>
         <div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
         </div>
-      </div>`).join('');
+      </div>`; }).join('');
   } else if (currentMgmtField === 'type') {
-    listHtml = customTypes.map((t, idx) => `
+    const typeOrder = customTypes.map((t, idx) => idx).sort((a, b) => customTypes[a].localeCompare(customTypes[b]));
+    listHtml = typeOrder.map(idx => { const t = customTypes[idx]; return `
       <div class="mgmt-item">
         <span>${escHtml(formatTypeLabel(t))}</span>
         <div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
         </div>
-      </div>`).join('');
+      </div>`; }).join('');
   }
 
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
