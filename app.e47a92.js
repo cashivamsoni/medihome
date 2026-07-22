@@ -121,8 +121,10 @@ function loadData() {
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
 function nextAvailableSerialId() {
-  const used = medicines.map(m => Number(m.serialId)).filter(n => !isNaN(n));
-  return used.length ? Math.max(...used) + 1 : 1;
+  const used = new Set(medicines.map(m => Number(m.serialId)).filter(n => !isNaN(n)));
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
 }
 function backfillSerialIds() {
   medicines.forEach((m, idx) => {
