@@ -1181,8 +1181,10 @@ function manageField(fieldType) {
   });
   renderMgmtList();
   const modal = document.getElementById('mgmtModal');
-  if (modal) modal.classList.remove('hidden');
-  lockBodyScroll();
+  if (modal && modal.classList.contains('hidden')) {
+    modal.classList.remove('hidden');
+    lockBodyScroll();
+  }
 }
 
 function closeMgmtModal() {
