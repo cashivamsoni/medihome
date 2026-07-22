@@ -3,14 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediHome — Family Medicine Inventory</title>
+
+    <!-- Favicons -->
+    <link rel="icon" href="https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg" sizes="any" />
+    <link rel="apple-touch-icon" href="https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg" />
+
     <meta name="theme-color" content="#0F766E" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)" />
-    <title>MediHome — Family Medicine Inventory</title>
-    <link
-      rel="icon"
-      href="https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg"
-      type="image/jpeg"
+
+    <meta
+      name="description"
+      content="MediHome is a simple, cloud-based project created by Shivam Soni to store and update information about medicines available at our home, keeping them organised and providing information about their availability."
     />
+    <link rel="canonical" href="https://medihomeapp.vercel.app/" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,16 +25,14 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.b6f218.css" />
+
     <!-- Open Graph tags -->
     <meta property="og:title" content="MediHome - Family Medicine Inventory" />
     <meta
       property="og:description"
       content="MediHome is a simple, cloud-based project created by Shivam Soni to store and update information about medicines available at our home, keeping them organised and providing information about their availability."
     />
-    <meta
-      property="og:image"
-      content="https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg"
-    />
+    <meta property="og:image" content="https://thumbs.dreamstime.com/b/cartoon-vector-funny-cute-comic-characters-pill-cartoon-vector-funny-cute-comic-characters-pill-crazy-cartoons-abstract-vector-247963667.jpg" />
     <meta property="og:url" content="https://medihomeapp.vercel.app/" />
     <meta property="og:type" content="website" />
   </head>
@@ -649,15 +654,15 @@
           <div class="mgmt-add-row">
             <input
               type="text"
-              id="mgmtNewValue"
+              id="mgmtSearchInput"
               class="form-input"
-              placeholder="Add new entry…"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addMgmtItem();}"
+              placeholder="Search…"
+              oninput="filterMgmtList()"
             />
-            <button class="btn-save" onclick="addMgmtItem()">Add</button>
           </div>
           <div class="mgmt-list" id="mgmtListContainer"></div>
         </div>
+        <button class="mgmt-fab" onclick="promptAddMgmtItem()" title="Add new entry" aria-label="Add new entry">+</button>
       </div>
     </div>
     <div class="toast" id="toast"></div>
