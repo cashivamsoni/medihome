@@ -597,13 +597,22 @@ body.bulk-mode #shareBtn {
   transition:
     box-shadow var(--transition),
     transform var(--transition),
-    border-color var(--transition);
+    border-color var(--transition),
+    opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 .medicine-card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
   border-color: var(--teal-200);
+}
+.medicine-card.card-lift-init {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.medicine-card.card-lift-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 .medicine-card.card-low-stock {
   background: linear-gradient(135deg, #FFF9F9 0%, #FFF1F2 100%);
