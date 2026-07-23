@@ -392,7 +392,7 @@ function renderMedicineCard(m, serialNum) {
         <div class="card-meta">
           <span class="meta-item ${isLow?'meta-low':''}">📦 ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
           <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}">📅 ${formatExpiry(m.expiryDate)}</span>
-          <span class="meta-item">💊 ${m.form}</span>
+          <span class="meta-item">${getFormIcon(m.form)}${m.form}</span>
         </div>
       </div>
       <div class="compact-row-meta">
