@@ -366,12 +366,14 @@ function renderMedicineCard(m, serialNum) {
     ? (isExpired ? `Exp'd ${new Date(m.expiryDate).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}` : `Exp: ${new Date(m.expiryDate).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}`)
     : 'No expiry';
 
+  const formInfo = splitFormIcon(m.form);
+
   return `
     <div class="${classes.join(' ')}" id="med-${m.id}" data-id="${m.id}">
       <input type="checkbox" class="card-bulk-check" ${bulkSelected.has(m.id)?'checked':''} onclick="toggleBulkSelect('${m.id}')" />
       ${imageHtml}
       <div class="card-top">
-        <div class="card-form-icon">${getFormIcon(m.form)}</div>
+        <div class="card-form-icon">${formInfo.icon}</div>
         <div class="card-badges">
           <span class="badge ${typeBadgeClass(m.type)}"${typeBadgeStyle(m.type)}>${formatTypeLabel(m.type)}</span>
           ${m.frequentlyUsed?'<span class="badge badge-freq">⭐ Frequent</span>':''}
@@ -392,7 +394,7 @@ function renderMedicineCard(m, serialNum) {
         <div class="card-meta">
           <span class="meta-item ${isLow?'meta-low':''}">📦 ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
           <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}">📅 ${formatExpiry(m.expiryDate)}</span>
-          <span class="meta-item">${getFormIcon(m.form)}${m.form}</span>
+          <span class="meta-item">${formInfo.icon}${formInfo.text}</span>
         </div>
       </div>
       <div class="compact-row-meta">
@@ -1519,9 +1521,22 @@ function getFormIcon(form) {
   if (f.includes('bandage')) return '🩹 ';
   if (f.includes('pouch')) return '🧃 ';
   if (f.includes('oil')) return '🫙 ';
-  // No default pill icon for unmatched/custom forms — assume any emoji
-  // the user typed is already part of the form name itself.
+  // No keyword match — fall through to splitFormIcon's emoji extraction / fallback.
   return '';
+}
+
+// Separates a form label into {icon, text}. If the stored name already has
+// an emoji typed at the start (custom forms), that emoji becomes the icon
+// and is stripped from the text so it isn't shown twice. Otherwise falls
+// back to the keyword-matched icon above, or a generic pill if neither
+// applies — so every form (present or future) always shows an icon
+// consistently in every spot on the card, dropdown, and manage list.
+function splitFormIcon(form) {
+  form = form || '';
+  const m = form.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200d\p{Extended_Pictographic})*)\s*/u);
+  if (m) return { icon: m[1] + ' ', text: form.slice(m[0].length) };
+  const kw = getFormIcon(form);
+  return { icon: kw || '💊 ', text: form };
 }
 
 // ── Toast ─────────────────────────────────────────────────
