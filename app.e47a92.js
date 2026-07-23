@@ -48,7 +48,6 @@ const DEFAULT_TYPES = ['homeopathic','allopathic','ayurvedic'];
 document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   initScrollFeatures();
-  initCardLiftAnimation();
   setHeaderHeightVar();
   initImageDropZone();
   // Restore persisted compact view and sort order
@@ -345,7 +344,7 @@ function renderMedicineCard(m, serialNum) {
   const isExpiringSoon = isExpiringSoonMed(m.expiryDate);
   const serial = serialNum ? `<span class="card-serial">#${String(serialNum).padStart(2,'0')}</span>` : '';
 
-  const classes = ['medicine-card', 'card-lift-init'];
+  const classes = ['medicine-card'];
   if (isLow) classes.push('card-low-stock');
   if (isExpired) classes.push('card-expired');
   else if (isExpiringSoon) {
@@ -678,30 +677,6 @@ function _doScrollToMed(id) {
 }
 
 // ── Scroll features ───────────────────────────────────────
-// ── Lift-in animation for medicine cards on scroll ────────
-function initCardLiftAnimation() {
-  const container = document.getElementById('medicineList');
-  if (!container) return;
-
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.remove('card-lift-init');
-        entry.target.classList.add('card-lift-in');
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-
-  const observeNewCards = () => {
-    container.querySelectorAll('.medicine-card.card-lift-init').forEach(el => io.observe(el));
-  };
-
-  // Cards are re-rendered often (filters/search/etc.), so watch for new ones
-  new MutationObserver(observeNewCards).observe(container, { childList: true, subtree: true });
-  observeNewCards();
-}
-
 function initScrollFeatures() {
   const btn = document.getElementById('goTopBtn');
   window.addEventListener('scroll', () => {
