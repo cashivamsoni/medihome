@@ -594,27 +594,31 @@ body.bulk-mode #shareBtn {
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 16px;
+  --reveal-y: 0px;
+  --hover-y: 0px;
+  transform: translateY(calc(var(--reveal-y) + var(--hover-y)));
   transition:
     box-shadow var(--transition),
     transform var(--transition),
-    border-color var(--transition);
+    border-color var(--transition),
+    opacity 0.5s ease;
   position: relative;
 }
 .medicine-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  --hover-y: -2px;
   border-color: var(--teal-200);
 }
-/* Scroll-triggered lift-in — temporary classes, removed once the animation
-   finishes so they never linger and interfere with the hover-lift above. */
+/* Scroll-triggered lift-in — repeats every time a card enters the viewport.
+   Only ever touches --reveal-y (never the transform property directly), so
+   it combines cleanly with the hover-lift above instead of fighting it. */
 .medicine-card.scroll-reveal {
+  --reveal-y: 24px;
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 .medicine-card.scroll-reveal.scroll-in {
+  --reveal-y: 0px;
   opacity: 1;
-  transform: translateY(0);
 }
 .medicine-card.card-low-stock {
   background: linear-gradient(135deg, #FFF9F9 0%, #FFF1F2 100%);
