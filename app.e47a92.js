@@ -339,22 +339,17 @@ function renderMedicineList(list) {
   initCardRevealObserver();
 }
 
-// Scroll-triggered "lift in" effect for medicine cards — plays once per
-// card as it enters the viewport, then cleans up its own classes so the
-// existing hover-lift behavior is completely unaffected afterward.
+// Scroll-triggered "lift in" effect for medicine cards — replays every time
+// a card enters/leaves the viewport. Combines with hover-lift via CSS
+// variables (see .medicine-card in style.css) so neither ever overrides
+// the other.
 let cardRevealObserver = null;
 function initCardRevealObserver() {
   if (!('IntersectionObserver' in window)) return;
   if (cardRevealObserver) cardRevealObserver.disconnect();
   cardRevealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const el = entry.target;
-      requestAnimationFrame(() => el.classList.add('scroll-in'));
-      el.addEventListener('transitionend', () => {
-        el.classList.remove('scroll-reveal', 'scroll-in');
-      }, { once: true });
-      cardRevealObserver.unobserve(el);
+      entry.target.classList.toggle('scroll-in', entry.isIntersecting);
     });
   }, { threshold: 0.15 });
   document.querySelectorAll('.medicine-card').forEach(card => {
