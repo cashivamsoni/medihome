@@ -358,7 +358,7 @@ function initCardRevealObserver() {
       el._revealTimer = setTimeout(() => { el.style.transitionDuration = ''; }, 650);
     });
   }, { threshold: 0.15 });
-  document.querySelectorAll('.medicine-card').forEach(card => {
+  document.querySelectorAll('.medicine-card, .owner-header, .category-label').forEach(card => {
     card.classList.add('scroll-reveal');
     cardRevealObserver.observe(card);
   });
