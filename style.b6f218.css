@@ -601,7 +601,7 @@ body.bulk-mode #shareBtn {
     box-shadow var(--transition),
     transform var(--transition),
     border-color var(--transition),
-    opacity 0.5s ease;
+    opacity var(--transition);
   position: relative;
 }
 .medicine-card:hover {
@@ -609,11 +609,13 @@ body.bulk-mode #shareBtn {
   --hover-y: -2px;
   border-color: var(--teal-200);
 }
-/* Scroll-triggered lift-in — repeats every time a card enters the viewport.
+/* Scroll-triggered lift-in — repeats every time a card enters the viewport,
+   matching BC's .section/.faculty-card reveal (40px offset, 0.6s ease —
+   applied briefly via JS so it never slows down the hover-lift above).
    Only ever touches --reveal-y (never the transform property directly), so
-   it combines cleanly with the hover-lift above instead of fighting it. */
+   it combines cleanly with the hover-lift instead of fighting it. */
 .medicine-card.scroll-reveal {
-  --reveal-y: 24px;
+  --reveal-y: 40px;
   opacity: 0;
 }
 .medicine-card.scroll-reveal.scroll-in {
