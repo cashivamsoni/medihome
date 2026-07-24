@@ -849,6 +849,7 @@ body.bulk-mode #shareBtn {
   transform: translateY(20px);
   margin: 20px 0;
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 #modal.active .modal-box {
   transform: translateY(0);
@@ -1520,6 +1521,7 @@ body.bulk-mode .go-top-btn {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 .mgmt-modal-header {
   padding: 14px 18px;
