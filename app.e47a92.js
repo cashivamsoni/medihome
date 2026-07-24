@@ -340,18 +340,24 @@ function renderMedicineList(list) {
 }
 
 // Scroll-triggered "lift in" effect for medicine cards — replays every time
-// a card enters/leaves the viewport. Combines with hover-lift via CSS
-// variables (see .medicine-card in style.css) so neither ever overrides
-// the other.
+// a card enters/leaves the viewport, matching BC's section/faculty-card
+// reveal style (40px offset, 0.6s ease, threshold 0.2). The 0.6s timing is
+// applied only for the moment of the reveal itself (via inline style) and
+// released right after, so it never slows down the existing hover-lift,
+// which keeps using its normal fast var(--transition) speed.
 let cardRevealObserver = null;
 function initCardRevealObserver() {
   if (!('IntersectionObserver' in window)) return;
   if (cardRevealObserver) cardRevealObserver.disconnect();
   cardRevealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      entry.target.classList.toggle('scroll-in', entry.isIntersecting);
+      const el = entry.target;
+      el.style.transitionDuration = '0.6s';
+      el.classList.toggle('scroll-in', entry.isIntersecting);
+      clearTimeout(el._revealTimer);
+      el._revealTimer = setTimeout(() => { el.style.transitionDuration = ''; }, 650);
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.2 });
   document.querySelectorAll('.medicine-card').forEach(card => {
     card.classList.add('scroll-reveal');
     cardRevealObserver.observe(card);
