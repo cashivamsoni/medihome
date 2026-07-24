@@ -510,6 +510,7 @@ body.modal-open {
   margin-bottom: 16px;
   padding-bottom: 10px;
   border-bottom: 2px solid var(--teal-100);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
 .owner-title {
   font-family: "DM Serif Display", Georgia, serif;
@@ -541,6 +542,7 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 6px;
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
 .medicine-grid {
   display: grid;
@@ -621,6 +623,16 @@ body.bulk-mode #shareBtn {
 .medicine-card.scroll-reveal.scroll-in {
   --reveal-y: 0px;
   opacity: 1;
+}
+.owner-header.scroll-reveal,
+.category-label.scroll-reveal {
+  opacity: 0;
+  transform: translateY(40px);
+}
+.owner-header.scroll-reveal.scroll-in,
+.category-label.scroll-reveal.scroll-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 .medicine-card.card-low-stock {
   background: linear-gradient(135deg, #FFF9F9 0%, #FFF1F2 100%);
