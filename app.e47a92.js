@@ -432,7 +432,7 @@ function renderMedicineCard(m, serialNum) {
         </span>
       </div>
       <div class="card-qty-row">
-        <button class="qty-btn qty-finish" onclick="markFinished('${m.id}')" title="Mark as finished" ${m.quantity===0?'disabled':''}>0️⃣</button>
+        <button class="qty-btn qty-finish" onclick="markFinished('${m.id}')" title="Mark as finished" ${m.quantity===0?'disabled':''}><i class="fa-solid fa-flag-checkered"></i></button>
         <button class="qty-btn qty-minus" onclick="adjustQuantity('${m.id}',-1)" title="Decrease quantity" ${m.quantity===0?'disabled':''}>−</button>
         <span class="qty-display">${m.quantity} <span class="qty-unit">${m.quantityUnit}</span></span>
         <button class="qty-btn qty-plus" onclick="adjustQuantity('${m.id}',1)" title="Increase quantity">+</button>
@@ -1996,8 +1996,10 @@ function toggleCompactView() {
   updateMenuViewLabel();
 }
 function updateMenuViewLabel() {
-  const btn = document.getElementById('menuViewBtn');
-  if (btn) btn.textContent = compactView ? '🃏 Card View' : '📋 Compact View';
+  const icon = document.getElementById('menuViewIcon');
+  const label = document.getElementById('menuViewLabel');
+  if (icon) icon.className = compactView ? 'fa-solid fa-address-card' : 'fa-solid fa-list';
+  if (label) label.textContent = compactView ? 'Card View' : 'Compact View';
 }
 
 // ── Sort Order ────────────────────────────────────────────
@@ -2018,8 +2020,10 @@ function toggleTheme() {
 }
 function updateMenuThemeLabel() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const btn = document.getElementById('menuThemeBtn');
-  if (btn) btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+  const icon = document.getElementById('menuThemeIcon');
+  const label = document.getElementById('menuThemeLabel');
+  if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  if (label) label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
 }
 
 // ── App Menu ─────────────────────────────────────────────
@@ -2047,8 +2051,10 @@ function closeAppMenu() {
   if (btn) btn.classList.remove('active');
 }
 function updateMenuBulkLabel() {
-  const btn = document.getElementById('menuBulkBtn');
-  if (btn) btn.textContent = bulkMode ? '✕ Exit Select' : '☑️ Select';
+  const icon = document.getElementById('menuBulkIcon');
+  const label = document.getElementById('menuBulkLabel');
+  if (icon) icon.className = bulkMode ? 'fa-solid fa-xmark' : 'fa-solid fa-square-check';
+  if (label) label.textContent = bulkMode ? 'Exit Select' : 'Select';
 }
 (function initTheme() {
   const saved = localStorage.getItem('theme') || 'light';
