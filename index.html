@@ -1,1557 +1,781 @@
 <!doctype html>
-
 <html lang="en">
-
   <head>
-
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>MediHome — Family Medicine Inventory</title>
 
-
-
     <!-- Favicons -->
-
     <link rel="icon" href="/favicon.ico" sizes="any" />
-
     <link rel="apple-touch-icon" href="/images/logo.png" />
 
-
-
     <meta name="theme-color" content="#0F766E" media="(prefers-color-scheme: light)" />
-
     <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)" />
 
-
-
     <meta
-
       name="description"
-
       content="MediHome is a simple, cloud-based project created by Shivam Soni to store and update information about medicines available at our home, keeping them organised and providing information about their availability."
-
     />
-
     <link rel="canonical" href="https://medihomeapp.vercel.app/" />
 
-
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
     <link
-
       href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap"
-
       rel="stylesheet"
-
     />
-
     <link rel="stylesheet" href="style.b6f218.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
 
-
-
     <!-- Open Graph tags -->
-
     <meta property="og:title" content="MediHome - Family Medicine Inventory" />
-
     <meta
-
       property="og:description"
-
       content="MediHome is a simple, cloud-based project created by Shivam Soni to store and update information about medicines available at our home, keeping them organised and providing information about their availability."
-
     />
-
     <meta property="og:image" content="https://medihomeapp.vercel.app/images/logo.png" />
-
     <meta property="og:url" content="https://medihomeapp.vercel.app/" />
-
     <meta property="og:type" content="website" />
-
   </head>
-
   <body>
-
     <!-- ── Header ─────────────────────────────────────────── -->
-
     <header class="site-header">
-
       <div class="header-inner">
-
         <div class="logo-block">
-
           <div class="logo-title">💊 MediHome</div>
-
           <div class="logo-sub">Family Medicine Inventory</div>
-
         </div>
-
         <div class="header-actions">
-
           <button class="btn-ghost" onclick="resetToDefault()">↺ Reset</button>
-
           <button class="btn-primary" onclick="openAdd()">
-
             + Add Medicine
-
           </button>
-
           <button
-
             class="btn-menu-toggle"
-
             id="menuToggleBtn"
-
             onclick="toggleAppMenu()"
-
             aria-label="Menu"
-
             title="More options"
-
           >
-
             <span class="hamburger-box">
-
               <span class="hb-bar hb-top"></span>
-
               <span class="hb-bar hb-mid"></span>
-
               <span class="hb-bar hb-bot"></span>
-
             </span>
-
           </button>
-
         </div>
-
       </div>
-
-
 
       <!-- ── Collapsible App Menu ──────────────────────── -->
-
       <div class="app-menu hidden" id="appMenu">
-
         <div class="app-menu-inner">
-
           <div class="menu-section menu-actions-row">
-
             <button
-
               class="menu-action-btn"
-
               onclick="
-
                 toggleTheme();
-
                 updateMenuThemeLabel();
-
               "
-
               id="menuThemeBtn"
-
             >
-
-              🌙 Dark Mode
-
+              <i class="fa-solid fa-moon" id="menuThemeIcon"></i> <span id="menuThemeLabel">Dark Mode</span>
             </button>
-
             <button class="menu-action-btn" onclick="exportToPDF()">
-
-              📄 Export PDF
-
+              <i class="fa-solid fa-file-pdf"></i> Export PDF
             </button>
-
             <button
-
               class="menu-action-btn"
-
               id="menuBulkBtn"
-
               onclick="toggleBulkMode()"
-
             >
-
-              ☑️ Select
-
+              <i class="fa-solid fa-square-check" id="menuBulkIcon"></i> <span id="menuBulkLabel">Select</span>
             </button>
-
             <button
-
               class="menu-action-btn"
-
               id="menuViewBtn"
-
               onclick="toggleCompactView()"
-
             >
-
-              📋 Compact View
-
+              <i class="fa-solid fa-list" id="menuViewIcon"></i> <span id="menuViewLabel">Compact View</span>
             </button>
-
             <div class="menu-sort-wrap">
-
               <select
-
                 class="menu-sort-select"
-
                 id="menuSortSel"
-
                 onchange="setSortOrder(this.value)"
-
               >
-
                 <option value="expiry">⏳ Sort by: Expiry (Soonest→Latest)</option>
-
                 <option value="name">🔤 Sort by: Name (A→Z)</option>
-
                 <option value="quantity">📦 Sort by: Quantity (High→Low)</option>
-
                 <option value="added">🕐 Sort by: Recently Added</option>
-
               </select>
-
             </div>
-
             <button
-
               class="menu-action-btn"
-
               onclick="closeAppMenu(); manageField('owner');"
-
             >
-
               <i class="fa-solid fa-gear"></i> Manage
-
             </button>
-
           </div>
-
         </div>
-
       </div>
-
     </header>
 
-
-
     <!-- ── Stats & Nav Bar ───────────────────────────────── -->
-
     <div class="stats-bar">
-
       <div class="stats-inner">
-
         <!-- Filter chips only -->
-
         <div class="chip-group chip-group--filters">
-
           <button
-
             class="stat-chip total active"
-
             data-filter="all"
-
             onclick="setFilter('all', this)"
-
           >
-
             <span>All</span><span class="stat-num" id="statTotal">—</span>
-
           </button>
-
           <button
-
             class="stat-chip low"
-
             data-filter="low"
-
             onclick="setFilter('low', this)"
-
           >
-
-            <span>⚠ Low</span><span class="stat-num" id="statLow">—</span>
-
+            <span><i class="fa-solid fa-triangle-exclamation"></i> Low</span><span class="stat-num" id="statLow">—</span>
           </button>
-
           <button
-
             class="stat-chip expiring"
-
             data-filter="expiring"
-
             onclick="setFilter('expiring', this)"
-
           >
-
-            <span>⏳ Expiring</span
-
+            <span><i class="fa-solid fa-hourglass-half"></i> Expiring</span
             ><span class="stat-num" id="statExpiring">—</span>
-
           </button>
-
           <button
-
             class="stat-chip expired"
-
             data-filter="expired"
-
             onclick="setFilter('expired', this)"
-
           >
-
-            <span>🚫 Expired</span
-
+            <span><i class="fa-solid fa-ban"></i> Expired</span
             ><span class="stat-num" id="statExpired">—</span>
-
           </button>
-
         </div>
-
-
 
         <div class="chip-divider"></div>
 
-
-
         <!-- Owner nav chips -->
-
         <div class="chip-group chip-group--owners" id="ownerNavChips"></div>
-
       </div>
-
     </div>
-
-
 
     <!-- ── Bulk Action Bar ───────────────────────────────── -->
-
     <div class="bulk-action-bar hidden" id="bulkActionBar">
-
       <div class="bulk-inner">
-
         <!-- Top row on mobile: count left, cancel circle right -->
-
         <div class="bulk-inner-top">
-
           <span class="bulk-count" id="bulkCount">0 selected</span>
-
           <button
-
             class="bulk-cancel-circle"
-
             onclick="toggleBulkMode()"
-
             title="Exit selection"
-
           >
-
             ✕
-
           </button>
-
         </div>
-
         <!-- Action buttons row (wraps to two rows on mobile) -->
-
         <div class="bulk-btns">
-
           <button class="bulk-btn bulk-select-all" onclick="bulkSelectAll()">
-
             Select All
-
           </button>
-
           <button class="bulk-btn bulk-deselect" onclick="bulkDeselectAll()">
-
             Deselect All
-
           </button>
-
           <select class="bulk-select-field" id="bulkOwnerSel">
-
             <option value="">Change Owner…</option>
-
           </select>
-
           <select class="bulk-select-field" id="bulkCatSel">
-
             <option value="">Change Category…</option>
-
           </select>
-
           <button class="bulk-btn bulk-delete" onclick="bulkDelete()">
-
             <i class="fa-solid fa-trash"></i> Delete Selected
-
           </button>
-
           <button class="bulk-btn bulk-cancel" onclick="toggleBulkMode()">
-
             ✕ Cancel
-
           </button>
-
         </div>
-
       </div>
-
     </div>
-
-
 
     <!-- ── Main ───────────────────────────────────────────── -->
-
     <main class="main">
-
       <!-- Active filter label -->
-
       <div class="active-filter-bar hidden" id="activeFilterBar">
-
         <span id="activeFilterLabel"></span>
-
         <button
-
           onclick="setFilter('all', document.querySelector('.stat-chip.total'))"
-
         >
-
           ✕ Clear filter
-
         </button>
-
       </div>
-
-
 
       <!-- Search -->
-
       <section class="search-section">
-
         <p class="intro">
-
           MediHome is a simple, cloud-based project created by Shivam Soni to store
-
           and update information about medicines available at our home, keeping
-
           them organised and providing information about their availability.
-
         </p>
-
-
 
         <label class="search-label" for="searchInput">Search Medicines</label>
-
         <div class="search-wrap">
-
           <span class="search-icon">🔍</span>
-
           <input
-
             type="text"
-
             id="searchInput"
-
             placeholder='Symptoms, name, serial no. or keywords — e.g. "fever", "#05", "eye pain"'
-
             autocomplete="off"
-
             spellcheck="false"
-
           />
-
           <button id="clearSearch" class="hidden" title="Clear search">
-
             ✕
-
           </button>
-
         </div>
-
         <p class="search-hint">
-
           Press <kbd>Enter</kbd> to jump through matches one by one
-
         </p>
-
       </section>
-
-
 
       <!-- Reorder Alert -->
-
       <section class="reorder-section hidden" id="reorderSection">
-
         <div class="reorder-header">
-
           <div class="reorder-title">
-
             🔴 Reorder Needed
-
             <span class="reorder-badge" id="reorderCount">0</span>
-
           </div>
-
           <span class="reorder-sub">Click any card to locate it</span>
-
         </div>
-
         <div class="reorder-grid" id="reorderGrid"></div>
-
       </section>
 
-
-
       <!-- Share Button -->
-
       <button id="shareBtn">Share</button>
 
-
-
       <!-- Medicine List -->
-
       <div id="medicineList"></div>
-
     </main>
 
-
-
     <p class="app-credit">
-
       Built by Shivam Soni ·
-
       <a
-
         href="https://wa.me/919005325544?text=Hi%20Shivam%2C%20I%20found%20an%20issue%20in%20MediHome%3A%20"
-
         target="_blank"
-
         rel="noopener"
-
         >Report a bug</a
-
       >
-
     </p>
 
-
-
     <!-- ── Add / Edit Modal ───────────────────────────────── -->
-
     <div id="modal" class="hidden">
-
       <div
-
         class="modal-box"
-
         role="dialog"
-
         aria-modal="true"
-
         aria-labelledby="modalTitle"
-
       >
-
         <div class="modal-header">
-
           <h2 class="modal-title" id="modalTitle">Add Medicine</h2>
-
           <button class="modal-close" onclick="closeModal()" aria-label="Close">
-
             ✕
-
           </button>
-
         </div>
-
-
 
         <div class="modal-body">
-
           <input type="hidden" id="medId" />
-
           <div class="form-grid">
-
             <div class="form-group full">
-
               <div class="name-id-row">
-
                 <div class="form-group name-field">
-
                   <label class="form-label" for="medName"
-
                     >Medicine Name <span class="req">*</span></label
-
                   >
-
                   <input
-
                     class="form-input"
-
                     type="text"
-
                     id="medName"
-
                     placeholder="e.g. Cholerasol"
-
                   />
-
                 </div>
-
                 <div class="form-group id-field">
-
                   <label class="form-label" for="medSerialId"
-
                     >ID
-
                     <span
-
                       style="font-weight: 400; color: var(--text-muted); font-size: 0.7rem"
-
                       >(optional)</span
-
                     ></label
-
                   >
-
                   <input
-
                     class="form-input"
-
                     type="number"
-
                     min="1"
-
                     step="1"
-
                     id="medSerialId"
-
                     placeholder="Auto"
-
                   />
-
                   <span class="field-error hidden" id="medSerialIdError"></span>
-
                 </div>
-
               </div>
-
             </div>
-
-
 
             <!-- Medicine Image -->
-
             <div class="form-group full" id="medImageGroup">
-
               <label class="form-label"
-
                 >Medicine Image
-
                 <span
-
                   style="
-
                     font-weight: 400;
-
                     color: var(--text-muted);
-
                     font-size: 0.7rem;
-
                   "
-
                   >(optional)</span
-
                 ></label
-
               >
-
               <div class="img-upload-tabs">
-
                 <button
-
                   type="button"
-
                   class="img-tab active"
-
                   id="imgTabUpload"
-
                   onclick="switchImgTab('upload')"
-
                 >
-
                   📁 Upload File
-
                 </button>
-
                 <button
-
                   type="button"
-
                   class="img-tab"
-
                   id="imgTabUrl"
-
                   onclick="switchImgTab('url')"
-
                 >
-
                   🔗 Image URL
-
                 </button>
-
               </div>
-
               <div id="imgPanelUpload" class="img-panel">
-
                 <label
-
                   class="img-drop-zone"
-
                   id="imgDropZone"
-
                   for="medImageFile"
-
                 >
-
                   <div id="imgDropContent">
-
                     <span class="img-drop-icon">🖼️</span>
-
                     <span class="img-drop-text"
-
                       >Click to upload or drag & drop</span
-
                     >
-
                     <span class="img-drop-sub">PNG, JPG, WEBP (max 1 MB)</span>
-
                   </div>
-
                   <img
-
                     id="imgPreviewUpload"
-
                     class="img-preview hidden"
-
                     alt="Preview"
-
                   />
-
                 </label>
-
                 <input
-
                   type="file"
-
                   id="medImageFile"
-
                   accept="image/png,image/jpeg,image/webp,image/gif"
-
                   class="hidden"
-
                   onchange="handleImageFile(event)"
-
                 />
-
                 <button
-
                   type="button"
-
                   class="img-clear-btn hidden"
-
                   id="imgClearUpload"
-
                   onclick="clearImage()"
-
                 >
-
                   ✕ Remove image
-
                 </button>
-
               </div>
-
               <div id="imgPanelUrl" class="img-panel hidden">
-
                 <input
-
                   class="form-input"
-
                   type="url"
-
                   id="medImageUrl"
-
                   placeholder="https://example.com/medicine.jpg"
-
                   oninput="handleImageUrl()"
-
                 />
-
                 <img
-
                   id="imgPreviewUrl"
-
                   class="img-preview-url hidden"
-
                   alt="Preview"
-
                 />
-
                 <button
-
                   type="button"
-
                   class="img-clear-btn hidden"
-
                   id="imgClearUrl"
-
                   onclick="clearImageUrl()"
-
                 >
-
                   ✕ Remove URL
-
                 </button>
-
               </div>
-
               <input type="hidden" id="medImageData" />
-
             </div>
 
-
-
             <div class="form-group full">
-
               <label class="form-label" for="medDesc"
-
                 >Description <span class="req">*</span></label
-
               >
-
               <textarea
-
                 class="form-input form-textarea"
-
                 id="medDesc"
-
                 placeholder="One-line description of what this medicine does"
-
               ></textarea>
-
             </div>
 
-
-
             <div class="form-group">
-
               <label class="form-label" for="medType"
-
                 >Type <span class="req">*</span></label
-
               >
-
               <div class="select-mgmt-row">
-
                 <select class="form-select" id="medType">
-
                   <option value="homeopathic">Homeopathic</option>
-
                   <option value="allopathic">Allopathic</option>
-
                   <option value="ayurvedic">Ayurvedic</option>
-
                 </select>
-
                 <button
-
                   type="button"
-
                   class="btn-manage-inline"
-
                   onclick="manageField('type')"
-
                   title="Add/Edit/Remove Types"
-
                 >
-
                   <i class="fa-solid fa-gear"></i>
-
                 </button>
-
               </div>
-
             </div>
 
-
-
             <div class="form-group">
-
               <label class="form-label" for="medFormField"
-
                 >Form <span class="req">*</span></label
-
               >
-
               <div class="select-mgmt-row">
-
                 <select
-
                   class="form-select"
-
                   id="medFormField"
-
                   onchange="onFormSelectChange()"
-
                 >
-
                   <option value="">— Select form —</option>
-
                   <option value="Eye Drops">Eye Drops</option>
-
                   <option value="Drops">Drops</option>
-
                   <option value="Edible Drops">Edible Drops</option>
-
                   <option value="Tablets">Tablets</option>
-
                   <option value="Chewable Tablets">Chewable Tablets</option>
-
                   <option value="Cream">Cream</option>
-
                   <option value="Ointment">Ointment</option>
-
                   <option value="Gel/Liquid">Gel/Liquid</option>
-
                   <option value="Tonic">Tonic</option>
-
                   <option value="Bandage">Bandage</option>
-
                   <option value="Rehydration Pouch">Rehydration Pouch</option>
-
                   <option value="Candy/Lozenges">Candy/Lozenges</option>
-
                   <option value="Hair Oil">Hair Oil</option>
-
                 </select>
-
                 <button
-
                   type="button"
-
                   class="btn-manage-inline"
-
                   onclick="manageField('form')"
-
                   title="Add/Edit/Remove Forms"
-
                 >
-
                   <i class="fa-solid fa-gear"></i>
-
                 </button>
-
               </div>
-
             </div>
 
-
-
             <div class="form-group">
-
               <label class="form-label" for="medOwner"
-
                 >Used By <span class="req">*</span></label
-
               >
-
               <div class="select-mgmt-row">
-
                 <select class="form-select" id="medOwner">
-
                   <option value="shared">👨‍👩‍👧 Shared by All</option>
-
                   <option value="babita">👩 Mumma (Babita)</option>
-
                   <option value="shivam">👦 Shivam</option>
-
                 </select>
-
                 <button
-
                   type="button"
-
                   class="btn-manage-inline"
-
                   onclick="manageField('owner')"
-
                   title="Add/Edit/Remove Owners"
-
                 >
-
                   <i class="fa-solid fa-gear"></i>
-
                 </button>
-
               </div>
-
             </div>
 
-
-
             <div class="form-group">
-
               <label class="form-label" for="medCategory"
-
                 >Category <span class="req">*</span></label
-
               >
-
               <div class="select-mgmt-row">
-
                 <select
-
                   class="form-select"
-
                   id="medCategory"
-
                   onchange="onCategoryChange()"
-
                 >
-
                   <option value="">— Select category —</option>
-
                   <option value="Fever, Cold & Cough Care">
-
                     🌡️ Fever, Cold & Cough Care
-
                   </option>
-
                   <option value="Mouth Ulcer Care">🦷 Mouth Ulcer Care</option>
-
                   <option value="Pain Relief & Injury Care">
-
                     🤕 Pain Relief & Injury Care
-
                   </option>
-
                   <option value="Digestion, Gut Health & Hydration">
-
                     🤢 Digestion, Gut Health & Hydration
-
                   </option>
-
                   <option value="Allergies & Infections">
-
                     🛡️ Allergies & Infections
-
                   </option>
-
                   <option value="Uterus & Women's Health">
-
                     🩺 Uterus & Women's Health
-
                   </option>
-
                   <option value="Eye Care">👁️ Eye Care</option>
-
                   <option value="Jaw Pain Care">🦴 Jaw Pain Care</option>
-
                   <option value="Hair & Nail Health">
-
                     💇‍♀️ Hair & Nail Health
-
                   </option>
-
                   <option value="Cold & Cough Care">
-
                     🌡️ Cold & Cough Care
-
                   </option>
-
                   <option value="Gut & Appetite Care">
-
                     🤢 Gut & Appetite Care
-
                   </option>
-
                   <option value="Hair Care">💇‍♂️ Hair Care</option>
-
                   <option value="Debility & Wellness">
-
                     💪 Debility & Wellness
-
                   </option>
-
                 </select>
-
                 <button
-
                   type="button"
-
                   class="btn-manage-inline"
-
                   onclick="manageField('category')"
-
                   title="Add/Edit/Remove Categories"
-
                 >
-
                   <i class="fa-solid fa-gear"></i>
-
                 </button>
-
               </div>
-
               <!-- shown when "Create new category" is chosen -->
-
               <input
-
                 class="form-input hidden"
-
                 type="text"
-
                 id="medCategoryCustom"
-
                 placeholder="Type your new category name…"
-
                 style="margin-top: 6px"
-
               />
-
             </div>
 
-
-
             <div class="form-group">
-
               <label class="form-label" for="medQuantity"
-
                 >Quantity <span class="req">*</span></label
-
               >
-
               <div class="form-row">
-
                 <input
-
                   class="form-input"
-
                   type="number"
-
                   id="medQuantity"
-
                   min="0"
-
                   step="1"
-
                   placeholder="e.g. 1"
-
                   oninput="onQuantityChange()"
-
                 />
-
                 <input
-
                   class="form-input"
-
                   type="text"
-
                   id="medQuantityUnit"
-
                   placeholder="bottle / tablets…"
-
                   style="flex: 1.5"
-
                   oninput="onQuantityChange()"
-
                 />
-
               </div>
-
             </div>
-
-
 
             <div class="form-group">
-
               <label class="form-label" for="medExpiry">Expiry Date</label>
-
               <input class="form-input" type="month" id="medExpiry" />
-
             </div>
 
-
-
             <div class="form-group full">
-
               <div class="form-checkrow">
-
                 <label class="check-label">
-
                   <input type="checkbox" id="medFrequent" />
-
                   ⭐ Frequently Used
-
                 </label>
-
                 <!-- Low stock: shown for bottles/tubes (manual), hidden for countables (auto) -->
-
                 <label class="check-label" id="lowStockRow">
-
                   <input type="checkbox" id="medLowStock" />
-
                   ⚠ Mark as Low Stock
-
                 </label>
-
                 <span class="auto-low-label hidden" id="autoLowLabel"
-
                   >⚠ Low stock auto-detected by quantity</span
-
                 >
-
               </div>
-
             </div>
-
-
 
             <div class="form-group full">
-
               <label class="form-label" for="medNotes"
-
                 >Notes / Storage Info</label
-
               >
-
               <input
-
                 class="form-input"
-
                 type="text"
-
                 id="medNotes"
-
                 placeholder="e.g. Stored in almirah, check expiry, used for…"
-
               />
-
             </div>
-
           </div>
-
         </div>
-
-
 
         <div class="modal-footer">
-
           <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-
           <button class="btn-save" id="saveBtn">Save Medicine</button>
-
         </div>
-
       </div>
-
     </div>
-
-
 
     <!-- ── Manage Categories / Owners / Forms Modal ───────── -->
-
     <div id="mgmtModal" class="hidden mgmt-modal-overlay">
-
       <div class="mgmt-modal-box">
-
         <div class="mgmt-modal-header">
-
           <h3 id="mgmtModalTitle">Manage Items</h3>
-
           <button
-
             class="modal-close"
-
             onclick="closeMgmtModal()"
-
             aria-label="Close"
-
           >
-
             ✕
-
           </button>
-
         </div>
-
         <div class="mgmt-modal-body">
-
           <div class="mgmt-tabs" id="mgmtTabs">
-
             <button class="mgmt-tab-btn" onclick="manageField('owner')" data-field="owner">👤 Owners</button>
-
             <button class="mgmt-tab-btn" onclick="manageField('category')" data-field="category">📂 Categories</button>
-
             <button class="mgmt-tab-btn" onclick="manageField('type')" data-field="type">🧬 Types</button>
-
             <button class="mgmt-tab-btn" onclick="manageField('form')" data-field="form">💊 Forms</button>
-
           </div>
-
           <div class="mgmt-add-row">
-
             <input
-
               type="text"
-
               id="mgmtSearchInput"
-
               class="form-input"
-
               placeholder="Search…"
-
               oninput="filterMgmtList()"
-
             />
-
           </div>
-
           <div class="mgmt-list" id="mgmtListContainer"></div>
-
         </div>
-
         <button class="mgmt-fab" onclick="promptAddMgmtItem()" title="Add new entry" aria-label="Add new entry">+</button>
-
       </div>
-
     </div>
-
     <div class="toast" id="toast"></div>
-
     <!-- ── Quantity History Modal ──────────────────────────── -->
-
     <div id="histModal" class="hidden">
-
       <div
-
         class="hist-modal-box"
-
         role="dialog"
-
         aria-modal="true"
-
         aria-labelledby="histModalTitle"
-
         onclick="event.stopPropagation()"
-
       >
-
         <div class="modal-header">
-
           <h2 class="modal-title" id="histModalTitle">Quantity History</h2>
-
           <button
-
             class="modal-close"
-
             onclick="closeHistoryModal()"
-
             aria-label="Close"
-
           >
-
             ✕
-
           </button>
-
         </div>
-
         <div class="modal-body" id="histModalBody"></div>
-
       </div>
-
     </div>
-
     <!-- hidden compat elements for JS references -->
-
     <button id="themeToggleBtn" style="display: none">🌙</button>
-
     <button id="bulkToggleBtn" style="display: none"></button>
-
     <div class="undo-toast hidden" id="undoToast">
-
       <span id="undoToastMsg"></span>
-
       <span class="undo-countdown" id="undoCountdown"></span>
-
       <button class="undo-btn" id="undoBtn" onclick="commitUndo()">
-
         ↩ Undo
-
       </button>
-
     </div>
-
-
 
     <!-- ── Go To Top (left side) ──────────────────────────── -->
-
     <button
-
       id="goTopBtn"
-
       class="go-top-btn"
-
       aria-label="Go to top"
-
       title="Back to top"
-
     >
-
       ↑
-
     </button>
 
-
-
     <!-- ── Image Viewer Modal ─────────────────────────────────── -->
-
     <div id="imgViewerModal" class="hidden">
-
       <div class="img-viewer-box" onclick="event.stopPropagation()">
-
         <div class="modal-header">
-
           <h2 class="modal-title" id="imgViewerTitle">Medicine Image</h2>
-
           <button
-
             class="modal-close"
-
             onclick="closeImgViewer()"
-
             aria-label="Close"
-
           >
-
             ✕
-
           </button>
-
         </div>
-
         <div class="img-viewer-body">
-
           <img id="imgViewerImg" src="" alt="Medicine Image" />
-
         </div>
-
       </div>
-
     </div>
 
-
-
     <!-- ── Scripts ────────────────────────────────────────── -->
-
     <!-- Firebase SDK (CDN - no npm needed) -->
-
     <script type="module">
-
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
       import {
-
         getDatabase,
-
         ref,
-
         set,
-
         onValue,
-
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-
-
       const firebaseConfig = {
-
         apiKey: "AIzaSyANbbAw3w8L5uX-C0jRqYvhHaLZ4PWXDn0",
-
         authDomain: "medihome-7fa66.firebaseapp.com",
-
         databaseURL: "https://medihome-7fa66-default-rtdb.firebaseio.com",
-
         projectId: "medihome-7fa66",
-
         storageBucket: "medihome-7fa66.firebasestorage.app",
-
         messagingSenderId: "359639452263",
-
         appId: "1:359639452263:web:dafa12656433f50bd922c2",
-
       };
 
-
-
       const app = initializeApp(firebaseConfig);
-
       const db = getDatabase(app);
-
       const dbRef = ref(db, "medicines");
 
-
-
       // Expose to app.js (non-module)
-
       window._fbSet = (data) => set(dbRef, data);
-
       window._fbListen = (cb) => onValue(dbRef, (snap) => cb(snap.val()));
-
     </script>
-
-
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
     <script src="data.31d9c4.js"></script>
-
     <script src="app.e47a92.js"></script>
 
-
-
     <!-- Unregister any previously installed service worker / clear old PWA caches -->
-
     <script>
-
       if ("serviceWorker" in navigator) {
-
         navigator.serviceWorker.getRegistrations().then((regs) => {
-
           regs.forEach((reg) => reg.unregister());
-
         });
-
       }
-
       if (window.caches) {
-
         caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-
       }
-
     </script>
-
   </body>
-
 </html>
