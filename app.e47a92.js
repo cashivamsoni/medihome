@@ -82,7 +82,7 @@ function setHeaderHeightVar() {
 function loadData() {
   // Show loading state
   document.getElementById('medicineList').innerHTML =
-    '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading from cloud…</p></div>';
+    '<div class="empty-state"><div class="loading-spinner" role="status" aria-label="Loading"></div><p>Loading from cloud…</p></div>';
 
   window._fbListen(data => {
     if (data && data.medicines && Array.isArray(data.medicines)) {
@@ -409,8 +409,8 @@ function renderMedicineCard(m, serialNum) {
         </div>
         <div class="card-actions">
           ${serial}
-          <button class="btn-icon" onclick="openEdit('${m.id}')" title="Edit">✏️</button>
-          <button class="btn-icon btn-delete" onclick="deleteMedicine('${m.id}')" title="Delete">🗑️</button>
+          <button class="btn-icon" onclick="openEdit('${m.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn-icon btn-delete" onclick="deleteMedicine('${m.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <div class="card-body">
@@ -427,8 +427,8 @@ function renderMedicineCard(m, serialNum) {
         <span class="compact-qty">${m.quantity === 0 ? 'Finished' : `${m.quantity} ${m.quantityUnit}`}</span>
         <span class="compact-expiry ${compactExpiryClass}">${compactExpiryText}</span>
         <span class="compact-actions">
-          <button class="btn-icon" onclick="openEdit('${m.id}')" title="Edit">✏️</button>
-          <button class="btn-icon btn-delete" onclick="deleteMedicine('${m.id}')" title="Delete">🗑️</button>
+          <button class="btn-icon" onclick="openEdit('${m.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn-icon btn-delete" onclick="deleteMedicine('${m.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </span>
       </div>
       <div class="card-qty-row">
@@ -1259,8 +1259,8 @@ function renderMgmtList() {
       <div class="mgmt-item">
         <span>${getCategoryIcon(c)}${escHtml(c)}</span>
         <div class="mgmt-actions">
-          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
-          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
+          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>`; }).join('');
   } else if (currentMgmtField === 'owner') {
@@ -1268,8 +1268,8 @@ function renderMgmtList() {
       <div class="mgmt-item">
         <span>${escHtml(o.label)}</span>
         <div class="mgmt-actions">
-          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
-          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
+          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>`).join('');
   } else if (currentMgmtField === 'form') {
@@ -1280,8 +1280,8 @@ function renderMgmtList() {
       <div class="mgmt-item">
         <span>${getFormIcon(f)}${escHtml(f)}</span>
         <div class="mgmt-actions">
-          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
-          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
+          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>`; }).join('');
   } else if (currentMgmtField === 'type') {
@@ -1292,8 +1292,8 @@ function renderMgmtList() {
       <div class="mgmt-item">
         <span>${escHtml(formatTypeLabel(t))}</span>
         <div class="mgmt-actions">
-          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit">✏️</button>
-          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete">🗑️</button>
+          <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>`; }).join('');
   }
