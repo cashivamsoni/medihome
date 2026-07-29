@@ -101,16 +101,30 @@
               <i class="fa-solid fa-list" id="menuViewIcon"></i> <span id="menuViewLabel">Compact View</span>
             </button>
             <div class="menu-sort-wrap">
-              <select
-                class="menu-sort-select"
-                id="menuSortSel"
-                onchange="setSortOrder(this.value)"
+              <button
+                type="button"
+                class="menu-action-btn menu-sort-btn"
+                id="menuSortBtn"
+                onclick="toggleSortDropdown()"
               >
-                <option value="expiry">⏳ Sort by: Expiry (Soonest→Latest)</option>
-                <option value="name">🔤 Sort by: Name (A→Z)</option>
-                <option value="quantity">📦 Sort by: Quantity (High→Low)</option>
-                <option value="added">🕐 Sort by: Recently Added</option>
-              </select>
+                <i class="fa-solid fa-hourglass-half" id="menuSortIcon"></i>
+                <span id="menuSortLabel">Sort by: Expiry (Soonest→Latest)</span>
+                <i class="fa-solid fa-caret-down menu-sort-caret"></i>
+              </button>
+              <div class="menu-sort-dropdown hidden" id="menuSortDropdown">
+                <button type="button" class="menu-sort-option" onclick="selectSortOption('expiry')">
+                  <i class="fa-solid fa-hourglass-half"></i> Sort by: Expiry (Soonest→Latest)
+                </button>
+                <button type="button" class="menu-sort-option" onclick="selectSortOption('name')">
+                  <i class="fa-solid fa-font"></i> Sort by: Name (A→Z)
+                </button>
+                <button type="button" class="menu-sort-option" onclick="selectSortOption('quantity')">
+                  <i class="fa-solid fa-box"></i> Sort by: Quantity (High→Low)
+                </button>
+                <button type="button" class="menu-sort-option" onclick="selectSortOption('added')">
+                  <i class="fa-solid fa-clock"></i> Sort by: Recently Added
+                </button>
+              </div>
             </div>
             <button
               class="menu-action-btn"
@@ -696,6 +710,7 @@
     <button id="themeToggleBtn" style="display: none">🌙</button>
     <button id="bulkToggleBtn" style="display: none"></button>
     <div class="undo-toast hidden" id="undoToast">
+      <i class="fa-solid fa-pen" id="undoToastIcon"></i>
       <span id="undoToastMsg"></span>
       <span class="undo-countdown" id="undoCountdown"></span>
       <button class="undo-btn" id="undoBtn" onclick="commitUndo()">
