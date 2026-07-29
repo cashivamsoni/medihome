@@ -1568,7 +1568,12 @@ function splitFormIcon(form) {
 // ── Toast ─────────────────────────────────────────────────
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  const msgEl = document.getElementById('toastMsg');
+  const iconEl = document.getElementById('toastIcon');
+  const cleanMsg = msg.replace(/\s*✓\s*$/, '');
+  if (msgEl) msgEl.textContent = cleanMsg;
+  const icons = { success: 'fa-check', error: 'fa-triangle-exclamation', info: 'fa-circle-info' };
+  if (iconEl) iconEl.className = `fa-solid ${icons[type] || icons.success}`;
   t.className = `toast toast-${type} show`;
   setTimeout(() => t.classList.remove('show'), 4000);
 }
