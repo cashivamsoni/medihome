@@ -1964,11 +1964,12 @@ body.bulk-mode .main {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   text-align: center;
   box-sizing: border-box;
 }
 .bulk-btn i {
-  margin-right: 6px;
+  margin-right: 0;
 }
 .bulk-btn:hover {
   background: var(--teal-50);
