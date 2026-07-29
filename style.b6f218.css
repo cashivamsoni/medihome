@@ -1621,6 +1621,10 @@ body.bulk-mode .go-top-btn {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.mgmt-tab-btn i {
+  font-size: 0.75rem;
+  margin-right: 4px;
+}
 .mgmt-tab-btn:hover {
   background: var(--teal-50);
   border-color: var(--teal-200);
@@ -1962,6 +1966,9 @@ body.bulk-mode .main {
   justify-content: center;
   text-align: center;
   box-sizing: border-box;
+}
+.bulk-btn i {
+  margin-right: 6px;
 }
 .bulk-btn:hover {
   background: var(--teal-50);
