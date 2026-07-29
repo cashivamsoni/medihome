@@ -415,7 +415,7 @@ function renderMedicineCard(m, serialNum) {
       <div class="card-body">
         <h3 class="card-name">${m.name}</h3>
         <p class="card-desc">${m.description}</p>
-        ${m.notes?`<p class="card-notes">💡 ${m.notes}</p>`:''}
+        ${m.notes?`<p class="card-notes"><i class="fa-solid fa-lightbulb"></i> ${m.notes}</p>`:''}
         <div class="card-meta">
           <span class="meta-item ${isLow?'meta-low':''}"><i class="fa-solid fa-box"></i> ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
           <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}"><i class="fa-solid fa-calendar"></i> ${formatExpiry(m.expiryDate)}</span>
