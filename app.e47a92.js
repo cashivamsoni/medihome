@@ -401,7 +401,7 @@ function renderMedicineCard(m, serialNum) {
         <div class="card-form-icon">${formInfo.icon}</div>
         <div class="card-badges">
           <span class="badge ${typeBadgeClass(m.type)}"${typeBadgeStyle(m.type)}>${formatTypeLabel(m.type)}</span>
-          ${m.frequentlyUsed?'<span class="badge badge-freq">⭐ Frequent</span>':''}
+          ${m.frequentlyUsed?'<span class="badge badge-freq"><i class="fa-solid fa-star"></i> Frequent</span>':''}
           ${isLow?'<span class="badge badge-low">⚠ Low Stock</span>':''}
           ${isExpired?'<span class="badge badge-expired">Expired</span>':''}
           ${!isExpired&&isExpiringSoon?'<span class="badge badge-expiring">Exp. Soon</span>':''}
@@ -417,8 +417,8 @@ function renderMedicineCard(m, serialNum) {
         <p class="card-desc">${m.description}</p>
         ${m.notes?`<p class="card-notes">💡 ${m.notes}</p>`:''}
         <div class="card-meta">
-          <span class="meta-item ${isLow?'meta-low':''}">📦 ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
-          <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}">📅 ${formatExpiry(m.expiryDate)}</span>
+          <span class="meta-item ${isLow?'meta-low':''}"><i class="fa-solid fa-box"></i> ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
+          <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}"><i class="fa-solid fa-calendar"></i> ${formatExpiry(m.expiryDate)}</span>
           <span class="meta-item">${formInfo.icon}${formInfo.text}</span>
         </div>
       </div>
