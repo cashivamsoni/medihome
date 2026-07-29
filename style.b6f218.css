@@ -754,6 +754,9 @@ body.bulk-mode #shareBtn {
   background: #FEF9C3;
   color: #854D0E;
 }
+.badge-freq i {
+  font-size: 0.68rem;
+}
 .badge-low {
   background: var(--red-50);
   color: var(--red-600);
@@ -802,6 +805,9 @@ body.bulk-mode #shareBtn {
   display: flex;
   align-items: center;
   gap: 3px;
+}
+.meta-item i {
+  font-size: 0.68rem;
 }
 .meta-low {
   color: var(--red-500);
@@ -1031,6 +1037,9 @@ body.bulk-mode #shareBtn {
   color: var(--text-secondary);
   cursor: pointer;
   font-weight: 500;
+}
+.check-label i {
+  font-size: 0.78rem;
 }
 .check-label input[type="checkbox"] {
   width: 16px;
