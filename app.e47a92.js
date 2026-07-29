@@ -714,6 +714,10 @@ function initScrollFeatures() {
 // ── Modal open/close with body-scroll lock ────────────────
 // Reference-counted so that closing one modal never unlocks the body
 // while another modal (e.g. Add/Edit opened underneath Manage) is still open.
+// Every open/close below is guarded by the modal's own hidden-state so a
+// double-tap or a stray duplicate call can never lock/unlock more than once
+// per real open/close — that mismatch was what let the counter drift and
+// leave the body permanently scroll-locked ("frozen") after repeated use.
 let openModalCount = 0;
 function lockBodyScroll() {
   openModalCount++;
@@ -723,17 +727,38 @@ function unlockBodyScroll() {
   openModalCount = Math.max(0, openModalCount - 1);
   if (openModalCount === 0) document.body.classList.remove('modal-open');
 }
+// Self-healing safety net: if nothing is actually visible anymore but the
+// counter thinks otherwise (or vice versa), reconcile so scroll never gets
+// stuck locked (or unlocked while a modal is genuinely open).
+function reconcileBodyScrollLock() {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal'].some(id => {
+    const el = document.getElementById(id);
+    return el && !el.classList.contains('hidden');
+  });
+  if (!anyOpen && openModalCount !== 0) {
+    openModalCount = 0;
+    document.body.classList.remove('modal-open');
+  } else if (anyOpen && openModalCount === 0) {
+    openModalCount = 1;
+    document.body.classList.add('modal-open');
+  }
+}
 
 function openModal() {
-  document.getElementById('modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modal').classList.add('active'), 10);
+  const modal = document.getElementById('modal');
+  if (!modal.classList.contains('hidden')) return; // already open — ignore duplicate call
+  modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeModal() {
-  document.getElementById('modal').classList.remove('active');
-  setTimeout(() => document.getElementById('modal').classList.add('hidden'), 250);
+  const modal = document.getElementById('modal');
+  if (modal.classList.contains('hidden')) return; // already closed — ignore duplicate call
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
   editingId = null;
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 // Close-on-outside-click, but ignore text-selection drags: only close if
 // BOTH the mousedown and the click landed directly on the backdrop itself,
@@ -750,18 +775,21 @@ bindOverlayClose(document.getElementById('modal'), closeModal);
 bindOverlayClose(document.getElementById('mgmtModal'), closeMgmtModal);
 
 function openImgViewer(src, name) {
+  const modal = document.getElementById('imgViewerModal');
+  if (!modal.classList.contains('hidden')) return; // already open — ignore duplicate call
   document.getElementById('imgViewerImg').src = src;
   document.getElementById('imgViewerTitle').textContent = name || 'Medicine Image';
-  const modal = document.getElementById('imgViewerModal');
   modal.classList.remove('hidden');
   setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeImgViewer() {
   const modal = document.getElementById('imgViewerModal');
+  if (modal.classList.contains('hidden')) return; // already closed — ignore duplicate call
   modal.classList.remove('active');
   setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 
 bindOverlayClose(document.getElementById('imgViewerModal'), closeImgViewer);
@@ -1224,12 +1252,14 @@ function manageField(fieldType) {
 
 function closeMgmtModal() {
   const modal = document.getElementById('mgmtModal');
-  if (modal) modal.classList.add('hidden');
+  if (!modal || modal.classList.contains('hidden')) return; // already closed — ignore duplicate call
+  modal.classList.add('hidden');
   unlockBodyScroll();
   // Refresh the underlying add/edit form dropdowns to reflect any changes made
   populateAllDropdowns();
   renderOwnerNavChips();
   renderAll();
+  setTimeout(reconcileBodyScrollLock, 50);
 }
 
 // Lightweight fuzzy match: true if every typed character appears in order
