@@ -793,6 +793,9 @@ body.bulk-mode #shareBtn {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   margin-bottom: 8px;
 }
+.card-notes i {
+  font-size: 0.7rem;
+}
 .card-meta {
   display: flex;
   flex-wrap: wrap;
