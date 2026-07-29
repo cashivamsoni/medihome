@@ -58,9 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedSort = localStorage.getItem('sortOrder');
   if (savedSort) {
     sortOrder = savedSort;
-    const sel = document.getElementById('menuSortSel');
-    if (sel) sel.value = sortOrder;
   }
+  updateSortLabel();
   loadData(); // Firebase listener triggers renderAll() when data arrives
 });
 
@@ -1141,7 +1140,7 @@ function saveMedicine() {
     pushUndo(`Edited "${name}"`);
     const idx = medicines.findIndex(m => m.id === editingId);
     if (idx !== -1) medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
-    showUndoToast(`✏️ "${name}" updated — tap Undo within 6s`);
+    showUndoToast(`"${name}" updated — tap Undo within 6s`, 'fa-pen');
   } else {
     medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId });
     showToast('Medicine added ✓', 'success');
@@ -1164,7 +1163,7 @@ function deleteMedicine(id) {
   exitBulkMode();
   searchMode = false;
   renderAll();
-  showUndoToast(`🗑️ "${m.name}" deleted — tap Undo within 6s`);
+  showUndoToast(`"${m.name}" deleted — tap Undo within 6s`, 'fa-trash');
 }
 
 // ── Quick quantity adjust ─────────────────────────────────
@@ -1329,7 +1328,7 @@ function addMgmtValue(val) {
   pushUndo(`Added "${val}" to ${currentMgmtField}`);
   saveData();
   renderMgmtList();
-  showUndoToast(`✅ "${val}" added — tap Undo within 6s`);
+  showUndoToast(`"${val}" added — tap Undo within 6s`, 'fa-check');
 }
 
 function editMgmtItem(idx) {
@@ -1376,7 +1375,7 @@ function editMgmtItem(idx) {
   pushUndo(`Edited ${currentMgmtField} "${current}" → "${updated}"`);
   saveData();
   renderMgmtList();
-  showUndoToast(`✏️ "${updated}" saved — tap Undo within 6s`);
+  showUndoToast(`"${updated}" saved — tap Undo within 6s`, 'fa-pen');
 }
 
 // When deleting a category/form/type/owner that's in use, ask the user where
@@ -1450,7 +1449,7 @@ function deleteMgmtItem(idx) {
   pushUndo(`Deleted ${currentMgmtField}`);
   saveData();
   renderMgmtList();
-  showUndoToast(`🗑️ Deleted — tap Undo within 6s`);
+  showUndoToast(`Deleted — tap Undo within 6s`, 'fa-trash');
 }
 
 // ── Stats ─────────────────────────────────────────────────
@@ -1595,13 +1594,15 @@ function pushUndo(msg) {
 
 let _undoCountdownInterval = null;
 
-function showUndoToast(msg) {
+function showUndoToast(msg, iconClass = 'fa-pen') {
   const toast = document.getElementById('undoToast');
   const msgEl = document.getElementById('undoToastMsg');
+  const iconEl = document.getElementById('undoToastIcon');
   const cdEl  = document.getElementById('undoCountdown');
   // Strip old "within Xs" suffix so msg stays clean
   const cleanMsg = msg.replace(/\s*—?\s*tap Undo within \ds/i, '');
   if (msgEl) msgEl.textContent = cleanMsg;
+  if (iconEl) iconEl.className = `fa-solid ${iconClass}`;
   toast.classList.remove('hidden');
   toast.classList.add('show');
 
@@ -1749,7 +1750,7 @@ function bulkDelete() {
   searchMode = false;
   exitBulkMode();
   renderAll();
-  showUndoToast(`🗑️ Deleted — tap Undo within 6s`);
+  showUndoToast(`Deleted — tap Undo within 6s`, 'fa-trash');
 }
 
 function bulkChangeOwner(ownerKey) {
@@ -1760,7 +1761,7 @@ function bulkChangeOwner(ownerKey) {
   const ownerName = (customOwners.find(o => o.key === ownerKey) || {}).short || ownerKey;
   exitBulkMode();
   renderAll();
-  showUndoToast(`✏️ Owner changed to ${ownerName}`);
+  showUndoToast(`Owner changed to ${ownerName}`, 'fa-pen');
 }
 
 function bulkChangeCategory(cat) {
@@ -1770,7 +1771,7 @@ function bulkChangeCategory(cat) {
   saveData();
   exitBulkMode();
   renderAll();
-  showUndoToast(`✏️ Category changed to ${cat}`);
+  showUndoToast(`Category changed to ${cat}`, 'fa-pen');
 }
 
 // Ctrl+P / Cmd+P triggers the same custom export
@@ -2006,8 +2007,40 @@ function updateMenuViewLabel() {
 function setSortOrder(val) {
   sortOrder = val;
   localStorage.setItem('sortOrder', val);
+  updateSortLabel();
   renderAll();
 }
+
+// ── Custom sort dropdown (native <select> can't render icons in its options) ──
+const SORT_OPTIONS = {
+  expiry:   { icon: 'fa-hourglass-half', label: 'Sort by: Expiry (Soonest→Latest)' },
+  name:     { icon: 'fa-font',           label: 'Sort by: Name (A→Z)' },
+  quantity: { icon: 'fa-box',            label: 'Sort by: Quantity (High→Low)' },
+  added:    { icon: 'fa-clock',          label: 'Sort by: Recently Added' }
+};
+function updateSortLabel() {
+  const cfg = SORT_OPTIONS[sortOrder] || SORT_OPTIONS.expiry;
+  const icon = document.getElementById('menuSortIcon');
+  const label = document.getElementById('menuSortLabel');
+  if (icon) icon.className = `fa-solid ${cfg.icon}`;
+  if (label) label.textContent = cfg.label;
+}
+function toggleSortDropdown() {
+  const dd = document.getElementById('menuSortDropdown');
+  if (dd) dd.classList.toggle('hidden');
+}
+function closeSortDropdown() {
+  const dd = document.getElementById('menuSortDropdown');
+  if (dd) dd.classList.add('hidden');
+}
+function selectSortOption(val) {
+  setSortOrder(val);
+  closeSortDropdown();
+}
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.menu-sort-wrap');
+  if (wrap && !wrap.contains(e.target)) closeSortDropdown();
+});
 
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -2034,19 +2067,20 @@ function toggleAppMenu() {
   if (isOpen) {
     menu.classList.add('hidden');
     btn.classList.remove('active');
+    closeSortDropdown();
   } else {
     menu.classList.remove('hidden');
     btn.classList.add('active');
     updateMenuThemeLabel();
     updateMenuBulkLabel();
     updateMenuViewLabel();
-    const sel = document.getElementById('menuSortSel');
-    if (sel) sel.value = sortOrder;
+    updateSortLabel();
   }
 }
 function closeAppMenu() {
   const menu = document.getElementById('appMenu');
   const btn  = document.getElementById('menuToggleBtn');
+  closeSortDropdown();
   if (menu) menu.classList.add('hidden');
   if (btn) btn.classList.remove('active');
 }
