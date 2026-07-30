@@ -337,6 +337,9 @@ body.modal-open {
   pointer-events: none;
   opacity: 0.5;
 }
+.search-icon i {
+  font-size: 0.95rem;
+}
 #searchInput {
   width: 100%;
   padding: 14px 50px 14px 46px;
