@@ -315,7 +315,7 @@ function renderMedicineList(list) {
   });
 
   if (!list.length) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>No medicines found. Try different keywords.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div><p>No medicines found. Try different keywords.</p></div>`;
     return;
   }
 
@@ -584,7 +584,7 @@ function renderMatchList(list) {
   if (!list.length) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
         <p>No available medicines match your search.</p>
         <p class="empty-sub">Try symptoms, name, or keywords.</p>
       </div>`;
