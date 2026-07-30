@@ -888,7 +888,9 @@ body.bulk-mode #shareBtn {
   max-width: 600px;
   /* max-height fills the overlay minus small breathing room */
   max-height: calc(100% - 50px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-lg);
   transform: translateY(20px);
   margin: 20px 0;
@@ -904,11 +906,9 @@ body.bulk-mode #shareBtn {
   justify-content: space-between;
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
   background: var(--surface);
-  z-index: 2;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  flex-shrink: 0;
 }
 .modal-title {
   font-family: "DM Serif Display", Georgia, serif;
@@ -935,6 +935,9 @@ body.bulk-mode #shareBtn {
 }
 .modal-body {
   padding: 14px 20px 18px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .modal-footer {
   display: flex;
@@ -944,6 +947,7 @@ body.bulk-mode #shareBtn {
   border-top: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  flex-shrink: 0;
 }
 
 /* ── Form ────────────────────────────────────────────────── */
