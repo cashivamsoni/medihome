@@ -2339,6 +2339,7 @@ function toggleAppMenu() {
   const btn  = document.getElementById('menuToggleBtn');
   const isOpen = !menu.classList.contains('hidden');
   if (isOpen) {
+    menu.classList.remove('menu-expanded'); // clip immediately so closing also animates cleanly
     menu.classList.add('hidden');
     btn.classList.remove('active');
     closeSortDropdown();
@@ -2350,13 +2351,21 @@ function toggleAppMenu() {
     updateMenuViewLabel();
     updateSortLabel();
     updateMenuBranchLabel();
+    // Wait for the max-height reveal to finish before allowing overflow —
+    // this is what makes the buttons fade in progressively with the drawer
+    // instead of popping in fully rendered before the drawer catches up.
+    menu.addEventListener('transitionend', function onEnd(e) {
+      if (e.propertyName !== 'max-height') return;
+      menu.removeEventListener('transitionend', onEnd);
+      if (!menu.classList.contains('hidden')) menu.classList.add('menu-expanded');
+    });
   }
 }
 function closeAppMenu() {
   const menu = document.getElementById('appMenu');
   const btn  = document.getElementById('menuToggleBtn');
   closeSortDropdown();
-  if (menu) menu.classList.add('hidden');
+  if (menu) { menu.classList.add('hidden'); menu.classList.remove('menu-expanded'); }
   if (btn) btn.classList.remove('active');
 }
 function updateMenuBulkLabel() {
