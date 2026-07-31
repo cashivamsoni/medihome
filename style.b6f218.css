@@ -1768,6 +1768,56 @@ body.bulk-mode .go-top-btn {
   transform: scale(1.06);
 }
 
+/* ── Branches modal ──────────────────────────────────────── */
+.branch-modal-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.branch-item-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+  min-width: 0;
+}
+.branch-item-name i.fa-house {
+  color: var(--teal-600);
+  flex-shrink: 0;
+}
+.branch-item-active {
+  border-color: var(--teal-300);
+  background: var(--teal-50);
+}
+[data-theme="dark"] .branch-item-active {
+  background: #16302C;
+  border-color: #1F4641;
+}
+.branch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.branch-badge-current {
+  background: var(--teal-600);
+  color: white;
+}
+.branch-badge-default {
+  background: #FEF9C3;
+  color: #854D0E;
+}
+.branch-badge-default i {
+  font-size: 0.6rem;
+}
+
 @media (max-width: 480px) {
   .mgmt-modal-box {
     max-width: 100%;
