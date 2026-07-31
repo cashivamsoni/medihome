@@ -49,7 +49,7 @@
           <div class="logo-sub">Family Medicine Inventory</div>
         </div>
         <div class="header-actions">
-          <button class="btn-ghost" onclick="resetToDefault()">↺ Reset</button>
+          <button class="btn-ghost" onclick="resetToDefault()"><i class="fa-solid fa-arrows-rotate"></i> Reset</button>
           <button class="btn-primary" onclick="openAdd()">
             + Add Medicine
           </button>
@@ -192,7 +192,7 @@
             onclick="toggleBulkMode()"
             title="Exit selection"
           >
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <!-- Action buttons row (wraps to two rows on mobile) -->
@@ -213,7 +213,7 @@
             <i class="fa-solid fa-trash"></i> Delete Selected
           </button>
           <button class="bulk-btn bulk-cancel" onclick="toggleBulkMode()">
-            ✕ Cancel
+            <i class="fa-solid fa-xmark"></i> Cancel
           </button>
         </div>
       </div>
@@ -223,11 +223,11 @@
     <main class="main">
       <!-- Active filter label -->
       <div class="active-filter-bar hidden" id="activeFilterBar">
-        <span id="activeFilterLabel"></span>
+        <span><i id="activeFilterIcon" class="fa-solid fa-triangle-exclamation"></i> <span id="activeFilterLabel"></span></span>
         <button
           onclick="setFilter('all', document.querySelector('.stat-chip.total'))"
         >
-          ✕ Clear filter
+          <i class="fa-solid fa-xmark"></i> Clear filter
         </button>
       </div>
 
@@ -250,7 +250,7 @@
             spellcheck="false"
           />
           <button id="clearSearch" class="hidden" title="Clear search">
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <p class="search-hint">
@@ -262,7 +262,7 @@
       <section class="reorder-section hidden" id="reorderSection">
         <div class="reorder-header">
           <div class="reorder-title">
-            🔴 Reorder Needed
+            <i class="fa-solid fa-triangle-exclamation"></i> Reorder Needed
             <span class="reorder-badge" id="reorderCount">0</span>
           </div>
           <span class="reorder-sub">Click any card to locate it</span>
@@ -298,7 +298,7 @@
         <div class="modal-header">
           <h2 class="modal-title" id="modalTitle">Add Medicine</h2>
           <button class="modal-close" onclick="closeModal()" aria-label="Close">
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
 
@@ -402,7 +402,7 @@
                   id="imgClearUpload"
                   onclick="clearImage()"
                 >
-                  ✕ Remove image
+                  <i class="fa-solid fa-xmark"></i> Remove image
                 </button>
               </div>
               <div id="imgPanelUrl" class="img-panel hidden">
@@ -424,7 +424,7 @@
                   id="imgClearUrl"
                   onclick="clearImageUrl()"
                 >
-                  ✕ Remove URL
+                  <i class="fa-solid fa-xmark"></i> Remove URL
                 </button>
               </div>
               <input type="hidden" id="medImageData" />
@@ -620,10 +620,10 @@
                 <!-- Low stock: shown for bottles/tubes (manual), hidden for countables (auto) -->
                 <label class="check-label" id="lowStockRow">
                   <input type="checkbox" id="medLowStock" />
-                  ⚠ Mark as Low Stock
+                  <i class="fa-solid fa-triangle-exclamation"></i> Mark as Low Stock
                 </label>
                 <span class="auto-low-label hidden" id="autoLowLabel"
-                  >⚠ Low stock auto-detected by quantity</span
+                  ><i class="fa-solid fa-triangle-exclamation"></i> <span id="autoLowLabelText">Low stock auto-detected by quantity</span></span
                 >
               </div>
             </div>
@@ -659,7 +659,7 @@
             onclick="closeMgmtModal()"
             aria-label="Close"
           >
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="mgmt-modal-body">
@@ -703,7 +703,7 @@
             onclick="closeHistoryModal()"
             aria-label="Close"
           >
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="modal-body" id="histModalBody"></div>
@@ -717,7 +717,7 @@
       <span id="undoToastMsg"></span>
       <span class="undo-countdown" id="undoCountdown"></span>
       <button class="undo-btn" id="undoBtn" onclick="commitUndo()">
-        ↩ Undo
+        <i class="fa-solid fa-rotate-left"></i> Undo
       </button>
     </div>
 
@@ -728,7 +728,7 @@
       aria-label="Go to top"
       title="Back to top"
     >
-      ↑
+      <i class="fa-solid fa-arrow-up"></i>
     </button>
 
     <!-- ── Image Viewer Modal ─────────────────────────────────── -->
@@ -741,7 +741,7 @@
             onclick="closeImgViewer()"
             aria-label="Close"
           >
-            ✕
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="img-viewer-body">
