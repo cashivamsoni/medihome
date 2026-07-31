@@ -243,11 +243,22 @@ function setFilter(type, btn) {
   // Update filter label bar
   const bar = document.getElementById('activeFilterBar');
   const label = document.getElementById('activeFilterLabel');
+  const iconEl = document.getElementById('activeFilterIcon');
   if (type === 'all') {
     bar.classList.add('hidden');
   } else {
-    const labels = { low:'⚠ Showing: Low Stock / Finished', expiring:'⏳ Showing: Expiring Within 6 Months', expired:'🚫 Showing: Expired Medicines' };
-    label.textContent = labels[type] || '';
+    const labels = {
+      low:      { icon: 'fa-triangle-exclamation', text: 'Showing: Low Stock / Finished' },
+      expiring: { icon: 'fa-hourglass-half',        text: 'Showing: Expiring Within 6 Months' },
+      expired:  { icon: 'fa-ban',                   text: 'Showing: Expired Medicines' }
+    };
+    const cfg = labels[type];
+    if (cfg) {
+      label.textContent = cfg.text;
+      if (iconEl) iconEl.className = `fa-solid ${cfg.icon}`;
+    } else {
+      label.textContent = '';
+    }
     bar.classList.remove('hidden');
   }
 
@@ -402,7 +413,7 @@ function renderMedicineCard(m, serialNum) {
         <div class="card-badges">
           <span class="badge ${typeBadgeClass(m.type)}"${typeBadgeStyle(m.type)}>${formatTypeLabel(m.type)}</span>
           ${m.frequentlyUsed?'<span class="badge badge-freq"><i class="fa-solid fa-star"></i> Frequent</span>':''}
-          ${isLow?'<span class="badge badge-low">⚠ Low Stock</span>':''}
+          ${isLow?'<span class="badge badge-low"><i class="fa-solid fa-triangle-exclamation"></i> Low Stock</span>':''}
           ${isExpired?'<span class="badge badge-expired">Expired</span>':''}
           ${!isExpired&&isExpiringSoon?'<span class="badge badge-expiring">Exp. Soon</span>':''}
         </div>
@@ -830,13 +841,14 @@ function syncLowStockUI() {
   const qty  = parseFloat(document.getElementById('medQuantity').value);
   const lowRow   = document.getElementById('lowStockRow');
   const autoLabel = document.getElementById('autoLowLabel');
+  const autoLabelText = document.getElementById('autoLowLabelText');
 
   if (isCountableUnit(unit)) {
     // Auto mode: hide checkbox, show auto label if below threshold
     lowRow.classList.add('hidden');
     const threshold = LOW_THRESHOLDS[unit] || 3;
     if (!isNaN(qty) && qty <= threshold) {
-      autoLabel.textContent = `⚠ Auto low-stock (${qty} ${unit} ≤ ${threshold} threshold)`;
+      if (autoLabelText) autoLabelText.textContent = `Auto low-stock (${qty} ${unit} ≤ ${threshold} threshold)`;
       autoLabel.classList.remove('hidden');
     } else {
       autoLabel.classList.add('hidden');
