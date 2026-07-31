@@ -1932,7 +1932,7 @@ body.bulk-mode .go-top-btn {
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 2px rgba(13, 148, 136, 0.08);
   max-height: 600px;
-  overflow: visible;
+  overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .app-menu.hidden {
@@ -1940,6 +1940,13 @@ body.bulk-mode .go-top-btn {
   overflow: hidden;
   border-bottom-width: 0;
   box-shadow: none;
+}
+/* Only once the open animation has actually finished do we allow overflow,
+   so the sort dropdown can pop out past the menu's own box without also
+   letting the menu's own content spill out (and appear pre-rendered) while
+   the max-height transition is still animating. */
+.app-menu.menu-expanded {
+  overflow: visible;
 }
 .app-menu-inner {
   max-width: 1280px;
