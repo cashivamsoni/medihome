@@ -535,6 +535,7 @@ function fuzzyName(needle, name) {
 // Returns true if medicine matches ALL words in the query
 function medicineMatches(med, query) {
   const name = (med.name || '').toLowerCase();
+  const ownerCfg = customOwners.find(o => o.key === med.owner);
   const hay  = [
     med.name,
     med.description,
@@ -542,7 +543,9 @@ function medicineMatches(med, query) {
     med.notes || '',
     med.form,
     med.type,
-    ownerRaw(med.owner)
+    ownerRaw(med.owner),
+    ownerCfg ? ownerCfg.short : '',           // e.g. "Papa Ji" — the short chip name, in case it isn't a literal substring of the full label
+    med.frequentlyUsed ? 'frequently used frequent' : ''  // lets "frequent" find frequently-used medicines
   ].join(' ').toLowerCase();
 
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
