@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sortOrder = savedSort;
   }
   updateSortLabel();
-  loadData(); // Firebase listener triggers renderAll() when data arrives
+  initAuthGate(); // shows login screen if signed out; calls loadData() once signed in
 });
 
 // Keep stats bar exactly flush under the header at all times
@@ -85,6 +85,91 @@ function setHeaderHeightVar() {
   new ResizeObserver(update).observe(h);
   if (s) new ResizeObserver(update).observe(s);
   window.addEventListener('resize', update, { passive: true });
+}
+
+// ── Authentication ───────────────────────────────────────
+let _dataLoadedOnce = false;
+
+function initAuthGate() {
+  window._fbAuth.onChange((user) => {
+    const loginScreen = document.getElementById('loginScreen');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    if (user) {
+      if (loginScreen) loginScreen.classList.add('hidden');
+      document.body.classList.remove('login-locked');
+      if (submitBtn) submitBtn.classList.remove('btn-loading');
+      if (!_dataLoadedOnce) {
+        _dataLoadedOnce = true;
+        loadData(); // Firebase listener triggers renderAll() when data arrives
+      }
+    } else {
+      _dataLoadedOnce = false;
+      medicines = [];
+      const list = document.getElementById('medicineList');
+      if (list) list.innerHTML = '';
+      if (loginScreen) loginScreen.classList.remove('hidden');
+      document.body.classList.add('login-locked');
+      const passEl = document.getElementById('loginPassword');
+      if (passEl) passEl.value = '';
+    }
+  });
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  const rememberEl = document.getElementById('loginRemember');
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginSubmitBtn');
+  const email = (emailEl.value || '').trim();
+  const password = passEl.value || '';
+
+  if (!email || !password) {
+    showLoginError('Please enter both email and password.');
+    return;
+  }
+
+  errorEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+
+  window._fbAuth
+    .login(email, password, rememberEl.checked)
+    .catch((err) => {
+      showLoginError(friendlyAuthError(err));
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+    });
+  // On success, initAuthGate()'s onChange listener takes over (hides screen, loads data).
+}
+
+function showLoginError(msg) {
+  const errorEl = document.getElementById('loginError');
+  if (!errorEl) return;
+  errorEl.textContent = msg;
+  errorEl.classList.remove('hidden');
+}
+
+function friendlyAuthError(err) {
+  const code = err && err.code;
+  const map = {
+    'auth/invalid-email': 'That email address looks invalid.',
+    'auth/user-not-found': 'Incorrect email or password.',
+    'auth/wrong-password': 'Incorrect email or password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
+    'auth/network-request-failed': 'Network error — check your connection.',
+  };
+  return map[code] || 'Could not sign in. Please try again.';
+}
+
+function confirmLogout() {
+  if (confirm('Log out of MediHome on this device?')) logout();
+}
+
+function logout() {
+  window._fbAuth.logout();
 }
 
 function loadData() {
