@@ -750,18 +750,9 @@ function clearSearchState() {
 }
 
 function scrollCardIntoView(el, behavior = 'smooth') {
-  // rAF ensures we measure after any pending DOM paint (e.g. right after renderAll)
+  // rAF ensures we measure/scroll after any pending DOM paint (e.g. right after renderAll)
   requestAnimationFrame(() => {
-    const header   = document.querySelector('.site-header');
-    const statsBar = document.querySelector('.stats-bar');
-    const bulkBar  = document.getElementById('bulkActionBar');
-    const bulkH    = (bulkBar && !bulkBar.classList.contains('hidden')) ? bulkBar.offsetHeight : 0;
-    const offsetTop = (header   ? header.offsetHeight  : 0) +
-                      (statsBar ? statsBar.offsetHeight : 0) +
-                      bulkH + 20;
-    const rect = el.getBoundingClientRect();
-    const absoluteTop = rect.top + window.scrollY;
-    window.scrollTo({ top: absoluteTop - offsetTop, behavior });
+    el.scrollIntoView({ behavior, block: 'start' });
   });
 }
 
