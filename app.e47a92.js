@@ -759,7 +759,7 @@ function scrollCardIntoView(el, behavior = 'smooth') {
     // Note: the bulk-selection bar is fixed to the BOTTOM of the screen, so it
     // never covers the top of a card and must not factor into this offset.
     const offsetTop = (header   ? header.offsetHeight  : 0) +
-                      (statsBar ? statsBar.offsetHeight : 0) + 10;
+                      (statsBar ? statsBar.offsetHeight : 0) + 24;
     const rect = el.getBoundingClientRect();
     const absoluteTop = rect.top + window.scrollY;
     window.scrollTo({ top: absoluteTop - offsetTop, behavior });
@@ -2134,16 +2134,12 @@ function exportToPDF() {
     let y = contentX + 3;
     doc.setFont(FONT, 'bold');
     doc.setFontSize(fontSize + 8);
-    doc.text('MediHome - Family Medicine Inventory', pageW / 2, y, { align: 'center' });
-    y += fontSize * 0.5 + 3;
-
     const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
-    if (branchName) {
-      doc.setFont(FONT, 'bold');
-      doc.setFontSize(fontSize + 2);
-      doc.text(branchName, pageW / 2, y, { align: 'center' });
-      y += fontSize * 0.45 + 2.5;
-    }
+    const titleText = branchName
+      ? `MediHome - Family Medicine Inventory (${branchName})`
+      : 'MediHome - Family Medicine Inventory';
+    doc.text(titleText, pageW / 2, y, { align: 'center' });
+    y += fontSize * 0.5 + 3;
 
     doc.setFont(FONT, 'normal');
     doc.setFontSize(fontSize - 1);
