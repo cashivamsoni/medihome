@@ -128,16 +128,16 @@
             </div>
             <button
               class="menu-action-btn"
+              onclick="closeAppMenu(); manageField('owner');"
+            >
+              <i class="fa-solid fa-gear"></i> Manage
+            </button>
+            <button
+              class="menu-action-btn"
               id="menuBranchBtn"
               onclick="closeAppMenu(); openBranchModal();"
             >
               <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); manageField('owner');"
-            >
-              <i class="fa-solid fa-gear"></i> Manage
             </button>
           </div>
         </div>
