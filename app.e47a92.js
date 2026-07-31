@@ -750,9 +750,19 @@ function clearSearchState() {
 }
 
 function scrollCardIntoView(el, behavior = 'smooth') {
-  // rAF ensures we measure/scroll after any pending DOM paint (e.g. right after renderAll)
+  // rAF ensures we measure after any pending DOM paint (e.g. right after renderAll).
+  // Deterministic manual scroll (rather than native scrollIntoView) avoids a
+  // browser quirk where smooth scrollIntoView can overshoot past sticky ancestors.
   requestAnimationFrame(() => {
-    el.scrollIntoView({ behavior, block: 'start' });
+    const header   = document.querySelector('.site-header');
+    const statsBar = document.querySelector('.stats-bar');
+    // Note: the bulk-selection bar is fixed to the BOTTOM of the screen, so it
+    // never covers the top of a card and must not factor into this offset.
+    const offsetTop = (header   ? header.offsetHeight  : 0) +
+                      (statsBar ? statsBar.offsetHeight : 0) + 10;
+    const rect = el.getBoundingClientRect();
+    const absoluteTop = rect.top + window.scrollY;
+    window.scrollTo({ top: absoluteTop - offsetTop, behavior });
   });
 }
 
@@ -2126,6 +2136,15 @@ function exportToPDF() {
     doc.setFontSize(fontSize + 8);
     doc.text('MediHome - Family Medicine Inventory', pageW / 2, y, { align: 'center' });
     y += fontSize * 0.5 + 3;
+
+    const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
+    if (branchName) {
+      doc.setFont(FONT, 'bold');
+      doc.setFontSize(fontSize + 2);
+      doc.text(branchName, pageW / 2, y, { align: 'center' });
+      y += fontSize * 0.45 + 2.5;
+    }
+
     doc.setFont(FONT, 'normal');
     doc.setFontSize(fontSize - 1);
     doc.text(
