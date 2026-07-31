@@ -759,7 +759,7 @@ function scrollCardIntoView(el, behavior = 'smooth') {
     // Note: the bulk-selection bar is fixed to the BOTTOM of the screen, so it
     // never covers the top of a card and must not factor into this offset.
     const offsetTop = (header   ? header.offsetHeight  : 0) +
-                      (statsBar ? statsBar.offsetHeight : 0) + 58;
+                      (statsBar ? statsBar.offsetHeight : 0) + 48;
     const rect = el.getBoundingClientRect();
     const absoluteTop = rect.top + window.scrollY;
     window.scrollTo({ top: absoluteTop - offsetTop, behavior });
