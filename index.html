@@ -128,6 +128,13 @@
             </div>
             <button
               class="menu-action-btn"
+              id="menuBranchBtn"
+              onclick="closeAppMenu(); openBranchModal();"
+            >
+              <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
+            </button>
+            <button
+              class="menu-action-btn"
               onclick="closeAppMenu(); manageField('owner');"
             >
               <i class="fa-solid fa-gear"></i> Manage
@@ -681,6 +688,26 @@
           <div class="mgmt-list" id="mgmtListContainer"></div>
         </div>
         <button class="mgmt-fab" onclick="promptAddMgmtItem()" title="Add new entry" aria-label="Add new entry">+</button>
+      </div>
+    </div>
+    <!-- ── Branches Modal ──────────────────────────────────── -->
+    <div id="branchModal" class="hidden mgmt-modal-overlay">
+      <div class="mgmt-modal-box">
+        <div class="mgmt-modal-header">
+          <h3>Branches</h3>
+          <button
+            class="modal-close"
+            onclick="closeBranchModal()"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="mgmt-modal-body">
+          <p class="branch-modal-hint">Each branch has its own medicines, owners, categories, types and forms. Tap a branch to switch to it.</p>
+          <div class="mgmt-list" id="branchListContainer"></div>
+        </div>
+        <button class="mgmt-fab" onclick="promptAddBranch()" title="Add new branch" aria-label="Add new branch">+</button>
       </div>
     </div>
     <div class="toast" id="toast">
