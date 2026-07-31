@@ -756,10 +756,15 @@ function scrollCardIntoView(el, behavior = 'smooth') {
   requestAnimationFrame(() => {
     const header   = document.querySelector('.site-header');
     const statsBar = document.querySelector('.stats-bar');
+    // --scroll-gap is a CSS var (see style.css) so desktop and mobile can be
+    // tuned independently — the mobile stats bar wraps to two rows and is
+    // already taller, so it needs a smaller extra gap than desktop.
+    const gapVar = getComputedStyle(document.documentElement).getPropertyValue('--scroll-gap');
+    const gap = parseFloat(gapVar) || 24;
     // Note: the bulk-selection bar is fixed to the BOTTOM of the screen, so it
     // never covers the top of a card and must not factor into this offset.
     const offsetTop = (header   ? header.offsetHeight  : 0) +
-                      (statsBar ? statsBar.offsetHeight : 0) + 48;
+                      (statsBar ? statsBar.offsetHeight : 0) + gap;
     const rect = el.getBoundingClientRect();
     const absoluteTop = rect.top + window.scrollY;
     window.scrollTo({ top: absoluteTop - offsetTop, behavior });
