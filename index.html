@@ -41,6 +41,46 @@
     <meta property="og:type" content="website" />
   </head>
   <body>
+    <!-- ── Login Screen ─────────────────────────────────────── -->
+    <div id="loginScreen">
+      <div class="login-box">
+        <div class="login-logo">💊 MediHome</div>
+        <div class="login-sub">Family Medicine Inventory</div>
+        <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
+          <div class="form-group full">
+            <label class="form-label" for="loginEmail">Email</label>
+            <input
+              class="form-input"
+              type="email"
+              id="loginEmail"
+              autocomplete="username"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="loginPassword">Password</label>
+            <input
+              class="form-input"
+              type="password"
+              id="loginPassword"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <label class="check-label login-remember" for="loginRemember">
+            <input type="checkbox" id="loginRemember" checked />
+            <span>Remember me on this device</span>
+          </label>
+          <span class="field-error hidden" id="loginError"></span>
+          <button type="submit" class="btn-save login-submit" id="loginSubmitBtn">
+            <i class="fa-solid fa-right-to-bracket"></i> <span>Log In</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
     <!-- ── Header ─────────────────────────────────────────── -->
     <header class="site-header">
       <div class="header-inner">
@@ -138,6 +178,13 @@
               onclick="closeAppMenu(); openBranchModal();"
             >
               <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
+            </button>
+            <button
+              class="menu-action-btn menu-action-danger"
+              id="menuLogoutBtn"
+              onclick="closeAppMenu(); confirmLogout();"
+            >
+              <i class="fa-solid fa-right-from-bracket"></i> Log Out
             </button>
           </div>
         </div>
@@ -787,6 +834,15 @@
         set,
         onValue,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        signOut,
+        onAuthStateChanged,
+        setPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyANbbAw3w8L5uX-C0jRqYvhHaLZ4PWXDn0",
@@ -801,10 +857,22 @@
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
       const dbRef = ref(db, "medicines");
+      const auth = getAuth(app);
 
       // Expose to app.js (non-module)
       window._fbSet = (data) => set(dbRef, data);
       window._fbListen = (cb) => onValue(dbRef, (snap) => cb(snap.val()));
+
+      // ── Auth (single-user login) ──────────────────────────
+      window._fbAuth = {
+        login: (email, password, remember) =>
+          setPersistence(
+            auth,
+            remember ? browserLocalPersistence : browserSessionPersistence
+          ).then(() => signInWithEmailAndPassword(auth, email, password)),
+        logout: () => signOut(auth),
+        onChange: (cb) => onAuthStateChanged(auth, cb),
+      };
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
