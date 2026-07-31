@@ -1775,12 +1775,23 @@ body.bulk-mode .go-top-btn {
   line-height: 1.4;
   flex-shrink: 0;
 }
+.branch-item {
+  cursor: pointer;
+  transition: var(--transition);
+}
+.branch-item:hover {
+  border-color: var(--teal-200);
+  background: var(--teal-50);
+}
+[data-theme="dark"] .branch-item:hover {
+  background: #16302C;
+  border-color: #1F4641;
+}
 .branch-item-name {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  cursor: pointer;
   color: var(--text-primary);
   min-width: 0;
 }
