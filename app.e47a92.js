@@ -1608,16 +1608,16 @@ function renderBranchList() {
     const isActive  = id === activeBranchId;
     const isDefault = id === defaultBranchId;
     return `
-      <div class="mgmt-item branch-item ${isActive ? 'branch-item-active' : ''}">
-        <span class="branch-item-name" onclick="switchBranch('${id}')" title="Switch to this branch">
+      <div class="mgmt-item branch-item ${isActive ? 'branch-item-active' : ''}" onclick="switchBranch('${id}')" title="Switch to this branch">
+        <span class="branch-item-name">
           <i class="fa-solid fa-house"></i> ${escHtml(b.name)}
           ${isActive ? '<span class="branch-badge branch-badge-current">Current</span>' : ''}
           ${isDefault ? '<span class="branch-badge branch-badge-default"><i class="fa-solid fa-star"></i> Default</span>' : ''}
         </span>
         <div class="mgmt-actions">
-          ${!isDefault ? `<button class="mgmt-btn" onclick="setDefaultBranch('${id}')" title="Set as default (opens on refresh)"><i class="fa-regular fa-star"></i></button>` : ''}
-          <button class="mgmt-btn" onclick="promptRenameBranch('${id}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
-          <button class="mgmt-btn" onclick="deleteBranch('${id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          ${!isDefault ? `<button class="mgmt-btn" onclick="event.stopPropagation(); setDefaultBranch('${id}')" title="Set as default (opens on refresh)"><i class="fa-regular fa-star"></i></button>` : ''}
+          <button class="mgmt-btn" onclick="event.stopPropagation(); promptRenameBranch('${id}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="event.stopPropagation(); deleteBranch('${id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>`;
   }).join('');
