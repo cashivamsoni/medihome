@@ -163,10 +163,16 @@ body.modal-open {
   font-size: 0.8rem;
   cursor: pointer;
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .btn-ghost:hover {
   color: white;
   background: rgba(255, 255, 255, 0.12);
+}
+.btn-ghost i {
+  font-size: 0.75rem;
 }
 
 /* ── Stats & Nav Bar ─────────────────────────────────────── */
@@ -287,6 +293,10 @@ body.modal-open {
   font-weight: 600;
   color: var(--teal-700);
 }
+#activeFilterIcon {
+  font-size: 0.78rem;
+  margin-right: 2px;
+}
 .active-filter-bar button {
   background: none;
   border: none;
@@ -297,9 +307,15 @@ body.modal-open {
   padding: 2px 6px;
   border-radius: 6px;
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .active-filter-bar button:hover {
   background: var(--teal-100);
+}
+.active-filter-bar button i {
+  font-size: 0.72rem;
 }
 .active-filter-bar.hidden {
   display: none;
@@ -381,6 +397,9 @@ body.modal-open {
 #clearSearch:hover {
   background: var(--slate-300);
 }
+#clearSearch i {
+  font-size: 0.7rem;
+}
 .intro {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -445,6 +464,9 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.reorder-title i {
+  font-size: 0.9rem;
 }
 .reorder-badge {
   background: var(--red-500);
@@ -764,6 +786,9 @@ body.bulk-mode #shareBtn {
   background: var(--red-50);
   color: var(--red-600);
 }
+.badge-low i {
+  font-size: 0.65rem;
+}
 .badge-expired {
   background: #F3F4F6;
   color: #4B5563;
@@ -933,6 +958,9 @@ body.bulk-mode #shareBtn {
   background: var(--slate-200);
   color: var(--text-primary);
 }
+.modal-close i {
+  font-size: 0.85rem;
+}
 .modal-body {
   padding: 14px 20px 18px;
   overflow-y: auto;
@@ -1065,6 +1093,12 @@ body.bulk-mode #shareBtn {
   padding: 3px 10px;
   border-radius: 12px;
   border: 1px solid var(--amber-200);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.auto-low-label i {
+  font-size: 0.72rem;
 }
 .auto-low-label.hidden {
   display: none;
@@ -1166,6 +1200,10 @@ body.bulk-mode #shareBtn {
   cursor: pointer;
   transition: var(--transition);
 }
+.img-tab i {
+  font-size: 0.72rem;
+  margin-right: 3px;
+}
 .img-tab.active {
   background: var(--teal-50);
   color: var(--teal-700);
@@ -1207,6 +1245,7 @@ body.bulk-mode #shareBtn {
 }
 .img-drop-icon {
   font-size: 1.5rem;
+  color: var(--text-muted);
 }
 .img-drop-text {
   font-size: 0.8rem;
@@ -1245,9 +1284,15 @@ body.bulk-mode #shareBtn {
   padding: 3px 10px;
   cursor: pointer;
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .img-clear-btn:hover {
   background: var(--red-100);
+}
+.img-clear-btn i {
+  font-size: 0.7rem;
 }
 #medImageUrl {
   margin-top: 2px;
@@ -1325,6 +1370,9 @@ body.bulk-mode #shareBtn {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
+}
+.go-top-btn i {
+  font-size: 1rem;
 }
 .go-top-btn:hover {
   background: var(--teal-700);
@@ -2023,6 +2071,9 @@ body.bulk-mode .main {
   background: var(--red-100);
   border-color: var(--red-400);
 }
+.bulk-cancel-circle i {
+  font-size: 0.85rem;
+}
 
 /* On desktop: bulk-inner-top is invisible as a wrapper — count and circle
    are both direct flex children of bulk-inner in the single row */
@@ -2162,9 +2213,15 @@ body.bulk-mode .medicine-card {
   cursor: pointer;
   transition: var(--transition);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .undo-btn:hover {
   background: var(--teal-400);
+}
+.undo-btn i {
+  font-size: 0.72rem;
 }
 .undo-countdown {
   font-size: 0.75rem;
