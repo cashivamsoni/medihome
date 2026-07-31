@@ -67,7 +67,7 @@ html {
    room than desktop to land in the same visual spot. */
 @media (max-width: 768px) {
   :root {
-    --scroll-gap: 20px;
+    --scroll-gap: 32px;
   }
 }
 
