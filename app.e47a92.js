@@ -16,6 +16,15 @@ let customOwners = [];      // [{key, label, short}]
 let customTypes = [];
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
+// ── Branches ("houses") ─────────────────────────────────────
+// Each branch is a fully independent set of medicines/categories/forms/owners/types.
+// `medicines`/`customCategories`/etc. above always mirror the *active* branch —
+// every other function in this file keeps working unmodified.
+let branches = {};            // { branchId: { name, medicines, categories, forms, owners, types } }
+let branchOrder = [];         // display order of branch IDs
+let activeBranchId = null;    // branch currently loaded into medicines/customX
+let defaultBranchId = null;   // branch that auto-loads on every refresh
+
 // Units that are countable → auto low-stock
 const COUNTABLE_UNITS = ['tablets','tablet','pieces','piece','pouches','pouch','capsules','capsule','lozenges','lozenge'];
 // Thresholds for auto low-stock by unit type
@@ -84,38 +93,86 @@ function loadData() {
     '<div class="empty-state"><div class="loading-spinner" role="status" aria-label="Loading"></div><p>Loading from cloud…</p></div>';
 
   window._fbListen(data => {
-    if (data && data.medicines && Array.isArray(data.medicines)) {
-      // New shape: { medicines:[...], categories:[...], forms:[...], owners:[...] }
-      medicines = data.medicines;
-      customCategories = (data.categories && data.categories.length) ? data.categories : DEFAULT_CATEGORIES.slice();
-      customForms      = (data.forms && data.forms.length) ? data.forms : DEFAULT_FORMS.slice();
-      customOwners     = (data.owners && data.owners.length) ? data.owners : DEFAULT_OWNERS.slice();
-      customTypes      = (data.types && data.types.length) ? data.types : DEFAULT_TYPES.slice();
+    let needsMigrationSave = false;
+
+    if (data && data.branches && typeof data.branches === 'object' && Object.keys(data.branches).length) {
+      // Current shape: multiple branches
+      branches = data.branches;
+      branchOrder = (data.branchOrder && data.branchOrder.length)
+        ? data.branchOrder.filter(id => branches[id])
+        : Object.keys(branches);
+      // Include any branch present in `branches` but missing from the order list
+      const missingFromOrder = Object.keys(branches).filter(id => !branchOrder.includes(id));
+      if (missingFromOrder.length) { branchOrder.push(...missingFromOrder); needsMigrationSave = true; }
+      if (!data.defaultBranchId || !branches[data.defaultBranchId]) needsMigrationSave = true;
+      defaultBranchId = (data.defaultBranchId && branches[data.defaultBranchId]) ? data.defaultBranchId : branchOrder[0];
+    } else if (data && data.medicines && Array.isArray(data.medicines)) {
+      // Pre-branches shape: { medicines:[...], categories:[...], forms:[...], owners:[...] }
+      // Migrate the existing data into a single "Home" branch so nothing is lost.
+      const id = 'home';
+      branches = { [id]: {
+        name: 'Home',
+        medicines: data.medicines,
+        categories: (data.categories && data.categories.length) ? data.categories : DEFAULT_CATEGORIES.slice(),
+        forms:      (data.forms && data.forms.length) ? data.forms : DEFAULT_FORMS.slice(),
+        owners:     (data.owners && data.owners.length) ? data.owners : DEFAULT_OWNERS.slice(),
+        types:      (data.types && data.types.length) ? data.types : DEFAULT_TYPES.slice()
+      }};
+      branchOrder = [id];
+      defaultBranchId = id;
+      needsMigrationSave = true;
     } else if (data && Array.isArray(data) && data.length > 0) {
-      // Legacy shape: plain array of medicines (old saves) — adopt, build lists from defaults+data
-      medicines = data;
-      customCategories = DEFAULT_CATEGORIES.slice();
-      customForms      = DEFAULT_FORMS.slice();
-      customOwners     = DEFAULT_OWNERS.slice();
-      customTypes      = DEFAULT_TYPES.slice();
+      // Legacy shape: plain array of medicines (old saves)
+      const id = 'home';
+      branches = { [id]: {
+        name: 'Home', medicines: data,
+        categories: DEFAULT_CATEGORIES.slice(), forms: DEFAULT_FORMS.slice(),
+        owners: DEFAULT_OWNERS.slice(), types: DEFAULT_TYPES.slice()
+      }};
+      branchOrder = [id];
+      defaultBranchId = id;
+      needsMigrationSave = true;
     } else {
-      // First time ever — seed with defaults and save to Firebase
-      medicines = JSON.parse(JSON.stringify(MEDICINE_DB));
-      customCategories = DEFAULT_CATEGORIES.slice();
-      customForms      = DEFAULT_FORMS.slice();
-      customOwners     = DEFAULT_OWNERS.slice();
-      customTypes      = DEFAULT_TYPES.slice();
-      saveData();
+      // First time ever — seed with defaults
+      const id = 'home';
+      branches = { [id]: {
+        name: 'Home', medicines: JSON.parse(JSON.stringify(MEDICINE_DB)),
+        categories: DEFAULT_CATEGORIES.slice(), forms: DEFAULT_FORMS.slice(),
+        owners: DEFAULT_OWNERS.slice(), types: DEFAULT_TYPES.slice()
+      }};
+      branchOrder = [id];
+      defaultBranchId = id;
+      needsMigrationSave = true;
     }
 
-    // Absorb any stray values already present in the data that aren't in the lists yet
-    reconcileDynamicLists();
-    backfillSerialIds();
-    populateAllDropdowns();
-    renderOwnerNavChips();
-    renderAll();
-    updateStats();
+    // Always open the default/home branch on load (refresh) — switching branches
+    // mid-session is a temporary view; refresh always returns to the default.
+    activeBranchId = defaultBranchId;
+    loadActiveBranchIntoState();
+    // Only write back when the shape actually needed migrating/seeding —
+    // avoids an unnecessary save (and possible listener feedback loop) on every normal load.
+    if (needsMigrationSave) saveAllBranches();
   });
+}
+
+// Copies the active branch's data into the working variables that the rest
+// of the app reads/writes (medicines, customCategories, etc.), then re-renders.
+function loadActiveBranchIntoState() {
+  const b = branches[activeBranchId];
+  if (!b) return;
+  medicines        = b.medicines || [];
+  customCategories = (b.categories && b.categories.length) ? b.categories : DEFAULT_CATEGORIES.slice();
+  customForms      = (b.forms && b.forms.length) ? b.forms : DEFAULT_FORMS.slice();
+  customOwners     = (b.owners && b.owners.length) ? b.owners : DEFAULT_OWNERS.slice();
+  customTypes      = (b.types && b.types.length) ? b.types : DEFAULT_TYPES.slice();
+
+  reconcileDynamicLists();
+  backfillSerialIds();
+  populateAllDropdowns();
+  renderOwnerNavChips();
+  renderAll();
+  updateStats();
+  updateMenuBranchLabel();
 }
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
@@ -179,7 +236,17 @@ function reconcileDynamicLists() {
 }
 
 function saveData() {
-  const payload = { medicines, categories: customCategories, forms: customForms, owners: customOwners, types: customTypes };
+  if (!activeBranchId || !branches[activeBranchId]) return;
+  branches[activeBranchId].medicines   = medicines;
+  branches[activeBranchId].categories  = customCategories;
+  branches[activeBranchId].forms       = customForms;
+  branches[activeBranchId].owners      = customOwners;
+  branches[activeBranchId].types       = customTypes;
+  saveAllBranches();
+}
+
+function saveAllBranches() {
+  const payload = { branches, branchOrder, defaultBranchId };
   window._fbSet(payload).catch(err => {
     showToast('Cloud save failed — check connection.', 'error');
     console.error(err);
@@ -745,7 +812,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -1497,6 +1564,152 @@ function deleteMgmtItem(idx) {
   showUndoToast(`Deleted — tap Undo within 6s`, 'fa-trash');
 }
 
+// ── Branches ("houses") ─────────────────────────────────────
+// Each branch is a fully independent medicine list + owner/category/type/form
+// set. `medicines`/`customCategories`/etc. always mirror whichever branch is
+// active, so every other function in this file works unmodified regardless
+// of how many branches exist.
+function slugifyBranchId(name) {
+  const base = name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') || 'branch';
+  let id = base, n = 2;
+  while (branches[id]) id = `${base}-${n++}`;
+  return id;
+}
+
+function updateMenuBranchLabel() {
+  const label = document.getElementById('menuBranchLabel');
+  const b = branches[activeBranchId];
+  if (label) label.textContent = b ? b.name : 'Branch';
+}
+
+function openBranchModal() {
+  renderBranchList();
+  const modal = document.getElementById('branchModal');
+  if (modal && modal.classList.contains('hidden')) {
+    modal.classList.remove('hidden');
+    lockBodyScroll();
+  }
+}
+function closeBranchModal() {
+  const modal = document.getElementById('branchModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('branchModal'), closeBranchModal);
+
+function renderBranchList() {
+  const container = document.getElementById('branchListContainer');
+  if (!container) return;
+  container.innerHTML = branchOrder.map(id => {
+    const b = branches[id];
+    if (!b) return '';
+    const isActive  = id === activeBranchId;
+    const isDefault = id === defaultBranchId;
+    return `
+      <div class="mgmt-item branch-item ${isActive ? 'branch-item-active' : ''}">
+        <span class="branch-item-name" onclick="switchBranch('${id}')" title="Switch to this branch">
+          <i class="fa-solid fa-house"></i> ${escHtml(b.name)}
+          ${isActive ? '<span class="branch-badge branch-badge-current">Current</span>' : ''}
+          ${isDefault ? '<span class="branch-badge branch-badge-default"><i class="fa-solid fa-star"></i> Default</span>' : ''}
+        </span>
+        <div class="mgmt-actions">
+          ${!isDefault ? `<button class="mgmt-btn" onclick="setDefaultBranch('${id}')" title="Set as default (opens on refresh)"><i class="fa-regular fa-star"></i></button>` : ''}
+          <button class="mgmt-btn" onclick="promptRenameBranch('${id}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteBranch('${id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function switchBranch(id) {
+  if (!branches[id] || id === activeBranchId) { closeBranchModal(); return; }
+  // Make sure nothing from the branch we're leaving is lost in memory.
+  saveData();
+  // A pending undo snapshot belongs to the branch we're leaving — committing
+  // it after switching would silently overwrite the new branch's data.
+  _undoStack = null;
+  clearTimeout(_undoTimer);
+  hideUndoToast();
+  activeBranchId = id;
+  loadActiveBranchIntoState();
+  closeBranchModal();
+  showToast(`Switched to "${branches[id].name}"`, 'info');
+}
+
+function promptAddBranch() {
+  const name = prompt('Name this branch (e.g. a family member\'s house):');
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  const id = slugifyBranchId(trimmed);
+  // Brand-new branch: blank medicine list, sensible fresh defaults for the
+  // rest so the Add Medicine form is immediately usable without importing
+  // anything from other branches.
+  branches[id] = {
+    name: trimmed,
+    medicines: [],
+    categories: DEFAULT_CATEGORIES.slice(),
+    forms: DEFAULT_FORMS.slice(),
+    owners: [{ key: 'shared', label: '👨‍👩‍👧 Family — Shared by All', short: '👨‍👩‍👧 Family' }],
+    types: DEFAULT_TYPES.slice()
+  };
+  branchOrder.push(id);
+  saveAllBranches();
+  renderBranchList();
+  showToast(`Branch "${trimmed}" created.`, 'success');
+}
+
+function promptRenameBranch(id) {
+  const b = branches[id];
+  if (!b) return;
+  const name = prompt('Rename branch:', b.name);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) { showToast('Name cannot be empty.', 'error'); return; }
+  b.name = trimmed;
+  saveAllBranches();
+  renderBranchList();
+  if (id === activeBranchId) updateMenuBranchLabel();
+  showToast('Branch renamed.', 'success');
+}
+
+function setDefaultBranch(id) {
+  if (!branches[id]) return;
+  defaultBranchId = id;
+  saveAllBranches();
+  renderBranchList();
+  showToast(`"${branches[id].name}" will now open by default on refresh.`, 'success');
+}
+
+function deleteBranch(id) {
+  const b = branches[id];
+  if (!b) return;
+  if (branchOrder.length <= 1) { showToast('At least one branch must remain.', 'error'); return; }
+  const count = (b.medicines || []).length;
+  const warning = count
+    ? `Delete branch "${b.name}"? This will permanently delete all ${count} medicine${count === 1 ? '' : 's'} in it. This cannot be undone.`
+    : `Delete branch "${b.name}"?`;
+  if (!confirm(warning)) return;
+
+  delete branches[id];
+  branchOrder = branchOrder.filter(x => x !== id);
+  if (defaultBranchId === id) defaultBranchId = branchOrder[0];
+
+  if (activeBranchId === id) {
+    _undoStack = null;
+    clearTimeout(_undoTimer);
+    hideUndoToast();
+    activeBranchId = defaultBranchId;
+    loadActiveBranchIntoState();
+  }
+  saveAllBranches();
+  renderBranchList();
+  showToast('Branch deleted.', 'info');
+}
+
 // ── Stats ─────────────────────────────────────────────────
 function updateStats() {
   document.getElementById('statTotal').textContent    = medicines.length;
@@ -2125,6 +2338,7 @@ function toggleAppMenu() {
     updateMenuBulkLabel();
     updateMenuViewLabel();
     updateSortLabel();
+    updateMenuBranchLabel();
   }
 }
 function closeAppMenu() {
