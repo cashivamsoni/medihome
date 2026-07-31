@@ -7,6 +7,7 @@ html {
 }
 
 :root {
+  --scroll-gap: 48px; /* breathing room below sticky header+stats bar when jumping to a card */
   --teal-50: #F0FDFA;
   --teal-100: #CCFBF1;
   --teal-200: #99F6E4;
@@ -59,6 +60,15 @@ html {
   --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.1);
   --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.14);
   --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile stats bar wraps to two rows (chips below the counts), so the
+   sticky header+stats combo is already taller — needs less extra breathing
+   room than desktop to land in the same visual spot. */
+@media (max-width: 768px) {
+  :root {
+    --scroll-gap: 20px;
+  }
 }
 
 *,
