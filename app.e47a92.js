@@ -2571,11 +2571,11 @@ function toggleAssistant() {
   }
 }
 
-function appendAssistantMessage(text, sender) {
+function appendAssistantMessage(text, sender, isLoading = false) {
   const container = document.getElementById('assistantMessages');
   if (!container) return null;
   const el = document.createElement('div');
-  el.className = `assistant-msg assistant-msg-${sender}`;
+  el.className = `assistant-msg assistant-msg-${sender}${isLoading ? ' assistant-msg-loading' : ''}`;
   el.textContent = text;
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
@@ -2657,12 +2657,54 @@ function localAssistantAnswer(rawQuery) {
   return `I couldn't find anything for that. Try "what's expiring soon", "low stock", "frequently used", an owner's name, or a medicine name.`;
 }
 
-function sendAssistantMessage() {
+// Concise plain-text summary of the current branch's inventory, sent along
+// with each question so the model can answer about your actual data.
+function buildInventoryContext() {
+  const branchName = (branches[activeBranchId] && branches[activeBranchId].name) || 'Unknown';
+  if (!medicines.length) return `Branch: ${branchName}\nNo medicines recorded yet.`;
+  const lines = medicines.map(m => {
+    const ownerCfg = customOwners.find(o => o.key === m.owner);
+    const ownerName = ownerCfg ? ownerCfg.short : m.owner;
+    const qty = m.quantity === 0 ? 'FINISHED' : `${m.quantity} ${m.quantityUnit}`;
+    const exp = m.expiryDate || 'no expiry set';
+    return `- ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
+  });
+  return `Branch: ${branchName}\nTotal medicines: ${medicines.length}\n${lines.join('\n')}`;
+}
+
+let _assistantBusy = false;
+async function sendAssistantMessage() {
+  if (_assistantBusy) return;
   const input = document.getElementById('assistantInput');
   if (!input) return;
   const msg = input.value.trim();
   if (!msg) return;
   input.value = '';
   appendAssistantMessage(msg, 'user');
-  appendAssistantMessage(localAssistantAnswer(msg), 'bot');
+  const loadingEl = appendAssistantMessage('Thinking…', 'bot', true);
+  _assistantBusy = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, context: buildInventoryContext() })
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* non-JSON error page */ }
+    if (loadingEl) loadingEl.remove();
+    if (!res.ok) {
+      // Fall back to local rule-based matching so a down/unconfigured API
+      // doesn't leave the assistant completely useless.
+      appendAssistantMessage(localAssistantAnswer(msg), 'bot');
+      return;
+    }
+    appendAssistantMessage(data.reply || "Sorry, I couldn't generate a response.", 'bot');
+  } catch (err) {
+    if (loadingEl) loadingEl.remove();
+    appendAssistantMessage(localAssistantAnswer(msg), 'bot');
+    console.error('Assistant API error:', err);
+  } finally {
+    _assistantBusy = false;
+  }
 }
