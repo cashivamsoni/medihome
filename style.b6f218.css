@@ -2992,6 +2992,7 @@ body.login-locked {
 }
 .menu-action-danger:hover {
   background: var(--red-100);
+  border-color: var(--red-400);
 }
 
 [data-theme="dark"] #loginScreen .login-box {
@@ -3004,4 +3005,5 @@ body.login-locked {
 }
 [data-theme="dark"] .menu-action-danger:hover {
   background: #4A2129;
+  border-color: #C0455A;
 }
