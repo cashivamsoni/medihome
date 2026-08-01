@@ -545,7 +545,7 @@ function renderMedicineCard(m, serialNum) {
   if (m.image) classes.push('has-image');
 
   const imageHtml = m.image
-    ? `<div class="card-image-wrap" onclick="openImgViewer('${escHtml(m.image)}','${escHtml(m.name)}')" style="cursor:pointer;" title="Click to view image"><img src="${escHtml(m.image)}" alt="${escHtml(m.name)}" onerror="this.parentElement.style.display='none'" /></div>`
+    ? `<div class="card-image-wrap" onclick="if(!bulkMode) openImgViewer('${escHtml(m.image)}','${escHtml(m.name)}')" style="cursor:pointer;" title="Click to view image"><img src="${escHtml(m.image)}" alt="${escHtml(m.name)}" onerror="this.parentElement.style.display='none'" /></div>`
     : '';
 
   // Compact view inline meta
@@ -557,7 +557,7 @@ function renderMedicineCard(m, serialNum) {
   const formInfo = splitFormIcon(m.form);
 
   return `
-    <div class="${classes.join(' ')}" id="med-${m.id}" data-id="${m.id}">
+    <div class="${classes.join(' ')}" id="med-${m.id}" data-id="${m.id}" onclick="handleCardBulkClick(event, '${m.id}')">
       <input type="checkbox" class="card-bulk-check" ${bulkSelected.has(m.id)?'checked':''} onclick="toggleBulkSelect('${m.id}')" />
       ${imageHtml}
       <div class="card-top">
@@ -632,7 +632,7 @@ function scrollToOwner(owner) {
 }
 function _doScrollToOwner(owner) {
   const el = document.getElementById(`owner-${owner}`);
-  if (el) scrollCardIntoView(el);
+  if (el) scrollCardIntoView(el, 'smooth', 10);
 }
 
 // ── Search ───────────────────────────────────────────────────
@@ -834,7 +834,7 @@ function clearSearchState() {
   clearSearch();
 }
 
-function scrollCardIntoView(el, behavior = 'smooth') {
+function scrollCardIntoView(el, behavior = 'smooth', gapOverride = null) {
   // rAF ensures we measure after any pending DOM paint (e.g. right after renderAll).
   // Deterministic manual scroll (rather than native scrollIntoView) avoids a
   // browser quirk where smooth scrollIntoView can overshoot past sticky ancestors.
@@ -844,8 +844,11 @@ function scrollCardIntoView(el, behavior = 'smooth') {
     // --scroll-gap is a CSS var (see style.css) so desktop and mobile can be
     // tuned independently — the mobile stats bar wraps to two rows and is
     // already taller, so it needs a smaller extra gap than desktop.
-    const gapVar = getComputedStyle(document.documentElement).getPropertyValue('--scroll-gap');
-    const gap = parseFloat(gapVar) || 24;
+    let gap = gapOverride;
+    if (gap == null) {
+      const gapVar = getComputedStyle(document.documentElement).getPropertyValue('--scroll-gap');
+      gap = parseFloat(gapVar) || 24;
+    }
     // Note: the bulk-selection bar is fixed to the BOTTOM of the screen, so it
     // never covers the top of a card and must not factor into this offset.
     const offsetTop = (header   ? header.offsetHeight  : 0) +
@@ -2060,6 +2063,16 @@ function populateBulkDropdowns() {
     customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
   ownerSel.onchange = () => { if (ownerSel.value) bulkChangeOwner(ownerSel.value); ownerSel.value=''; };
   catSel.onchange   = () => { if (catSel.value)   bulkChangeCategory(catSel.value); catSel.value=''; };
+}
+
+// Clicking anywhere on a card in bulk mode toggles selection, except on
+// controls that must keep working independently: quantity buttons
+// (finish/-/+), edit/delete, and the checkbox itself (which already
+// toggles selection via its own onclick — avoid double-firing).
+function handleCardBulkClick(e, id) {
+  if (!bulkMode) return;
+  if (e.target.closest('.qty-btn, .btn-icon, .card-bulk-check')) return;
+  toggleBulkSelect(id);
 }
 
 function toggleBulkSelect(id) {
