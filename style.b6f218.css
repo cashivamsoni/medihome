@@ -598,39 +598,38 @@ body.modal-open {
   position: fixed;
   bottom: 90px;
   right: 25px;
-  width: auto;
-  height: 44px; /* same as go-top-btn */
-  padding: 0 16px; /* tighter horizontal padding */
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--teal-600);
+  color: white;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.35);
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
-  border-radius: 22px;
-  background: linear-gradient(135deg, var(--teal-200), var(--teal-600));
-  font-family: "DM Serif Display", Georgia, serif;
-  color: #FFF;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 14px rgba(13, 148, 136, 0.4);
-  font-size: 18px; /* slightly smaller text so pill isn't oversized */
-  cursor: pointer;
   transition: all 0.2s ease, bottom 0.25s ease;
+}
+#shareBtn i {
+  font-size: 1rem;
 }
 /* When the bulk selection bar is open, float above it instead of hiding behind it */
 body.bulk-mode #shareBtn {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px);
 }
 #shareBtn:hover {
-  transform: translateY(-2px) scale(1.1);
-  box-shadow: 0 0 22px rgba(13, 148, 136, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: var(--teal-700);
+  box-shadow: 0 6px 22px rgba(13, 148, 136, 0.5);
+  transform: translateY(-2px) scale(1.05);
 }
 [data-theme="dark"] #shareBtn {
-  background: linear-gradient(135deg, var(--teal-700), var(--teal-500));
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 14px rgba(45, 212, 191, 0.3);
+  background: var(--teal-500);
 }
 [data-theme="dark"] #shareBtn:hover {
-  box-shadow: 0 0 22px rgba(45, 212, 191, 0.5);
+  background: var(--teal-400);
 }
 
 /* ---------- AI Assistant ---------- */
@@ -685,6 +684,7 @@ body.bulk-mode .assistant-btn {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
   transition: bottom 0.25s ease;
 }
 .assistant-panel.hidden {
@@ -712,6 +712,7 @@ body.bulk-mode .assistant-panel {
 .assistant-messages {
   flex: 1 1 auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
   min-height: 0;
   padding: 12px;
   display: flex;
