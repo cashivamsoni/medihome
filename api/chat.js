@@ -10,7 +10,7 @@
 //   3. Make sure this file lives at /api/chat.js in your repo root
 //      (sibling to your other project files, not inside a subfolder).
 
-const MODEL = 'gemini-2.5-flash-lite'; // best free-tier request headroom
+const MODEL = 'gemini-3.5-flash-lite'; // current GA model with best free-tier headroom
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
