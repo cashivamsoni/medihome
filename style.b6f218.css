@@ -633,6 +633,158 @@ body.bulk-mode #shareBtn {
   box-shadow: 0 0 22px rgba(45, 212, 191, 0.5);
 }
 
+/* ---------- AI Assistant ---------- */
+.assistant-btn {
+  position: fixed;
+  bottom: 150px; /* stacked 60px above #shareBtn so they never overlap */
+  right: 25px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  background: var(--teal-600);
+  color: #FFF;
+  border: none;
+  box-shadow: var(--shadow-md);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.2s ease, bottom 0.25s ease;
+}
+.assistant-btn:hover {
+  background: var(--teal-700);
+  transform: translateY(-2px) scale(1.08);
+}
+body.bulk-mode .assistant-btn {
+  bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
+}
+[data-theme="dark"] .assistant-btn {
+  background: var(--teal-500);
+}
+[data-theme="dark"] .assistant-btn:hover {
+  background: var(--teal-400);
+}
+
+.assistant-panel {
+  position: fixed;
+  bottom: 150px;
+  right: 25px;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  max-height: min(480px, calc(100vh - 180px));
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: bottom 0.25s ease;
+}
+.assistant-panel.hidden {
+  display: none;
+}
+body.bulk-mode .assistant-panel {
+  bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
+}
+.assistant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+.assistant-header i {
+  color: var(--teal-600);
+  margin-right: 4px;
+}
+.assistant-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.assistant-msg {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.83rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+.assistant-msg-bot {
+  align-self: flex-start;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+}
+.assistant-msg-user {
+  align-self: flex-end;
+  background: var(--teal-600);
+  color: #FFF;
+  border-bottom-right-radius: 4px;
+}
+.assistant-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#assistantInput {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 0.83rem;
+  font-family: "Inter", sans-serif;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+#assistantInput:focus {
+  outline: none;
+  border-color: var(--teal-400);
+}
+#assistantSendBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--teal-600);
+  color: #FFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+#assistantSendBtn:hover {
+  background: var(--teal-700);
+}
+[data-theme="dark"] #assistantSendBtn:hover {
+  background: var(--teal-400);
+}
+@media (max-width: 480px) {
+  .assistant-panel {
+    right: 12px;
+    bottom: 150px;
+    width: calc(100vw - 24px);
+  }
+}
+
 /* ── Medicine Cards ──────────────────────────────────────── */
 .medicine-card {
   background: var(--surface);
