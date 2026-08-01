@@ -681,6 +681,14 @@ function bindEvents() {
   }
   document.getElementById('modal').addEventListener('input', clearFieldError);
   document.getElementById('modal').addEventListener('change', clearFieldError);
+
+  // Enter to send in the assistant panel
+  const assistantInput = document.getElementById('assistantInput');
+  if (assistantInput) {
+    assistantInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); sendAssistantMessage(); }
+    });
+  }
 }
 
 // Fuzzy: every char of needle appears in name in order (name only, min 3 chars)
@@ -2537,3 +2545,113 @@ window.addEventListener('offline', () => {
 window.addEventListener('online', () => {
   showToast('Back online — syncing data.', 'success');
 });
+
+// ── Assistant (local only — free, no API, no network call) ────
+// Answers using the medicines/owners already loaded in the browser, reusing
+// the same helpers the rest of the app uses (effectiveLowStock, isExpiredMed,
+// medicineMatches, etc.) so its answers always match what's on screen.
+function toggleAssistant() {
+  const panel = document.getElementById('assistantPanel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    const input = document.getElementById('assistantInput');
+    if (input) input.focus();
+  }
+}
+
+function appendAssistantMessage(text, sender) {
+  const container = document.getElementById('assistantMessages');
+  if (!container) return null;
+  const el = document.createElement('div');
+  el.className = `assistant-msg assistant-msg-${sender}`;
+  el.textContent = text;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+  return el;
+}
+
+function _assistantListNames(list, limit = 8) {
+  const names = list.slice(0, limit).map(m => m.name);
+  const extra = list.length - names.length;
+  return names.join(', ') + (extra > 0 ? `, and ${extra} more` : '');
+}
+
+function localAssistantAnswer(rawQuery) {
+  const q = rawQuery.toLowerCase().trim();
+  const branchName = (branches[activeBranchId] && branches[activeBranchId].name) || 'this branch';
+
+  if (!medicines.length) return `There are no medicines recorded in "${branchName}" yet.`;
+
+  // Total count
+  if (/\b(how many|total|count)\b.*\b(medicine|medicines|meds|items)\b/.test(q) ||
+      /^(medicines|meds)\s*(count|total)?$/.test(q)) {
+    return `You have ${medicines.length} medicine${medicines.length === 1 ? '' : 's'} recorded in "${branchName}".`;
+  }
+
+  // Expired (check before the more general "expiry" pattern below)
+  if (/\bexpired\b/.test(q)) {
+    const list = medicines.filter(m => isExpiredMed(m.expiryDate));
+    if (!list.length) return `Nothing is expired right now in "${branchName}" — good news!`;
+    return `${list.length} expired medicine${list.length === 1 ? '' : 's'}: ${_assistantListNames(list)}.`;
+  }
+
+  // Expiring soon
+  if (/\bexpir(ing|es|y)\b/.test(q)) {
+    const list = medicines.filter(m => isExpiringSoonMed(m.expiryDate));
+    if (!list.length) return `Nothing is expiring within the next 6 months in "${branchName}".`;
+    return `${list.length} medicine${list.length === 1 ? '' : 's'} expiring within 6 months: ${_assistantListNames(list)}.`;
+  }
+
+  // Low stock / finished / reorder
+  if (/\b(low stock|running low|reorder|out of stock|finished)\b/.test(q)) {
+    const list = medicines.filter(effectiveLowStock);
+    if (!list.length) return `Nothing is low on stock in "${branchName}" right now.`;
+    return `${list.length} medicine${list.length === 1 ? '' : 's'} low on stock or finished: ${_assistantListNames(list)}.`;
+  }
+
+  // Frequently used
+  if (/\bfrequent(ly)?\b/.test(q)) {
+    const list = medicines.filter(m => m.frequentlyUsed);
+    if (!list.length) return `No medicines are marked as frequently used in "${branchName}" yet.`;
+    return `${list.length} frequently used medicine${list.length === 1 ? '' : 's'}: ${_assistantListNames(list)}.`;
+  }
+
+  // Owner-specific — "what does mumma have", "papa ji's medicines", etc.
+  for (const o of customOwners) {
+    const candidates = [o.short, o.label]
+      .filter(Boolean)
+      .map(s => s.replace(/[^\w\s]/g, '').trim().toLowerCase())
+      .filter(Boolean);
+    if (candidates.some(name => name && q.includes(name))) {
+      const list = medicines.filter(m => m.owner === o.key);
+      if (!list.length) return `No medicines are recorded for ${o.short} yet.`;
+      return `${o.short} has ${list.length} medicine${list.length === 1 ? '' : 's'}: ${_assistantListNames(list)}.`;
+    }
+  }
+
+  // Fall back to the same matching logic the search bar uses — covers
+  // medicine names, categories, types, forms, and notes.
+  const matches = medicines.filter(m => medicineMatches(m, rawQuery));
+  if (matches.length === 1) {
+    const m = matches[0];
+    const qty = m.quantity === 0 ? 'Finished' : `${m.quantity} ${m.quantityUnit}`;
+    return `${m.name} — ${qty}, owner: ${ownerLabel(m.owner)}, ${formatExpiry(m.expiryDate)}.` +
+      (m.notes ? ` Note: ${m.notes}` : '');
+  }
+  if (matches.length > 1) {
+    return `Found ${matches.length} matching medicines: ${_assistantListNames(matches, 10)}.`;
+  }
+
+  return `I couldn't find anything for that. Try "what's expiring soon", "low stock", "frequently used", an owner's name, or a medicine name.`;
+}
+
+function sendAssistantMessage() {
+  const input = document.getElementById('assistantInput');
+  if (!input) return;
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendAssistantMessage(msg, 'user');
+  appendAssistantMessage(localAssistantAnswer(msg), 'bot');
+}
