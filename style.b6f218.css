@@ -739,6 +739,10 @@ body.bulk-mode .assistant-panel {
   color: #FFF;
   border-bottom-right-radius: 4px;
 }
+.assistant-msg-loading {
+  opacity: 0.6;
+  font-style: italic;
+}
 .assistant-input-row {
   display: flex;
   gap: 8px;
