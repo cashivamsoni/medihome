@@ -12,9 +12,35 @@
 
 const MODEL = 'gemini-3.5-flash-lite'; // current GA model with best free-tier headroom
 
+// ── Simple in-memory rate limit ────────────────────────────
+// Caps how many messages one caller (by IP, since no auth token is checked
+// here) can send per minute — cheap insurance against a stuck tab or script
+// draining the whole app's shared free-tier quota. Resets on cold starts,
+// which is an acceptable trade-off for a small family app.
+const RATE_LIMIT = 10;       // max requests
+const RATE_WINDOW_MS = 60000; // per this many ms (1 minute)
+const requestLog = new Map(); // identifier -> array of request timestamps
+
+function isRateLimited(id) {
+  const now = Date.now();
+  const timestamps = (requestLog.get(id) || []).filter(t => now - t < RATE_WINDOW_MS);
+  timestamps.push(now);
+  requestLog.set(id, timestamps);
+  return timestamps.length > RATE_LIMIT;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const identifier =
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket?.remoteAddress ||
+    'unknown';
+  if (isRateLimited(identifier)) {
+    res.status(429).json({ error: 'Too many messages — please wait a moment before asking again.' });
     return;
   }
 
