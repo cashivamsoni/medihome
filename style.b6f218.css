@@ -673,12 +673,15 @@ body.bulk-mode .assistant-btn {
   right: 25px;
   width: 340px;
   max-width: calc(100vw - 40px);
-  max-height: min(480px, calc(100vh - 180px));
+  /* Tied to the *actual* header+stats-bar height (same vars they use to
+     size themselves) so the panel can never grow tall enough to sit behind
+     them, on any device. */
+  max-height: min(480px, calc(100vh - 150px - var(--header-h, 64px) - var(--stats-h, 50px) - 16px));
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  z-index: 51;
+  z-index: 150;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3132,7 +3135,6 @@ body.compact-view.bulk-mode .medicine-card {
 }
 #loginError {
   text-align: left;
-  margin-top: -4px;
 }
 
 /* Prevent background scroll/interaction while the login screen is up */
