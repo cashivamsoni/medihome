@@ -805,6 +805,39 @@
       <i class="fa-solid fa-arrow-up"></i>
     </button>
 
+    <!-- ── AI Assistant ──────────────────────────────────── -->
+    <button
+      id="assistantBtn"
+      class="assistant-btn"
+      onclick="toggleAssistant()"
+      aria-label="Ask MediHome Assistant"
+      title="Ask MediHome Assistant"
+    >
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+    </button>
+    <div id="assistantPanel" class="assistant-panel hidden">
+      <div class="assistant-header">
+        <span><i class="fa-solid fa-wand-magic-sparkles"></i> MediHome Assistant</span>
+        <button class="modal-close" onclick="toggleAssistant()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="assistant-messages" id="assistantMessages">
+        <div class="assistant-msg assistant-msg-bot">Hi! I can answer things like "what's expiring soon", "low stock", "frequently used", "Papa Ji's medicines", or the name of a medicine.</div>
+      </div>
+      <div class="assistant-input-row">
+        <input
+          type="text"
+          id="assistantInput"
+          placeholder="e.g. what's expiring soon?"
+          autocomplete="off"
+        />
+        <button id="assistantSendBtn" onclick="sendAssistantMessage()" aria-label="Send">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- ── Image Viewer Modal ─────────────────────────────────── -->
     <div id="imgViewerModal" class="hidden">
       <div class="img-viewer-box" onclick="event.stopPropagation()">
