@@ -2080,7 +2080,11 @@ function toggleBulkSelect(id) {
   else bulkSelected.add(id);
   updateBulkCount();
   const card = document.getElementById('med-' + id);
-  if (card) card.classList.toggle('bulk-selected', bulkSelected.has(id));
+  if (card) {
+    card.classList.toggle('bulk-selected', bulkSelected.has(id));
+    const cb = card.querySelector('.card-bulk-check');
+    if (cb) cb.checked = bulkSelected.has(id);
+  }
 }
 
 function updateBulkCount() {
