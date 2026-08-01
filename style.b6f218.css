@@ -410,6 +410,13 @@ body.modal-open {
 #clearSearch i {
   font-size: 0.7rem;
 }
+[data-theme="dark"] #clearSearch {
+  background: var(--slate-400);
+  color: var(--slate-800);
+}
+[data-theme="dark"] #clearSearch:hover {
+  background: var(--slate-300);
+}
 .intro {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -2241,6 +2248,7 @@ body.bulk-mode .card-bulk-check {
 }
 body.bulk-mode .medicine-card {
   padding-left: 38px;
+  cursor: pointer;
 }
 .medicine-card.bulk-selected {
   outline: 2.5px solid var(--teal-400);
