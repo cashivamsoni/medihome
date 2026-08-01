@@ -705,7 +705,7 @@ body.bulk-mode .assistant-panel {
   color: var(--text-primary);
   flex-shrink: 0;
 }
-.assistant-header i {
+.assistant-header > span i {
   color: var(--teal-600);
   margin-right: 4px;
 }
