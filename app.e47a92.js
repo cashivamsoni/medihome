@@ -137,6 +137,7 @@ function handleLogin(e) {
   window._fbAuth
     .login(email, password, rememberEl.checked)
     .catch((err) => {
+      console.error('Login failed:', err);
       showLoginError(friendlyAuthError(err));
       btn.disabled = false;
       btn.classList.remove('btn-loading');
@@ -147,7 +148,7 @@ function handleLogin(e) {
 function showLoginError(msg) {
   const errorEl = document.getElementById('loginError');
   if (!errorEl) return;
-  errorEl.textContent = msg;
+  errorEl.textContent = msg || 'Could not sign in. Please try again.';
   errorEl.classList.remove('hidden');
 }
 
@@ -158,10 +159,11 @@ function friendlyAuthError(err) {
     'auth/user-not-found': 'Incorrect email or password.',
     'auth/wrong-password': 'Incorrect email or password.',
     'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/invalid-login-credentials': 'Incorrect email or password.',
     'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
     'auth/network-request-failed': 'Network error — check your connection.',
   };
-  return map[code] || 'Could not sign in. Please try again.';
+  return (code && map[code]) || 'Could not sign in. Please try again.';
 }
 
 function confirmLogout() {
@@ -2533,6 +2535,15 @@ function updateMenuBulkLabel() {
       const toggle = document.getElementById('menuToggleBtn');
       if (menu && !menu.contains(e.target) && toggle && !toggle.contains(e.target)) {
         closeAppMenu();
+      }
+    });
+    // Close the assistant panel when clicking outside it
+    document.addEventListener('click', e => {
+      const panel = document.getElementById('assistantPanel');
+      const btn = document.getElementById('assistantBtn');
+      if (!panel || panel.classList.contains('hidden')) return;
+      if (!panel.contains(e.target) && btn && !btn.contains(e.target)) {
+        panel.classList.add('hidden');
       }
     });
   });
