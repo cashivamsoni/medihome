@@ -545,7 +545,7 @@ function renderMedicineCard(m, serialNum) {
   if (m.image) classes.push('has-image');
 
   const imageHtml = m.image
-    ? `<div class="card-image-wrap" onclick="if(!bulkMode) openImgViewer('${escHtml(m.image)}','${escHtml(m.name)}')" style="cursor:pointer;" title="Click to view image"><img src="${escHtml(m.image)}" alt="${escHtml(m.name)}" onerror="this.parentElement.style.display='none'" /></div>`
+    ? `<div class="card-image-wrap" onclick="openImgViewer('${escHtml(m.image)}','${escHtml(m.name)}')" style="cursor:pointer;" title="Click to view image"><img src="${escHtml(m.image)}" alt="${escHtml(m.name)}" onerror="this.parentElement.style.display='none'" /></div>`
     : '';
 
   // Compact view inline meta
@@ -670,6 +670,17 @@ function bindEvents() {
   });
 
   document.getElementById('clearSearch').addEventListener('click', clearSearch);
+
+  // Clear the red "required field" highlight the moment the user fixes it.
+  // medSerialId is excluded — it has its own dedicated duplicate-ID live check.
+  function clearFieldError(e) {
+    if (e.target.id === 'medSerialId') return;
+    if (e.target.classList && e.target.classList.contains('input-error')) {
+      e.target.classList.remove('input-error');
+    }
+  }
+  document.getElementById('modal').addEventListener('input', clearFieldError);
+  document.getElementById('modal').addEventListener('change', clearFieldError);
 }
 
 // Fuzzy: every char of needle appears in name in order (name only, min 3 chars)
@@ -1279,6 +1290,13 @@ function openEdit(id) {
 
 document.getElementById('saveBtn').addEventListener('click', saveMedicine);
 
+// Marks (or clears) the red required-field highlight on a form field
+function highlightInvalidField(id, isInvalid) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('input-error', !!isInvalid);
+}
+
 function saveMedicine() {
   const name         = document.getElementById('medName').value.trim();
   const desc         = document.getElementById('medDesc').value.trim();
@@ -1308,7 +1326,14 @@ function saveMedicine() {
     : document.getElementById('medLowStock').checked;
 
   if (!name || !desc || !form || isNaN(quantity) || !quantityUnit || !category) {
-    showToast('Please fill all required fields.', 'error'); return;
+    showToast('Please fill all required fields.', 'error');
+    highlightInvalidField('medName', !name);
+    highlightInvalidField('medDesc', !desc);
+    highlightInvalidField(formSelVal === '__new__' ? 'medFormCustom' : 'medFormField', !form);
+    highlightInvalidField('medQuantity', isNaN(quantity));
+    highlightInvalidField('medQuantityUnit', !quantityUnit);
+    highlightInvalidField(catSel === '__new__' ? 'medCategoryCustom' : 'medCategory', !category);
+    return;
   }
 
   // Serial ID: user-entered value always wins; otherwise auto-assign the
@@ -1326,10 +1351,14 @@ function saveMedicine() {
   }
 
   if (catSel === '__new__' && !catCustom) {
-    showToast('Please type a category name.', 'error'); return;
+    showToast('Please type a category name.', 'error');
+    highlightInvalidField('medCategoryCustom', true);
+    return;
   }
   if (formSelVal === '__new__' && !formCustomVal) {
-    showToast('Please type a form name.', 'error'); return;
+    showToast('Please type a form name.', 'error');
+    highlightInvalidField('medFormCustom', true);
+    return;
   }
 
   // If it's a new custom category/form, add it to the lists for future use
@@ -2071,7 +2100,7 @@ function populateBulkDropdowns() {
 // toggles selection via its own onclick — avoid double-firing).
 function handleCardBulkClick(e, id) {
   if (!bulkMode) return;
-  if (e.target.closest('.qty-btn, .btn-icon, .card-bulk-check')) return;
+  if (e.target.closest('.qty-btn, .btn-icon, .card-bulk-check, .card-image-wrap')) return;
   toggleBulkSelect(id);
 }
 
@@ -2084,6 +2113,13 @@ function toggleBulkSelect(id) {
     card.classList.toggle('bulk-selected', bulkSelected.has(id));
     const cb = card.querySelector('.card-bulk-check');
     if (cb) cb.checked = bulkSelected.has(id);
+  }
+  // Manually deselecting the last remaining item exits selection mode —
+  // "Deselect All" stays in bulk mode on purpose, since that's more often
+  // used to reset a selection mid-workflow than to abandon it.
+  if (bulkMode && bulkSelected.size === 0) {
+    exitBulkMode();
+    renderAll();
   }
 }
 
