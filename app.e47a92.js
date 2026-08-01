@@ -24,6 +24,7 @@ let branches = {};            // { branchId: { name, medicines, categories, form
 let branchOrder = [];         // display order of branch IDs
 let activeBranchId = null;    // branch currently loaded into medicines/customX
 let defaultBranchId = null;   // branch that auto-loads on every refresh
+let _branchInitialized = false; // true once the first real page load has run
 
 // Units that are countable → auto low-stock
 const COUNTABLE_UNITS = ['tablets','tablet','pieces','piece','pouches','pouch','capsules','capsule','lozenges','lozenge'];
@@ -232,9 +233,20 @@ function loadData() {
       needsMigrationSave = true;
     }
 
-    // Always open the default/home branch on load (refresh) — switching branches
-    // mid-session is a temporary view; refresh always returns to the default.
-    activeBranchId = defaultBranchId;
+    // Only jump to the default/home branch on the very FIRST load of this
+    // session (a real page refresh). This same listener re-fires on every
+    // subsequent save too (since saving writes back to this same data), and
+    // if we reset activeBranchId every time, saving a medicine while working
+    // on a non-default branch would silently yank you back to the default
+    // branch mid-edit. Refresh = reset to default; saving = stay put.
+    if (!_branchInitialized) {
+      activeBranchId = defaultBranchId;
+      _branchInitialized = true;
+    } else if (!branches[activeBranchId]) {
+      // Edge case: the branch we were on got deleted from elsewhere — fall
+      // back to default rather than pointing at a branch that no longer exists.
+      activeBranchId = defaultBranchId;
+    }
     loadActiveBranchIntoState();
     // Only write back when the shape actually needed migrating/seeding —
     // avoids an unnecessary save (and possible listener feedback loop) on every normal load.
