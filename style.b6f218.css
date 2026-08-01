@@ -1042,7 +1042,9 @@ body.bulk-mode #shareBtn {
 .field-error.hidden {
   display: none;
 }
-.form-input.input-error {
+.form-input.input-error,
+.form-select.input-error,
+.form-textarea.input-error {
   border-color: var(--red-500);
   background: var(--red-50);
 }
@@ -2126,6 +2128,7 @@ body.bulk-mode .main {
 .bulk-delete:hover {
   background: var(--red-100);
   border-color: var(--red-400);
+  color: var(--red-600);
 }
 .bulk-cancel {
   display: none !important;
@@ -2396,6 +2399,7 @@ body.bulk-mode .medicine-card {
 [data-theme="dark"] .bulk-delete:hover {
   background: #3A1F21;
   border-color: #7C2D2D;
+  color: #FCA5A5;
 }
 [data-theme="dark"] .bulk-cancel-circle {
   background: #2A1617;
