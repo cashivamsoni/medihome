@@ -2557,7 +2557,7 @@ function updateMenuBulkLabel() {
       if (!panel.contains(e.target) && btn && !btn.contains(e.target)) {
         panel.classList.add('hidden');
         startAssistantHints();
-        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        stopAssistantSpeech();
       }
     });
   });
@@ -2632,7 +2632,7 @@ function toggleAssistant() {
     if (input) input.focus();
   } else {
     startAssistantHints();
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    stopAssistantSpeech();
   }
 }
 
@@ -2690,7 +2690,7 @@ function toggleAssistantMic() {
     _recognizer.stop();
     setMicListening(false);
   } else {
-    speechSynthesis.cancel(); // don't listen while it's still talking
+    stopAssistantSpeech(); // don't listen while it's still talking
     try {
       _recognizer.start();
       setMicListening(true);
@@ -2704,7 +2704,35 @@ function speakAssistantReply(text) {
   speechSynthesis.cancel(); // don't overlap with a previous reply still speaking
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'en-US';
+  utterance.onstart = () => setSpeechToggle(true, false);
+  utterance.onend = () => setSpeechToggle(false);
+  utterance.onerror = () => setSpeechToggle(false);
   speechSynthesis.speak(utterance);
+}
+
+function setSpeechToggle(visible, paused = false) {
+  const btn = document.getElementById('assistantSpeechToggle');
+  if (!btn) return;
+  btn.classList.toggle('hidden', !visible);
+  const icon = btn.querySelector('i');
+  if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
+  btn.setAttribute('aria-label', paused ? 'Resume reading' : 'Pause reading');
+}
+
+function toggleAssistantSpeech() {
+  if (!('speechSynthesis' in window)) return;
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause();
+    setSpeechToggle(true, true);
+  } else if (speechSynthesis.paused) {
+    speechSynthesis.resume();
+    setSpeechToggle(true, false);
+  }
+}
+
+function stopAssistantSpeech() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  setSpeechToggle(false);
 }
 
 document.addEventListener('DOMContentLoaded', initAssistantVoice);
