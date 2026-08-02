@@ -759,6 +759,40 @@ body.bulk-mode .assistant-panel {
   color: var(--teal-600);
   margin-right: 4px;
 }
+.assistant-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#assistantSpeechToggle {
+  background: var(--slate-100);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#assistantSpeechToggle.hidden {
+  display: none;
+}
+#assistantSpeechToggle:hover {
+  background: var(--slate-200);
+  color: var(--text-primary);
+}
+[data-theme="dark"] #assistantSpeechToggle {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+[data-theme="dark"] #assistantSpeechToggle:hover {
+  background: var(--border);
+}
 .assistant-messages {
   flex: 1 1 auto;
   overflow-y: auto;
