@@ -2597,6 +2597,8 @@ function showNextHint() {
   hintEl.textContent = ASSISTANT_HINTS[_hintIndex % ASSISTANT_HINTS.length];
   _hintIndex++;
   hintEl.classList.remove('hidden');
+  hintEl.classList.remove('show');
+  void hintEl.offsetHeight; // force reflow so the browser paints the "before" state first
   requestAnimationFrame(() => hintEl.classList.add('show'));
 
   _hintTimer = setTimeout(() => {
