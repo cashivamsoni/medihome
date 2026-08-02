@@ -2557,6 +2557,7 @@ function updateMenuBulkLabel() {
       if (!panel.contains(e.target) && btn && !btn.contains(e.target)) {
         panel.classList.add('hidden');
         startAssistantHints();
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
       }
     });
   });
@@ -2631,6 +2632,7 @@ function toggleAssistant() {
     if (input) input.focus();
   } else {
     startAssistantHints();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
   }
 }
 
@@ -2644,8 +2646,68 @@ function appendAssistantMessage(text, sender, isLoading = false) {
   el.textContent = text;
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
+  if (sender === 'bot' && !isLoading) speakAssistantReply(text);
   return el;
 }
+
+// ── Voice input (speech-to-text) ────────────────────────────
+// Native Web Speech API — no key, no cost, no backend involved. Support
+// varies by browser, so the mic button only appears when it's available.
+const _SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let _recognizer = null;
+let _micListening = false;
+
+function initAssistantVoice() {
+  const micBtn = document.getElementById('assistantMicBtn');
+  if (!micBtn) return;
+  if (!_SpeechRecognitionCtor) return; // not supported here — stay hidden
+
+  micBtn.classList.remove('hidden');
+  _recognizer = new _SpeechRecognitionCtor();
+  _recognizer.continuous = false;
+  _recognizer.interimResults = false;
+  _recognizer.lang = 'en-US';
+
+  _recognizer.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    const input = document.getElementById('assistantInput');
+    if (input) input.value = transcript;
+    sendAssistantMessage();
+  };
+  _recognizer.onerror = () => setMicListening(false);
+  _recognizer.onend = () => setMicListening(false);
+}
+
+function setMicListening(on) {
+  _micListening = on;
+  const micBtn = document.getElementById('assistantMicBtn');
+  if (micBtn) micBtn.classList.toggle('listening', on);
+}
+
+function toggleAssistantMic() {
+  if (!_recognizer) return;
+  if (_micListening) {
+    _recognizer.stop();
+    setMicListening(false);
+  } else {
+    speechSynthesis.cancel(); // don't listen while it's still talking
+    try {
+      _recognizer.start();
+      setMicListening(true);
+    } catch (_) { /* already started — ignore */ }
+  }
+}
+
+// ── Voice output (text-to-speech) ───────────────────────────
+function speakAssistantReply(text) {
+  if (!('speechSynthesis' in window)) return; // not supported — silently skip
+  speechSynthesis.cancel(); // don't overlap with a previous reply still speaking
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  speechSynthesis.speak(utterance);
+}
+
+document.addEventListener('DOMContentLoaded', initAssistantVoice);
 
 function _assistantListNames(list, limit = 8) {
   const names = list.slice(0, limit).map(m => m.name);
