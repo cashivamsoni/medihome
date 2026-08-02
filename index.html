@@ -819,9 +819,14 @@
     <div id="assistantPanel" class="assistant-panel hidden">
       <div class="assistant-header">
         <span><i class="fa-solid fa-wand-magic-sparkles"></i> MediHome Assistant</span>
-        <button class="modal-close" onclick="toggleAssistant()" aria-label="Close">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <div class="assistant-header-actions">
+          <button id="assistantSpeechToggle" class="hidden" onclick="toggleAssistantSpeech()" aria-label="Pause reading">
+            <i class="fa-solid fa-pause"></i>
+          </button>
+          <button class="modal-close" onclick="toggleAssistant()" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
       </div>
       <div class="assistant-messages" id="assistantMessages">
         <div class="assistant-msg assistant-msg-bot">Hi! Ask me about your medicines — stock, expiry, owners — or anything else.</div>
