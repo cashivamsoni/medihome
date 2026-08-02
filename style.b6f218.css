@@ -782,6 +782,7 @@ body.bulk-mode .assistant-panel {
   background: var(--surface-2);
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
+  text-align: justify;
 }
 .assistant-msg-user {
   align-self: flex-end;
