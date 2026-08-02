@@ -666,6 +666,37 @@ body.bulk-mode .assistant-btn {
   background: var(--teal-400);
 }
 
+.assistant-hint {
+  position: fixed;
+  bottom: 204px; /* sits just above the 44px assistant button (150px + 44 + 10 gap) */
+  right: 25px;
+  max-width: 210px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #FFF;
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  z-index: 49;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease, bottom 0.25s ease;
+  pointer-events: none;
+}
+.assistant-hint.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.assistant-hint.hidden {
+  display: none;
+}
+body.bulk-mode .assistant-hint {
+  bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px + 54px);
+}
+
 .assistant-panel {
   position: fixed;
   bottom: 150px;
