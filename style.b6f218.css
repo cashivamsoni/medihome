@@ -836,6 +836,37 @@ body.bulk-mode .assistant-panel {
 [data-theme="dark"] #assistantSendBtn:hover {
   background: var(--teal-400);
 }
+#assistantMicBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+#assistantMicBtn.hidden {
+  display: none;
+}
+#assistantMicBtn:hover {
+  border-color: var(--teal-300);
+  color: var(--teal-600);
+}
+#assistantMicBtn.listening {
+  background: var(--red-500);
+  border-color: var(--red-500);
+  color: #FFF;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); }
+}
 @media (max-width: 480px) {
   .assistant-panel {
     right: 12px;
