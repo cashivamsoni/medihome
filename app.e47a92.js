@@ -2556,6 +2556,7 @@ function updateMenuBulkLabel() {
       if (!panel || panel.classList.contains('hidden')) return;
       if (!panel.contains(e.target) && btn && !btn.contains(e.target)) {
         panel.classList.add('hidden');
+        startAssistantHints();
       }
     });
   });
@@ -2573,15 +2574,65 @@ window.addEventListener('online', () => {
 // Answers using the medicines/owners already loaded in the browser, reusing
 // the same helpers the rest of the app uses (effectiveLowStock, isExpiredMed,
 // medicineMatches, etc.) so its answers always match what's on screen.
+// ── Assistant hint bubble ───────────────────────────────────
+// Rotates small nudge messages above the assistant button while its panel
+// is closed; stops the moment the panel opens, resumes when it closes again.
+const ASSISTANT_HINTS = [
+  'Need something? Ask here.',
+  'Try: "what\'s expiring soon?"',
+  'Ask about any medicine.',
+  'Curious what\'s low on stock?',
+  'I can look things up for you.'
+];
+let _hintIndex = 0;
+let _hintTimer = null;
+let _hintCycleActive = false;
+
+function showNextHint() {
+  const panel = document.getElementById('assistantPanel');
+  if (panel && !panel.classList.contains('hidden')) return; // paused while panel is open
+  const hintEl = document.getElementById('assistantHint');
+  if (!hintEl) return;
+
+  hintEl.textContent = ASSISTANT_HINTS[_hintIndex % ASSISTANT_HINTS.length];
+  _hintIndex++;
+  hintEl.classList.remove('hidden');
+  requestAnimationFrame(() => hintEl.classList.add('show'));
+
+  _hintTimer = setTimeout(() => {
+    hintEl.classList.remove('show');
+    setTimeout(() => hintEl.classList.add('hidden'), 400); // matches CSS fade duration
+    _hintTimer = setTimeout(showNextHint, 3000);
+  }, 4000);
+}
+
+function startAssistantHints() {
+  if (_hintCycleActive) return;
+  _hintCycleActive = true;
+  clearTimeout(_hintTimer);
+  _hintTimer = setTimeout(showNextHint, 2000);
+}
+function stopAssistantHints() {
+  _hintCycleActive = false;
+  clearTimeout(_hintTimer);
+  const hintEl = document.getElementById('assistantHint');
+  if (hintEl) { hintEl.classList.remove('show'); hintEl.classList.add('hidden'); }
+}
+
 function toggleAssistant() {
   const panel = document.getElementById('assistantPanel');
   if (!panel) return;
   panel.classList.toggle('hidden');
   if (!panel.classList.contains('hidden')) {
+    stopAssistantHints();
     const input = document.getElementById('assistantInput');
     if (input) input.focus();
+  } else {
+    startAssistantHints();
   }
 }
+
+document.addEventListener('DOMContentLoaded', startAssistantHints);
 
 function appendAssistantMessage(text, sender, isLoading = false) {
   const container = document.getElementById('assistantMessages');
