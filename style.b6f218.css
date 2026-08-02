@@ -686,6 +686,17 @@ body.bulk-mode .assistant-btn {
   transition: opacity 0.4s ease, transform 0.4s ease, bottom 0.25s ease;
   pointer-events: none;
 }
+.assistant-hint::before {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  right: 15px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid transparent; /* invisible in light mode — bubble has no border there */
+}
 .assistant-hint::after {
   content: '';
   position: absolute;
@@ -701,6 +712,9 @@ body.bulk-mode .assistant-btn {
   background: rgba(226, 232, 240, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: #F1F5F9;
+}
+[data-theme="dark"] .assistant-hint::before {
+  border-top-color: rgba(255, 255, 255, 0.18); /* same color as the bubble's own border */
 }
 [data-theme="dark"] .assistant-hint::after {
   border-top-color: rgba(226, 232, 240, 0.22);
