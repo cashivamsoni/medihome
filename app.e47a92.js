@@ -14,6 +14,9 @@ let customCategories = [];
 let customForms = [];
 let customOwners = [];      // [{key, label, short}]
 let customTypes = [];
+let healthDiary = [];       // current branch's health diary entries
+let currentHealthOwner = null; // which owner tab is selected in the Health Diary modal
+let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
 // ── Branches ("houses") ─────────────────────────────────────
@@ -264,6 +267,8 @@ function loadActiveBranchIntoState() {
   customForms      = (b.forms && b.forms.length) ? b.forms : DEFAULT_FORMS.slice();
   customOwners     = (b.owners && b.owners.length) ? b.owners : DEFAULT_OWNERS.slice();
   customTypes      = (b.types && b.types.length) ? b.types : DEFAULT_TYPES.slice();
+  healthDiary      = b.healthDiary || [];
+  currentHealthOwner = null; // force re-pick a valid tab next time the modal opens
 
   reconcileDynamicLists();
   backfillSerialIds();
@@ -341,6 +346,7 @@ function saveData() {
   branches[activeBranchId].forms       = customForms;
   branches[activeBranchId].owners      = customOwners;
   branches[activeBranchId].types       = customTypes;
+  branches[activeBranchId].healthDiary = healthDiary;
   saveAllBranches();
 }
 
@@ -939,7 +945,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -1744,6 +1750,156 @@ function closeBranchModal() {
 }
 bindOverlayClose(document.getElementById('branchModal'), closeBranchModal);
 
+// ── Health Diary ─────────────────────────────────────────────
+// Per-branch log of health updates and medicines taken, grouped by owner
+// (excluding the "shared by all" owner — this is per-person by design).
+function openHealthDiary() {
+  const modal = document.getElementById('healthDiaryModal');
+  if (!modal || !modal.classList.contains('hidden')) return;
+  const search = document.getElementById('healthSearchInput');
+  if (search) search.value = '';
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!currentHealthOwner || !eligibleOwners.some(o => o.key === currentHealthOwner)) {
+    currentHealthOwner = eligibleOwners.length ? eligibleOwners[0].key : null;
+  }
+  renderHealthOwnerTabs();
+  renderHealthDiaryList();
+  modal.classList.remove('hidden');
+  lockBodyScroll();
+}
+function closeHealthDiary() {
+  const modal = document.getElementById('healthDiaryModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
+
+function renderHealthOwnerTabs() {
+  const container = document.getElementById('healthOwnerTabs');
+  if (!container) return;
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!eligibleOwners.length) {
+    container.innerHTML = '<p class="branch-modal-hint">Add an owner first (via Manage) to start a health diary.</p>';
+    return;
+  }
+  container.innerHTML = eligibleOwners.map(o => `
+    <button class="mgmt-tab-btn ${o.key === currentHealthOwner ? 'active' : ''}" onclick="selectHealthOwnerTab('${o.key}')">${escHtml(o.short)}</button>
+  `).join('');
+}
+function selectHealthOwnerTab(key) {
+  currentHealthOwner = key;
+  const search = document.getElementById('healthSearchInput');
+  if (search) search.value = '';
+  renderHealthOwnerTabs();
+  renderHealthDiaryList();
+}
+
+function renderHealthDiaryList() {
+  const container = document.getElementById('healthDiaryListContainer');
+  if (!container) return;
+  if (!currentHealthOwner) { container.innerHTML = ''; return; }
+
+  const query = (document.getElementById('healthSearchInput')?.value || '').toLowerCase().trim();
+  let entries = healthDiary.filter(e => e.owner === currentHealthOwner);
+  if (query) {
+    entries = entries.filter(e =>
+      (e.issue || '').toLowerCase().includes(query) ||
+      (e.medicines || '').toLowerCase().includes(query) ||
+      (e.date || '').includes(query)
+    );
+  }
+  // Newest first; entries on the same date keep their most-recently-added first
+  entries = entries.slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+
+  if (!entries.length) {
+    container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching entries.' : 'No health diary entries yet.'}</p>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(e => `
+    <div class="mgmt-item health-entry">
+      <span class="health-entry-body">
+        <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
+        <span class="health-entry-issue">${escHtml(e.issue)}</span>
+        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+      </span>
+      <div class="mgmt-actions">
+        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function formatHealthDate(d) {
+  if (!d) return 'No date';
+  const dt = new Date(d + 'T00:00:00');
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function promptAddHealthEntry() {
+  if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  const date = prompt('Date (YYYY-MM-DD):', today);
+  if (date === null) return;
+
+  const issue = prompt('Health update / issue:');
+  if (issue === null) return;
+  if (!issue.trim()) { showToast('Please enter a health update.', 'error'); return; }
+
+  const meds = prompt('Medicines taken (optional):', '');
+
+  healthDiary.push({
+    id: 'h' + Date.now(),
+    owner: currentHealthOwner,
+    date: date.trim() || today,
+    issue: issue.trim(),
+    medicines: (meds || '').trim(),
+    createdAt: Date.now()
+  });
+  saveData();
+  renderHealthDiaryList();
+  showToast('Health diary entry added.', 'success');
+}
+
+function editHealthEntry(id) {
+  const entry = healthDiary.find(e => e.id === id);
+  if (!entry) return;
+
+  const date = prompt('Date (YYYY-MM-DD):', entry.date);
+  if (date === null) return;
+
+  const issue = prompt('Health update / issue:', entry.issue);
+  if (issue === null) return;
+  if (!issue.trim()) { showToast('Please enter a health update.', 'error'); return; }
+
+  const meds = prompt('Medicines taken (optional):', entry.medicines || '');
+  if (meds === null) return;
+
+  entry.date = date.trim() || entry.date;
+  entry.issue = issue.trim();
+  entry.medicines = meds.trim();
+  saveData();
+  renderHealthDiaryList();
+  showToast('Health diary entry updated.', 'success');
+}
+
+function deleteHealthEntry(id) {
+  const entry = healthDiary.find(e => e.id === id);
+  if (!entry) return;
+  if (!confirm('Delete this health diary entry?')) return;
+  healthDiary = healthDiary.filter(e => e.id !== id);
+  saveData();
+  renderHealthDiaryList();
+  showToast('Entry deleted.', 'info');
+}
+
 function renderBranchList() {
   const container = document.getElementById('branchListContainer');
   if (!container) return;
@@ -1799,7 +1955,8 @@ function promptAddBranch() {
     categories: DEFAULT_CATEGORIES.slice(),
     forms: DEFAULT_FORMS.slice(),
     owners: [{ key: 'shared', label: '👨‍👩‍👧 Family — Shared by All', short: '👨‍👩‍👧 Family' }],
-    types: DEFAULT_TYPES.slice()
+    types: DEFAULT_TYPES.slice(),
+    healthDiary: []
   };
   branchOrder.push(id);
   saveAllBranches();
