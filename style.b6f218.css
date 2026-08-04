@@ -2034,6 +2034,39 @@ body.bulk-mode .go-top-btn {
 .mgmt-item span {
   overflow-wrap: anywhere;
 }
+.health-entry {
+  align-items: flex-start;
+}
+.health-entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.health-entry-date {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal-600);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.health-entry-issue {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.health-entry-meds {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.health-entry-date i,
+.health-entry-meds i {
+  font-size: 0.7rem;
+}
 .mgmt-actions {
   display: flex;
   gap: 4px;
