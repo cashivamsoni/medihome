@@ -2883,19 +2883,34 @@ function toggleAssistantMic() {
 }
 
 // ── Voice output (text-to-speech) ───────────────────────────
-let _lastSpokenText = '';
+// Native speechSynthesis.pause()/resume() is unreliable across browsers —
+// resume() in particular is known to silently fail on mobile Chrome/Safari
+// after a pause, and both pause/resume can lag noticeably on desktop.
+// Instead: "pause" fully cancels (reliable everywhere, instant) while
+// tracking how far we got via word-boundary events; "resume" starts a
+// fresh utterance from that tracked position rather than truly resuming.
+let _speechFullText = '';
+let _speechCharIndex = 0;
 let _speechPaused = false;
 
 function speakAssistantReply(text) {
   if (!('speechSynthesis' in window)) return; // not supported — silently skip
   speechSynthesis.cancel(); // don't overlap with a previous reply still speaking
-  _lastSpokenText = text;
+  _speechFullText = text;
+  _speechCharIndex = 0;
   _speechPaused = false;
-  const utterance = new SpeechSynthesisUtterance(text);
+  _speakFrom(0);
+}
+
+function _speakFrom(charIndex) {
+  const remaining = _speechFullText.slice(charIndex);
+  if (!remaining) { setSpeechToggle(false); return; }
+  const utterance = new SpeechSynthesisUtterance(remaining);
   utterance.lang = 'en-US';
-  utterance.onstart = () => { _speechPaused = false; setSpeechToggle(true, false); };
-  utterance.onend = () => { _speechPaused = false; setSpeechToggle(false); };
-  utterance.onerror = () => { _speechPaused = false; setSpeechToggle(false); };
+  utterance.onboundary = (e) => { _speechCharIndex = charIndex + e.charIndex; };
+  utterance.onstart = () => setSpeechToggle(true, false);
+  utterance.onend = () => { if (!_speechPaused) setSpeechToggle(false); };
+  utterance.onerror = () => { if (!_speechPaused) setSpeechToggle(false); };
   speechSynthesis.speak(utterance);
 }
 
@@ -2911,31 +2926,20 @@ function setSpeechToggle(visible, paused = false) {
 function toggleAssistantSpeech() {
   if (!('speechSynthesis' in window)) return;
   if (!_speechPaused) {
-    // Track our own state rather than trusting speechSynthesis.speaking/.paused —
-    // those two getters are known to desync from the real audio state on mobile
-    // Chrome/Safari, which is what made this button sometimes do nothing.
-    speechSynthesis.pause();
     _speechPaused = true;
+    speechSynthesis.cancel(); // instant and reliable, unlike pause()
     setSpeechToggle(true, true);
   } else {
-    speechSynthesis.resume();
     _speechPaused = false;
-    setSpeechToggle(true, false);
-    // Mobile Chrome has a known bug where resume() silently fails after the
-    // speech has been paused for a while — no error, no event, audio just
-    // never comes back. If that happens, replay the reply from the start
-    // rather than leaving the button stuck with no audio.
-    setTimeout(() => {
-      if (!_speechPaused && !speechSynthesis.speaking && _lastSpokenText) {
-        speakAssistantReply(_lastSpokenText);
-      }
-    }, 400);
+    _speakFrom(_speechCharIndex); // fresh utterance from where we left off
   }
 }
 
 function stopAssistantSpeech() {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   _speechPaused = false;
+  _speechFullText = '';
+  _speechCharIndex = 0;
   setSpeechToggle(false);
 }
 
