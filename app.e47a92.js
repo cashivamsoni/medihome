@@ -3082,6 +3082,19 @@ function buildInventoryContext() {
     `Forms: ${customForms.join(', ') || 'none'}`
   );
 
+  // Health Diary (placed before Medicines since that list can get long)
+  if (!healthDiary.length) {
+    parts.push('Health Diary: no entries yet.');
+  } else {
+    const entries = healthDiary.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+    const diaryLines = entries.map(e => {
+      const ownerCfg = customOwners.find(o => o.key === e.owner);
+      const ownerName = ownerCfg ? ownerCfg.short : e.owner;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}`;
+    });
+    parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
+  }
+
   // Medicines
   if (!medicines.length) {
     parts.push('Medicines: none recorded yet.');
@@ -3094,19 +3107,6 @@ function buildInventoryContext() {
       return `- #${String(m.serialId || '').padStart(2, '0')} ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
     });
     parts.push(`Medicines (${medicines.length} total):\n${lines.join('\n')}`);
-  }
-
-  // Health Diary
-  if (!healthDiary.length) {
-    parts.push('Health Diary: no entries yet.');
-  } else {
-    const entries = healthDiary.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-    const diaryLines = entries.map(e => {
-      const ownerCfg = customOwners.find(o => o.key === e.owner);
-      const ownerName = ownerCfg ? ownerCfg.short : e.owner;
-      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}`;
-    });
-    parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
   }
 
   return parts.join('\n\n');
