@@ -3060,7 +3060,7 @@ function localAssistantAnswer(rawQuery) {
 // with each question so the model can answer about your actual data.
 function buildInventoryContext() {
   const branchName = (branches[activeBranchId] && branches[activeBranchId].name) || 'Unknown';
-  const parts = [];
+  const parts = [`Today's date: ${new Date().toISOString().slice(0, 10)}`];
 
   // Branches
   const branchLines = branchOrder.map(id => {
