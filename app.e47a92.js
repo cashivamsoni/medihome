@@ -1909,10 +1909,11 @@ function deleteHealthEntry(id) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry) return;
   if (!confirm('Delete this health diary entry?')) return;
+  pushUndo('Deleted health diary entry');
   healthDiary = healthDiary.filter(e => e.id !== id);
   saveData();
   renderHealthDiaryList();
-  showToast('Entry deleted.', 'info');
+  showUndoToast('Health diary entry deleted — tap Undo within 6s', 'fa-trash');
 }
 
 function renderBranchList() {
@@ -2167,7 +2168,8 @@ function pushUndo(msg) {
       categories: customCategories,
       forms: customForms,
       owners: customOwners,
-      types: customTypes
+      types: customTypes,
+      healthDiary
     }))
   };
 }
@@ -2221,6 +2223,7 @@ function commitUndo() {
   customForms      = s.forms;
   customOwners     = s.owners;
   customTypes      = s.types || customTypes;
+  healthDiary      = s.healthDiary || healthDiary;
   _undoStack = null;
   clearTimeout(_undoTimer);
   clearInterval(_undoCountdownInterval);
@@ -2229,6 +2232,8 @@ function commitUndo() {
   populateAllDropdowns();
   renderOwnerNavChips();
   renderAll();
+  const healthModal = document.getElementById('healthDiaryModal');
+  if (healthModal && !healthModal.classList.contains('hidden')) renderHealthDiaryList();
   showToast('Undone ✓', 'success');
 }
 
