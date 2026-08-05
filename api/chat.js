@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   }
   // Basic guardrails: cap length so a runaway request can't burn through quota
   const safeMessage = message.slice(0, 2000);
-  const safeContext = (context || '').slice(0, 6000);
+  const safeContext = (context || '').slice(0, 24000);
 
   const systemPrompt =
     'You are a helpful assistant embedded in MediHome, a family medicine ' +
