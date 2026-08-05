@@ -268,7 +268,14 @@ function loadActiveBranchIntoState() {
   customOwners     = (b.owners && b.owners.length) ? b.owners : DEFAULT_OWNERS.slice();
   customTypes      = (b.types && b.types.length) ? b.types : DEFAULT_TYPES.slice();
   healthDiary      = b.healthDiary || [];
-  currentHealthOwner = null; // force re-pick a valid tab next time the modal opens
+  // Only clear the selected tab if it's genuinely no longer valid (e.g. we
+  // just switched branches, or that owner was deleted) — NOT on every sync,
+  // since this same function re-runs after every save (including our own),
+  // and blindly nulling it out here left the modal one refresh away from
+  // going blank right after adding/editing an entry.
+  if (currentHealthOwner && !(b.owners || []).some(o => o.key === currentHealthOwner)) {
+    currentHealthOwner = null;
+  }
 
   reconcileDynamicLists();
   backfillSerialIds();
@@ -277,6 +284,14 @@ function loadActiveBranchIntoState() {
   renderAll();
   updateStats();
   updateMenuBranchLabel();
+
+  // Keep the Health Diary modal in sync with the authoritative data too,
+  // if it happens to be open.
+  const healthModal = document.getElementById('healthDiaryModal');
+  if (healthModal && !healthModal.classList.contains('hidden')) {
+    renderHealthOwnerTabs();
+    renderHealthDiaryList();
+  }
 }
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
