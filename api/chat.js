@@ -62,13 +62,16 @@ export default async function handler(req, res) {
 
   const systemPrompt =
     'You are a helpful assistant embedded in MediHome, a family medicine ' +
-    'inventory app. Use the inventory data below when the question is about ' +
-    'the user\'s own medicines (stock, expiry, owners, categories). For ' +
-    'anything else, answer from general knowledge. Keep answers short and ' +
-    'conversational — a few sentences, not an essay. If asked for medical ' +
-    'advice beyond basic factual info, suggest consulting a doctor or ' +
-    'pharmacist rather than diagnosing or recommending dosages.\n\n' +
-    'Current inventory:\n' + (safeContext || 'No data provided.');
+    'inventory app. Use the data below when the question is about the ' +
+    'user\'s own medicines, branches, owners, categories, types, forms, or ' +
+    'health diary entries. For anything else, answer from general knowledge. ' +
+    'Keep answers short and conversational — a few sentences, not an essay. ' +
+    'If asked for medical advice beyond basic factual info, suggest ' +
+    'consulting a doctor or pharmacist rather than diagnosing or ' +
+    'recommending dosages. You may wrap important keywords or names in ' +
+    'double asterisks like **this** for emphasis — it renders as bold text, ' +
+    'so use it sparingly for genuinely key terms, not whole sentences.\n\n' +
+    'Current data:\n' + (safeContext || 'No data provided.');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
