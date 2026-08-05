@@ -2815,10 +2815,17 @@ function appendAssistantMessage(text, sender, isLoading = false) {
   if (!container) return null;
   const el = document.createElement('div');
   el.className = `assistant-msg assistant-msg-${sender}${isLoading ? ' assistant-msg-loading' : ''}`;
-  el.textContent = text;
+  if (sender === 'bot' && !isLoading) {
+    // escHtml first so nothing in the reply can inject real markup, THEN add
+    // our own <strong> tags for **bold** — safe because the only tags that
+    // can exist afterward are ones we just added ourselves.
+    el.innerHTML = escHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  } else {
+    el.textContent = text;
+  }
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
-  if (sender === 'bot' && !isLoading) speakAssistantReply(text);
+  if (sender === 'bot' && !isLoading) speakAssistantReply(text.replace(/\*\*(.+?)\*\*/g, '$1'));
   return el;
 }
 
@@ -2939,7 +2946,52 @@ function localAssistantAnswer(rawQuery) {
   const q = rawQuery.toLowerCase().trim();
   const branchName = (branches[activeBranchId] && branches[activeBranchId].name) || 'this branch';
 
-  if (!medicines.length) return `There are no medicines recorded in "${branchName}" yet.`;
+  // Branches
+  if (/\bbranch(es)?\b/.test(q)) {
+    const names = branchOrder.map(id => {
+      const b = branches[id];
+      if (!b) return '';
+      const tag = id === activeBranchId ? ' (current)' : (id === defaultBranchId ? ' (default)' : '');
+      return `${b.name}${tag}`;
+    }).filter(Boolean);
+    return names.length ? `You have ${names.length} branch${names.length === 1 ? '' : 'es'}: ${names.join(', ')}.` : 'No branches found.';
+  }
+
+  // Manage-modal lists
+  if (/\bcategories\b/.test(q)) {
+    return customCategories.length ? `Categories in "${branchName}": ${customCategories.join(', ')}.` : `No categories set up in "${branchName}" yet.`;
+  }
+  if (/\btypes\b/.test(q)) {
+    return customTypes.length ? `Types in "${branchName}": ${customTypes.join(', ')}.` : `No types set up in "${branchName}" yet.`;
+  }
+  if (/\bforms\b/.test(q)) {
+    return customForms.length ? `Forms in "${branchName}": ${customForms.join(', ')}.` : `No forms set up in "${branchName}" yet.`;
+  }
+  if (/\bowners\b/.test(q)) {
+    const names = customOwners.map(o => o.short).join(', ');
+    return names ? `Owners in "${branchName}": ${names}.` : `No owners set up in "${branchName}" yet.`;
+  }
+
+  // Health Diary
+  if (/\bhealth\b|\bdiary\b|\bsymptom/.test(q)) {
+    if (!healthDiary.length) return `No health diary entries recorded in "${branchName}" yet.`;
+    let entries = healthDiary;
+    let ownerMatch = null;
+    for (const o of customOwners) {
+      const candidates = [o.short, o.label]
+        .filter(Boolean).map(s => s.replace(/[^\w\s]/g, '').trim().toLowerCase()).filter(Boolean);
+      if (candidates.some(name => name && q.includes(name))) { ownerMatch = o; break; }
+    }
+    if (ownerMatch) entries = entries.filter(e => e.owner === ownerMatch.key);
+    entries = entries.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 5);
+    if (!entries.length) return ownerMatch ? `No health diary entries for ${ownerMatch.short} yet.` : `No health diary entries recorded in "${branchName}" yet.`;
+    const lines = entries.map(e => {
+      const oCfg = customOwners.find(o => o.key === e.owner);
+      const oName = oCfg ? oCfg.short : e.owner;
+      return `${e.date} (${oName}): ${e.issue}${e.medicines ? ` — took ${e.medicines}` : ''}`;
+    });
+    return `Recent health diary entries: ${lines.join('; ')}.`;
+  }
 
   // Total count
   if (/\b(how many|total|count)\b.*\b(medicine|medicines|meds|items)\b/.test(q) ||
@@ -3008,15 +3060,56 @@ function localAssistantAnswer(rawQuery) {
 // with each question so the model can answer about your actual data.
 function buildInventoryContext() {
   const branchName = (branches[activeBranchId] && branches[activeBranchId].name) || 'Unknown';
-  if (!medicines.length) return `Branch: ${branchName}\nNo medicines recorded yet.`;
-  const lines = medicines.map(m => {
-    const ownerCfg = customOwners.find(o => o.key === m.owner);
-    const ownerName = ownerCfg ? ownerCfg.short : m.owner;
-    const qty = m.quantity === 0 ? 'FINISHED' : `${m.quantity} ${m.quantityUnit}`;
-    const exp = m.expiryDate || 'no expiry set';
-    return `- ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
-  });
-  return `Branch: ${branchName}\nTotal medicines: ${medicines.length}\n${lines.join('\n')}`;
+  const parts = [];
+
+  // Branches
+  const branchLines = branchOrder.map(id => {
+    const b = branches[id];
+    if (!b) return '';
+    const tags = [id === activeBranchId ? 'current' : '', id === defaultBranchId ? 'default' : '']
+      .filter(Boolean).join(', ');
+    return `- ${b.name}${tags ? ` (${tags})` : ''}`;
+  }).filter(Boolean);
+  parts.push(`Branches:\n${branchLines.join('\n')}`);
+
+  // Owners / categories / types / forms (Manage modal lists) for the active branch
+  const ownerNames = customOwners.map(o => o.short).join(', ') || 'none';
+  parts.push(
+    `Active branch: ${branchName}\n` +
+    `Owners: ${ownerNames}\n` +
+    `Categories: ${customCategories.join(', ') || 'none'}\n` +
+    `Types: ${customTypes.join(', ') || 'none'}\n` +
+    `Forms: ${customForms.join(', ') || 'none'}`
+  );
+
+  // Medicines
+  if (!medicines.length) {
+    parts.push('Medicines: none recorded yet.');
+  } else {
+    const lines = medicines.map(m => {
+      const ownerCfg = customOwners.find(o => o.key === m.owner);
+      const ownerName = ownerCfg ? ownerCfg.short : m.owner;
+      const qty = m.quantity === 0 ? 'FINISHED' : `${m.quantity} ${m.quantityUnit}`;
+      const exp = m.expiryDate || 'no expiry set';
+      return `- ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
+    });
+    parts.push(`Medicines (${medicines.length} total):\n${lines.join('\n')}`);
+  }
+
+  // Health Diary
+  if (!healthDiary.length) {
+    parts.push('Health Diary: no entries yet.');
+  } else {
+    const entries = healthDiary.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+    const diaryLines = entries.map(e => {
+      const ownerCfg = customOwners.find(o => o.key === e.owner);
+      const ownerName = ownerCfg ? ownerCfg.short : e.owner;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}`;
+    });
+    parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
+  }
+
+  return parts.join('\n\n');
 }
 
 let _assistantBusy = false;
