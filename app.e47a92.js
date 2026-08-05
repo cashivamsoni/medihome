@@ -3091,7 +3091,7 @@ function buildInventoryContext() {
       const ownerName = ownerCfg ? ownerCfg.short : m.owner;
       const qty = m.quantity === 0 ? 'FINISHED' : `${m.quantity} ${m.quantityUnit}`;
       const exp = m.expiryDate || 'no expiry set';
-      return `- ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
+      return `- #${String(m.serialId || '').padStart(2, '0')} ${m.name} | ${m.category} | ${m.type} | ${m.form} | ${qty} | owner: ${ownerName} | expiry: ${exp}${m.frequentlyUsed ? ' | frequently used' : ''}`;
     });
     parts.push(`Medicines (${medicines.length} total):\n${lines.join('\n')}`);
   }
