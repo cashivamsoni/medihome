@@ -2903,6 +2903,8 @@ let _speechCharIndex = 0;
 let _speechPaused = false;
 let _speechStartTime = 0;
 let _speechStartIndex = 0;
+let _speechGeneration = 0; // bumped on every deliberate interruption/new utterance,
+                            // so late-firing events from an abandoned utterance are ignored
 let _lastReplyPlainText = ''; // persists across stop/close, unlike the vars above
 
 function replayLastAssistantReply() {
@@ -2913,6 +2915,7 @@ function replayLastAssistantReply() {
 
 function speakAssistantReply(text) {
   if (!('speechSynthesis' in window)) return; // not supported — silently skip
+  _speechGeneration++; // invalidate whatever utterance was previously in flight
   speechSynthesis.cancel(); // don't overlap with a previous reply still speaking
   _speechFullText = text;
   _speechCharIndex = 0;
@@ -2923,19 +2926,28 @@ function speakAssistantReply(text) {
 function _speakFrom(charIndex) {
   const remaining = _speechFullText.slice(charIndex);
   if (!remaining) { setSpeechToggle(false); return; }
+  const myGen = ++_speechGeneration; // this utterance's own identity
   const utterance = new SpeechSynthesisUtterance(remaining);
   utterance.lang = 'en-US';
-  utterance.onboundary = (e) => { _speechCharIndex = charIndex + e.charIndex; };
+  utterance.onboundary = (e) => {
+    if (myGen !== _speechGeneration) return; // a later utterance has since taken over
+    _speechCharIndex = charIndex + e.charIndex;
+  };
   utterance.onstart = () => {
+    if (myGen !== _speechGeneration) return;
     _speechStartTime = Date.now();
     _speechStartIndex = charIndex;
     setSpeechToggle(true, false);
     setReplayVisible(false); // pause/play takes over while actively reading
   };
   utterance.onend = () => {
+    if (myGen !== _speechGeneration) return; // stale — cancel() likely triggered this late
     if (!_speechPaused) { setSpeechToggle(false); setReplayVisible(true); } // finished naturally
   };
-  utterance.onerror = () => { if (!_speechPaused) setSpeechToggle(false); };
+  utterance.onerror = () => {
+    if (myGen !== _speechGeneration) return;
+    if (!_speechPaused) setSpeechToggle(false);
+  };
   speechSynthesis.speak(utterance);
 }
 
@@ -2963,6 +2975,7 @@ function toggleAssistantSpeech() {
     const estimatedIndex = _speechStartIndex + Math.floor(elapsedSec * SPEECH_CHARS_PER_SEC);
     _speechCharIndex = Math.max(_speechCharIndex, estimatedIndex);
     _speechPaused = true;
+    _speechGeneration++; // invalidate the utterance we're about to cancel
     speechSynthesis.cancel(); // instant and reliable, unlike pause()
     setSpeechToggle(true, true);
   } else {
@@ -2972,6 +2985,7 @@ function toggleAssistantSpeech() {
 }
 
 function stopAssistantSpeech() {
+  _speechGeneration++; // invalidate any utterance still in flight
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   _speechPaused = false;
   _speechFullText = '';
