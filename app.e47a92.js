@@ -2887,11 +2887,16 @@ function toggleAssistantMic() {
 // resume() in particular is known to silently fail on mobile Chrome/Safari
 // after a pause, and both pause/resume can lag noticeably on desktop.
 // Instead: "pause" fully cancels (reliable everywhere, instant) while
-// tracking how far we got via word-boundary events; "resume" starts a
-// fresh utterance from that tracked position rather than truly resuming.
+// tracking how far we got; "resume" starts a fresh utterance from that
+// tracked position rather than truly resuming. Position is tracked two ways:
+// word-boundary events (precise, but mobile often never fires them) AND a
+// time-elapsed estimate (works everywhere, used as a fallback/floor).
+const SPEECH_CHARS_PER_SEC = 15; // rough average speaking rate at normal pace
 let _speechFullText = '';
 let _speechCharIndex = 0;
 let _speechPaused = false;
+let _speechStartTime = 0;
+let _speechStartIndex = 0;
 
 function speakAssistantReply(text) {
   if (!('speechSynthesis' in window)) return; // not supported — silently skip
@@ -2908,7 +2913,11 @@ function _speakFrom(charIndex) {
   const utterance = new SpeechSynthesisUtterance(remaining);
   utterance.lang = 'en-US';
   utterance.onboundary = (e) => { _speechCharIndex = charIndex + e.charIndex; };
-  utterance.onstart = () => setSpeechToggle(true, false);
+  utterance.onstart = () => {
+    _speechStartTime = Date.now();
+    _speechStartIndex = charIndex;
+    setSpeechToggle(true, false);
+  };
   utterance.onend = () => { if (!_speechPaused) setSpeechToggle(false); };
   utterance.onerror = () => { if (!_speechPaused) setSpeechToggle(false); };
   speechSynthesis.speak(utterance);
@@ -2926,6 +2935,12 @@ function setSpeechToggle(visible, paused = false) {
 function toggleAssistantSpeech() {
   if (!('speechSynthesis' in window)) return;
   if (!_speechPaused) {
+    // Estimate progress from elapsed time as a floor — onboundary alone
+    // isn't enough since mobile browsers frequently never fire it, which
+    // was leaving _speechCharIndex stuck at 0 and restarting from the top.
+    const elapsedSec = (Date.now() - _speechStartTime) / 1000;
+    const estimatedIndex = _speechStartIndex + Math.floor(elapsedSec * SPEECH_CHARS_PER_SEC);
+    _speechCharIndex = Math.max(_speechCharIndex, estimatedIndex);
     _speechPaused = true;
     speechSynthesis.cancel(); // instant and reliable, unlike pause()
     setSpeechToggle(true, true);
