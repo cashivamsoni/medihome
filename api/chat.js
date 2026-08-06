@@ -82,8 +82,9 @@ export default async function handler(req, res) {
     'short and conversational — a few sentences, not an essay. If asked for ' +
     'medical advice beyond basic factual info, suggest consulting a doctor or ' +
     'pharmacist rather than diagnosing or recommending dosages. You may wrap ' +
-    'important keywords in double asterisks like **this** for emphasis — it ' +
-    'renders as bold, so use it sparingly for genuinely key terms.\n\n' +
+    'important keywords in double asterisks like **this** for strong emphasis ' +
+    '(renders bold), or single asterisks like *this* for lighter emphasis ' +
+    '(renders semi-bold) — use both sparingly, only for genuinely key terms.\n\n' +
     'Current data:\n' + (safeContext || 'No data provided.');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
