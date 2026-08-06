@@ -2905,6 +2905,7 @@ let _speechStartTime = 0;
 let _speechStartIndex = 0;
 let _speechGeneration = 0; // bumped on every deliberate interruption/new utterance,
                             // so late-firing events from an abandoned utterance are ignored
+let _currentUtterance = null; // detached (handlers nulled) whenever we cancel deliberately
 let _lastReplyPlainText = ''; // persists across stop/close, unlike the vars above
 
 function replayLastAssistantReply() {
@@ -2912,10 +2913,25 @@ function replayLastAssistantReply() {
   speakAssistantReply(_lastReplyPlainText); // resets all playback state, same as any new reply
 }
 
+// Strip an outgoing utterance's own handlers before we cancel it. Some mobile
+// TTS engines fire onend/onerror several seconds late after cancel() — the
+// generation check below already guards against that, but nulling the
+// handlers directly means a late native callback has nothing to call at all,
+// which is the more bulletproof of the two safeguards.
+function _detachCurrentUtterance() {
+  if (_currentUtterance) {
+    _currentUtterance.onstart = null;
+    _currentUtterance.onend = null;
+    _currentUtterance.onerror = null;
+    _currentUtterance.onboundary = null;
+    _currentUtterance = null;
+  }
+}
 
 function speakAssistantReply(text) {
   if (!('speechSynthesis' in window)) return; // not supported — silently skip
   _speechGeneration++; // invalidate whatever utterance was previously in flight
+  _detachCurrentUtterance();
   speechSynthesis.cancel(); // don't overlap with a previous reply still speaking
   _speechFullText = text;
   _speechCharIndex = 0;
@@ -2928,6 +2944,7 @@ function _speakFrom(charIndex) {
   if (!remaining) { setSpeechToggle(false); return; }
   const myGen = ++_speechGeneration; // this utterance's own identity
   const utterance = new SpeechSynthesisUtterance(remaining);
+  _currentUtterance = utterance;
   utterance.lang = 'en-US';
   utterance.onboundary = (e) => {
     if (myGen !== _speechGeneration) return; // a later utterance has since taken over
@@ -2976,8 +2993,9 @@ function toggleAssistantSpeech() {
     _speechCharIndex = Math.max(_speechCharIndex, estimatedIndex);
     _speechPaused = true;
     _speechGeneration++; // invalidate the utterance we're about to cancel
+    _detachCurrentUtterance();
     speechSynthesis.cancel(); // instant and reliable, unlike pause()
-    setSpeechToggle(true, true);
+    setSpeechToggle(true, true); // must be the LAST step — nothing above can override it
   } else {
     _speechPaused = false;
     _speakFrom(_speechCharIndex); // fresh utterance from where we left off
@@ -2986,6 +3004,7 @@ function toggleAssistantSpeech() {
 
 function stopAssistantSpeech() {
   _speechGeneration++; // invalidate any utterance still in flight
+  _detachCurrentUtterance();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   _speechPaused = false;
   _speechFullText = '';
