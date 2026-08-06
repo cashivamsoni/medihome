@@ -2830,7 +2830,13 @@ function appendAssistantMessage(text, sender, isLoading = false) {
   }
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
-  if (sender === 'bot' && !isLoading) speakAssistantReply(text.replace(/\*\*(.+?)\*\*/g, '$1'));
+  if (sender === 'bot' && !isLoading) {
+    const plain = text.replace(/\*\*(.+?)\*\*/g, '$1');
+    _lastReplyPlainText = plain; // kept independent of active playback state, for Replay
+    const replayBtn = document.getElementById('assistantReplayBtn');
+    if (replayBtn) replayBtn.classList.remove('hidden');
+    speakAssistantReply(plain);
+  }
   return el;
 }
 
@@ -2897,6 +2903,13 @@ let _speechCharIndex = 0;
 let _speechPaused = false;
 let _speechStartTime = 0;
 let _speechStartIndex = 0;
+let _lastReplyPlainText = ''; // persists across stop/close, unlike the vars above
+
+function replayLastAssistantReply() {
+  if (!_lastReplyPlainText) return;
+  speakAssistantReply(_lastReplyPlainText); // resets all playback state, same as any new reply
+}
+
 
 function speakAssistantReply(text) {
   if (!('speechSynthesis' in window)) return; // not supported — silently skip
