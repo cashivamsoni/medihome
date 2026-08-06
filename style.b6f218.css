@@ -823,6 +823,9 @@ body.bulk-mode .assistant-panel {
   border-bottom-left-radius: 4px;
   text-align: justify;
 }
+.assistant-msg-bot .assistant-emphasis {
+  font-weight: 600; /* noticeably lighter than <strong> for double-asterisk */
+}
 .assistant-msg-user {
   align-self: flex-end;
   background: var(--teal-600);
