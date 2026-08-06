@@ -2824,17 +2824,17 @@ function appendAssistantMessage(text, sender, isLoading = false) {
     // escHtml first so nothing in the reply can inject real markup, THEN add
     // our own <strong> tags for **bold** — safe because the only tags that
     // can exist afterward are ones we just added ourselves.
-    el.innerHTML = escHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    el.innerHTML = escHtml(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<span class="assistant-emphasis">$1</span>');
   } else {
     el.textContent = text;
   }
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
   if (sender === 'bot' && !isLoading) {
-    const plain = text.replace(/\*\*(.+?)\*\*/g, '$1');
+    const plain = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
     _lastReplyPlainText = plain; // kept independent of active playback state, for Replay
-    const replayBtn = document.getElementById('assistantReplayBtn');
-    if (replayBtn) replayBtn.classList.remove('hidden');
     speakAssistantReply(plain);
   }
   return el;
@@ -2930,8 +2930,11 @@ function _speakFrom(charIndex) {
     _speechStartTime = Date.now();
     _speechStartIndex = charIndex;
     setSpeechToggle(true, false);
+    setReplayVisible(false); // pause/play takes over while actively reading
   };
-  utterance.onend = () => { if (!_speechPaused) setSpeechToggle(false); };
+  utterance.onend = () => {
+    if (!_speechPaused) { setSpeechToggle(false); setReplayVisible(true); } // finished naturally
+  };
   utterance.onerror = () => { if (!_speechPaused) setSpeechToggle(false); };
   speechSynthesis.speak(utterance);
 }
@@ -2943,6 +2946,11 @@ function setSpeechToggle(visible, paused = false) {
   const icon = btn.querySelector('i');
   if (icon) icon.className = paused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
   btn.setAttribute('aria-label', paused ? 'Resume reading' : 'Pause reading');
+}
+
+function setReplayVisible(visible) {
+  const btn = document.getElementById('assistantReplayBtn');
+  if (btn) btn.classList.toggle('hidden', !visible);
 }
 
 function toggleAssistantSpeech() {
@@ -2969,6 +2977,7 @@ function stopAssistantSpeech() {
   _speechFullText = '';
   _speechCharIndex = 0;
   setSpeechToggle(false);
+  setReplayVisible(false);
 }
 
 document.addEventListener('DOMContentLoaded', initAssistantVoice);
