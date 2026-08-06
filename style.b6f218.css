@@ -765,7 +765,8 @@ body.bulk-mode .assistant-panel {
   gap: 6px;
   flex-shrink: 0;
 }
-#assistantSpeechToggle {
+#assistantSpeechToggle,
+#assistantReplayBtn {
   background: var(--slate-100);
   border: none;
   border-radius: 50%;
@@ -779,18 +780,22 @@ body.bulk-mode .assistant-panel {
   align-items: center;
   justify-content: center;
 }
-#assistantSpeechToggle.hidden {
+#assistantSpeechToggle.hidden,
+#assistantReplayBtn.hidden {
   display: none;
 }
-#assistantSpeechToggle:hover {
+#assistantSpeechToggle:hover,
+#assistantReplayBtn:hover {
   background: var(--slate-200);
   color: var(--text-primary);
 }
-[data-theme="dark"] #assistantSpeechToggle {
+[data-theme="dark"] #assistantSpeechToggle,
+[data-theme="dark"] #assistantReplayBtn {
   background: var(--surface-2);
   color: var(--text-primary);
 }
-[data-theme="dark"] #assistantSpeechToggle:hover {
+[data-theme="dark"] #assistantSpeechToggle:hover,
+[data-theme="dark"] #assistantReplayBtn:hover {
   background: var(--border);
 }
 .assistant-messages {
