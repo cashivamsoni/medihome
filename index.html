@@ -752,15 +752,18 @@
     <!-- ── Health Diary Modal ──────────────────────────────── -->
     <div id="healthDiaryModal" class="hidden mgmt-modal-overlay">
       <div class="mgmt-modal-box">
-        <div class="mgmt-modal-header">
+       <div class="mgmt-modal-header">
           <h3>Health Diary</h3>
-          <button
-            class="modal-close"
-            onclick="closeHealthDiary()"
-            aria-label="Close"
-          >
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+          <div class="mgmt-modal-header-actions">
+            <button id="healthDiaryExportBtn" class="qty-log-select-btn" onclick="exportHealthDiaryPDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <button
+              class="modal-close"
+              onclick="closeHealthDiary()"
+              aria-label="Close"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
         <div class="mgmt-modal-body">
           <div class="mgmt-tabs" id="healthOwnerTabs"></div>
