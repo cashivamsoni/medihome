@@ -1849,9 +1849,12 @@ function toggleQtyLogEntrySelect(id) {
   renderQuantityLogList();
 }
 
+let _qtyLogUndoData = null;
+
 function deleteSelectedQtyLogEntries() {
   if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
-  if (!confirm(`Delete ${qtyLogSelected.size} selected log entr${qtyLogSelected.size > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
+  const count = qtyLogSelected.size;
+  _qtyLogUndoData = quantityLog.filter(e => qtyLogSelected.has(e.id));
   quantityLog = quantityLog.filter(e => !qtyLogSelected.has(e.id));
   saveData();
   qtyLogSelectMode = false;
@@ -1861,7 +1864,7 @@ function deleteSelectedQtyLogEntries() {
   if (btn) btn.textContent = 'Select';
   if (bar) bar.classList.add('hidden');
   renderQuantityLogList();
-  showToast('Log entries deleted.', 'success');
+  showUndoToast(`Deleted ${count} log entr${count > 1 ? 'ies' : 'y'}`, 'fa-trash');
 }
 
 function renderQuantityLogList() {
@@ -2329,7 +2332,18 @@ function hideUndoToast() {
 }
 
 function commitUndo() {
+  if (_qtyLogUndoData) {
+    quantityLog = quantityLog.concat(_qtyLogUndoData).sort((a, b) => a.ts - b.ts);
+    _qtyLogUndoData = null;
+    clearTimeout(_undoTimer);
+    clearInterval(_undoCountdownInterval);
+    hideUndoToast();
+    saveData();
+    renderQuantityLogList();
+    return;
+  }
   if (!_undoStack) return;
+  
   const s = _undoStack.snapshot;
   medicines        = s.medicines;
   customCategories = s.categories;
