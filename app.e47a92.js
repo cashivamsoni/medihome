@@ -1494,6 +1494,12 @@ function markFinished(id) {
 // ═══════════════════════════════════════════════════════════
 function manageField(fieldType) {
   currentMgmtField = fieldType;
+  mgmtSelectMode = false;
+  mgmtSelected.clear();
+  const selBtn = document.getElementById('mgmtSelectBtn');
+  const selBar = document.getElementById('mgmtSelectBar');
+  if (selBtn) selBtn.textContent = 'Select';
+  if (selBar) selBar.classList.add('hidden');
   const titleEl = document.getElementById('mgmtModalTitle');
   const titles = { category:'Manage Categories', owner:'Manage Owners', form:'Manage Forms', type:'Manage Types' };
   if (titleEl) titleEl.textContent = titles[fieldType] || 'Manage Items';
@@ -1533,6 +1539,54 @@ function fuzzyMatch(query, text) {
 
 function filterMgmtList() { renderMgmtList(); }
 
+let mgmtSelectMode = false;
+let mgmtSelected = new Set();
+
+function toggleMgmtSelectMode() {
+  mgmtSelectMode = !mgmtSelectMode;
+  mgmtSelected.clear();
+  renderMgmtList();
+  const btn = document.getElementById('mgmtSelectBtn');
+  const bar = document.getElementById('mgmtSelectBar');
+  if (btn) btn.textContent = mgmtSelectMode ? 'Cancel' : 'Select';
+  if (bar) bar.classList.toggle('hidden', !mgmtSelectMode);
+}
+
+function toggleMgmtItemSelect(idx) {
+  if (mgmtSelected.has(idx)) mgmtSelected.delete(idx);
+  else mgmtSelected.add(idx);
+  renderMgmtList();
+}
+
+function deleteSelectedMgmtItems() {
+  if (!mgmtSelected.size) { showToast('No items selected.', 'error'); return; }
+  // Snapshot identifiers first — indices shift as items are deleted one by one
+  const identifiers = Array.from(mgmtSelected).map(idx => {
+    if (currentMgmtField === 'category') return customCategories[idx];
+    if (currentMgmtField === 'form') return customForms[idx];
+    if (currentMgmtField === 'type') return customTypes[idx];
+    if (currentMgmtField === 'owner') return customOwners[idx] ? customOwners[idx].key : null;
+    return null;
+  }).filter(v => v != null);
+
+  identifiers.forEach(val => {
+    let idx = -1;
+    if (currentMgmtField === 'category') idx = customCategories.indexOf(val);
+    else if (currentMgmtField === 'form') idx = customForms.indexOf(val);
+    else if (currentMgmtField === 'type') idx = customTypes.indexOf(val);
+    else if (currentMgmtField === 'owner') idx = customOwners.findIndex(o => o.key === val);
+    if (idx !== -1) deleteMgmtItem(idx); // reuses existing confirm/move-destination/undo logic per item
+  });
+
+  mgmtSelectMode = false;
+  mgmtSelected.clear();
+  const btn = document.getElementById('mgmtSelectBtn');
+  const bar = document.getElementById('mgmtSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderMgmtList();
+}
+
 function renderMgmtList() {
   const container = document.getElementById('mgmtListContainer');
   if (!container) return;
@@ -1540,50 +1594,60 @@ function renderMgmtList() {
   const query = searchEl ? searchEl.value : '';
   let listHtml = '';
 
+const chk = idx => mgmtSelectMode
+    ? `<input type="checkbox" class="qty-log-check" ${mgmtSelected.has(idx) ? 'checked' : ''} onclick="event.stopPropagation(); toggleMgmtItemSelect(${idx})" />`
+    : '';
+  const rowCls = idx => `mgmt-item ${mgmtSelectMode ? 'qty-log-selectable' : ''} ${mgmtSelected.has(idx) ? 'qty-log-selected' : ''}`;
+  const rowClick = idx => mgmtSelectMode ? `onclick="toggleMgmtItemSelect(${idx})"` : '';
+
   if (currentMgmtField === 'category') {
     const catOrder = customCategories.map((c, idx) => idx)
       .filter(idx => fuzzyMatch(query, sortKey(customCategories[idx])))
       .sort((a, b) => sortKey(customCategories[a]).localeCompare(sortKey(customCategories[b])));
     listHtml = catOrder.map(idx => { const c = customCategories[idx]; return `
-      <div class="mgmt-item">
+      <div class="${rowCls(idx)}" ${rowClick(idx)}>
+        ${chk(idx)}
         <span>${getCategoryIcon(c)}${escHtml(c)}</span>
-        <div class="mgmt-actions">
+        ${!mgmtSelectMode ? `<div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>
+        </div>` : ''}
       </div>`; }).join('');
   } else if (currentMgmtField === 'owner') {
     listHtml = customOwners.map((o, idx) => ({ o, idx })).filter(({ o }) => fuzzyMatch(query, o.short)).map(({ o, idx }) => `
-      <div class="mgmt-item">
+      <div class="${rowCls(idx)}" ${rowClick(idx)}>
+        ${chk(idx)}
         <span>${escHtml(o.label)}</span>
-        <div class="mgmt-actions">
+        ${!mgmtSelectMode ? `<div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>
+        </div>` : ''}
       </div>`).join('');
   } else if (currentMgmtField === 'form') {
     const formOrder = customForms.map((f, idx) => idx)
       .filter(idx => fuzzyMatch(query, sortKey(customForms[idx])))
       .sort((a, b) => sortKey(customForms[a]).localeCompare(sortKey(customForms[b])));
     listHtml = formOrder.map(idx => { const f = customForms[idx]; return `
-      <div class="mgmt-item">
+      <div class="${rowCls(idx)}" ${rowClick(idx)}>
+        ${chk(idx)}
         <span>${getFormIcon(f)}${escHtml(f)}</span>
-        <div class="mgmt-actions">
+        ${!mgmtSelectMode ? `<div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>
+        </div>` : ''}
       </div>`; }).join('');
   } else if (currentMgmtField === 'type') {
     const typeOrder = customTypes.map((t, idx) => idx)
       .filter(idx => fuzzyMatch(query, formatTypeLabel(customTypes[idx])))
       .sort((a, b) => sortKey(customTypes[a]).localeCompare(sortKey(customTypes[b])));
     listHtml = typeOrder.map(idx => { const t = customTypes[idx]; return `
-      <div class="mgmt-item">
+      <div class="${rowCls(idx)}" ${rowClick(idx)}>
+        ${chk(idx)}
         <span>${escHtml(formatTypeLabel(t))}</span>
-        <div class="mgmt-actions">
+        ${!mgmtSelectMode ? `<div class="mgmt-actions">
           <button class="mgmt-btn" onclick="editMgmtItem(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <button class="mgmt-btn" onclick="deleteMgmtItem(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>
+        </div>` : ''}
       </div>`; }).join('');
   }
 
@@ -1785,6 +1849,12 @@ function openHealthDiary() {
   if (!modal || !modal.classList.contains('hidden')) return;
   const search = document.getElementById('healthSearchInput');
   if (search) search.value = '';
+  healthSelectMode = false;
+  healthSelected.clear();
+  const hsBtn = document.getElementById('healthSelectBtn');
+  const hsBar = document.getElementById('healthSelectBar');
+  if (hsBtn) hsBtn.textContent = 'Select';
+  if (hsBar) hsBar.classList.add('hidden');
   const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
   if (!currentHealthOwner || !eligibleOwners.some(o => o.key === currentHealthOwner)) {
     currentHealthOwner = eligibleOwners.length ? eligibleOwners[0].key : null;
@@ -1887,16 +1957,19 @@ function renderQuantityLogList() {
     return;
   }
   container.innerHTML = entries.map(e => `
-    <div class="mgmt-item health-entry ${qtyLogSelectMode ? 'qty-log-selectable' : ''} ${qtyLogSelected.has(e.id) ? 'qty-log-selected' : ''}" ${qtyLogSelectMode ? `onclick="toggleQtyLogEntrySelect('${e.id}')"` : ''}>
-      ${qtyLogSelectMode ? `<input type="checkbox" class="qty-log-check" ${qtyLogSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleQtyLogEntrySelect('${e.id}')" />` : ''}
+    <div class="mgmt-item health-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
+      ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
-        <span class="health-entry-date"><i class="fa-solid ${QTY_LOG_ICONS[e.action] || 'fa-circle'}"></i> ${QTY_LOG_LABELS[e.action] || e.action} — ${escHtml(formatQtyLogTime(e.ts))}</span>
-        <span class="health-entry-issue">${escHtml(e.medName)}</span>
-        ${e.detail ? `<span class="health-entry-meds">${escHtml(e.detail)}</span>` : ''}
+        <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
+        <span class="health-entry-issue">${escHtml(e.issue)}</span>
+        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
+      ${!healthSelectMode ? `<div class="mgmt-actions">
+        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      </div>` : ''}
     </div>
   `).join('');
-}
 
 function formatQtyLogTime(ts) {
   if (!ts) return '';
@@ -2017,6 +2090,41 @@ function editHealthEntry(id) {
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry updated.', 'success');
+}
+
+let healthSelectMode = false;
+let healthSelected = new Set();
+
+function toggleHealthSelectMode() {
+  healthSelectMode = !healthSelectMode;
+  healthSelected.clear();
+  renderHealthDiaryList();
+  const btn = document.getElementById('healthSelectBtn');
+  const bar = document.getElementById('healthSelectBar');
+  if (btn) btn.textContent = healthSelectMode ? 'Cancel' : 'Select';
+  if (bar) bar.classList.toggle('hidden', !healthSelectMode);
+}
+
+function toggleHealthEntrySelect(id) {
+  if (healthSelected.has(id)) healthSelected.delete(id);
+  else healthSelected.add(id);
+  renderHealthDiaryList();
+}
+
+function deleteSelectedHealthEntries() {
+  if (!healthSelected.size) { showToast('No entries selected.', 'error'); return; }
+  const count = healthSelected.size;
+  pushUndo(`Deleted ${count} health diary entr${count > 1 ? 'ies' : 'y'}`);
+  healthDiary = healthDiary.filter(e => !healthSelected.has(e.id));
+  saveData();
+  healthSelectMode = false;
+  healthSelected.clear();
+  const btn = document.getElementById('healthSelectBtn');
+  const bar = document.getElementById('healthSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderHealthDiaryList();
+  showUndoToast(`Deleted ${count} entr${count > 1 ? 'ies' : 'y'} — tap Undo within 6s`, 'fa-trash');
 }
 
 function deleteHealthEntry(id) {
