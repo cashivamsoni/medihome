@@ -2072,6 +2072,38 @@ body.bulk-mode .go-top-btn {
   gap: 5px;
 }
 
+.qty-log-select-btn {
+  width: auto;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.qty-log-select-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.qty-log-select-bar.hidden {
+  display: none;
+}
+.qty-log-selectable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qty-log-selected {
+  background: rgba(220, 53, 69, 0.08);
+  border-radius: 8px;
+}
+.qty-log-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: #dc3545;
+}
+
 .health-entry-date i,
 .health-entry-meds i {
   font-size: 0.7rem;
