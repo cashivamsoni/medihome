@@ -2072,12 +2072,25 @@ body.bulk-mode .go-top-btn {
   gap: 5px;
 }
 
+.mgmt-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .qty-log-select-btn {
-  width: auto;
-  padding: 0 10px;
-  font-size: 0.85rem;
+  background: var(--slate-100);
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
   font-weight: 600;
-  margin-right: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.qty-log-select-btn:hover {
+  background: var(--slate-200);
+  color: var(--text-primary);
 }
 .qty-log-select-bar {
   display: flex;
@@ -2089,9 +2102,10 @@ body.bulk-mode .go-top-btn {
 }
 .qty-log-selectable {
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: flex-start;
+}
+.qty-log-selectable .health-entry-body {
+  flex: 1;
 }
 .qty-log-selected {
   background: rgba(220, 53, 69, 0.08);
@@ -2102,6 +2116,7 @@ body.bulk-mode .go-top-btn {
   width: 18px;
   height: 18px;
   accent-color: #dc3545;
+  margin: 0;
 }
 
 .health-entry-date i,
