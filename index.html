@@ -783,6 +783,7 @@
       <div class="mgmt-modal-box">
         <div class="mgmt-modal-header">
           <h3>Quantity Log</h3>
+          <button id="qtyLogSelectBtn" class="modal-close qty-log-select-btn" onclick="toggleQtyLogSelectMode()">Select</button>
           <button
             class="modal-close"
             onclick="closeQuantityLog()"
@@ -793,6 +794,9 @@
         </div>
         <div class="mgmt-modal-body">
           <p class="branch-modal-hint">Last 20 additions, deletions, and quantity changes for this branch.</p>
+          <div id="qtyLogSelectBar" class="qty-log-select-bar hidden">
+            <button class="bulk-btn bulk-delete" onclick="deleteSelectedQtyLogEntries()"><i class="fa-solid fa-trash"></i> Delete selected</button>
+          </div>
           <div class="mgmt-add-row">
             <input
               type="text"
