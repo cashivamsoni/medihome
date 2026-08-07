@@ -718,15 +718,18 @@
     <!-- ── Manage Categories / Owners / Forms Modal ───────── -->
     <div id="mgmtModal" class="hidden mgmt-modal-overlay">
       <div class="mgmt-modal-box">
-        <div class="mgmt-modal-header">
+       <div class="mgmt-modal-header">
           <h3 id="mgmtModalTitle">Manage Items</h3>
-          <button
-            class="modal-close"
-            onclick="closeMgmtModal()"
-            aria-label="Close"
-          >
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+          <div class="mgmt-modal-header-actions">
+            <button id="mgmtSelectBtn" class="qty-log-select-btn" onclick="toggleMgmtSelectMode()">Select</button>
+            <button
+              class="modal-close"
+              onclick="closeMgmtModal()"
+              aria-label="Close"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
         <div class="mgmt-modal-body">
           <div class="mgmt-tabs" id="mgmtTabs">
@@ -744,6 +747,9 @@
               oninput="filterMgmtList()"
             />
           </div>
+          <div id="mgmtSelectBar" class="qty-log-select-bar hidden">
+            <button class="bulk-btn bulk-delete" onclick="deleteSelectedMgmtItems()"><i class="fa-solid fa-trash"></i> Delete selected</button>
+          </div>
           <div class="mgmt-list" id="mgmtListContainer"></div>
         </div>
         <button class="mgmt-fab" onclick="promptAddMgmtItem()" title="Add new entry" aria-label="Add new entry">+</button>
@@ -755,6 +761,7 @@
        <div class="mgmt-modal-header">
           <h3>Health Diary</h3>
           <div class="mgmt-modal-header-actions">
+            <button id="healthSelectBtn" class="qty-log-select-btn" onclick="toggleHealthSelectMode()">Select</button>
             <button id="healthDiaryExportBtn" class="qty-log-select-btn" onclick="exportHealthDiaryPDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             <button
               class="modal-close"
@@ -775,6 +782,9 @@
               placeholder="Search entries…"
               oninput="renderHealthDiaryList()"
             />
+          </div>
+          <div id="healthSelectBar" class="qty-log-select-bar hidden">
+            <button class="bulk-btn bulk-delete" onclick="deleteSelectedHealthEntries()"><i class="fa-solid fa-trash"></i> Delete selected</button>
           </div>
           <div class="mgmt-list health-diary-list" id="healthDiaryListContainer"></div>
         </div>
