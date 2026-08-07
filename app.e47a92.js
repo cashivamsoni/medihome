@@ -16,6 +16,7 @@ let customOwners = [];      // [{key, label, short}]
 let customTypes = [];
 let healthDiary = [];       // current branch's health diary entries
 let currentHealthOwner = null; // which owner tab is selected in the Health Diary modal
+let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
@@ -268,6 +269,7 @@ function loadActiveBranchIntoState() {
   customOwners     = (b.owners && b.owners.length) ? b.owners : DEFAULT_OWNERS.slice();
   customTypes      = (b.types && b.types.length) ? b.types : DEFAULT_TYPES.slice();
   healthDiary      = b.healthDiary || [];
+  quantityLog      = b.quantityLog || [];
   // Only clear the selected tab if it's genuinely no longer valid (e.g. we
   // just switched branches, or that owner was deleted) — NOT on every sync,
   // since this same function re-runs after every save (including our own),
@@ -292,6 +294,8 @@ function loadActiveBranchIntoState() {
     renderHealthOwnerTabs();
     renderHealthDiaryList();
   }
+  const qtyModal = document.getElementById('quantityLogModal');
+  if (qtyModal && !qtyModal.classList.contains('hidden')) renderQuantityLogList();
 }
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
@@ -362,6 +366,7 @@ function saveData() {
   branches[activeBranchId].owners      = customOwners;
   branches[activeBranchId].types       = customTypes;
   branches[activeBranchId].healthDiary = healthDiary;
+  branches[activeBranchId].quantityLog = quantityLog;
   saveAllBranches();
 }
 
@@ -960,7 +965,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'quantityLogModal'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -1419,6 +1424,7 @@ function saveMedicine() {
     showUndoToast(`"${name}" updated — tap Undo within 6s`, 'fa-pen');
   } else {
     medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId });
+    logQuantityChange('added', name, `${quantity} ${quantityUnit}`);
     showToast('Medicine added ✓', 'success');
   }
 
@@ -1434,6 +1440,7 @@ function deleteMedicine(id) {
   const m = medicines.find(x => x.id === id);
   if (!m || !confirm(`Delete "${m.name}"?`)) return;
   pushUndo(`Deleted "${m.name}"`);
+  logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
   medicines = medicines.filter(x => x.id !== id);
   saveData();
   exitBulkMode();
@@ -1452,7 +1459,9 @@ function adjustQuantity(id, delta) {
   const lowStock = isCountableUnit(m.quantityUnit)
     ? autoIsLow({ quantity: newQty, quantityUnit: m.quantityUnit })
     : m.lowStock;
+  const oldQty = m.quantity || 0;
   medicines[idx] = { ...m, quantity: newQty, lowStock };
+  logQuantityChange(delta > 0 ? 'increased' : 'decreased', m.name, `${oldQty} → ${newQty} ${m.quantityUnit}`);
   saveData();
   // Partial re-render: just replace this card's HTML in place
   const el = document.getElementById(`med-${id}`);
@@ -1791,6 +1800,64 @@ function closeHealthDiary() {
 }
 bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
 
+// ── Quantity Log ─────────────────────────────────────────────
+// Read-only per-branch log of add/delete/increase/decrease actions,
+// capped at the last 20 (see logQuantityChange).
+function openQuantityLog() {
+  const modal = document.getElementById('quantityLogModal');
+  if (!modal || !modal.classList.contains('hidden')) return;
+  const search = document.getElementById('quantityLogSearchInput');
+  if (search) search.value = '';
+  renderQuantityLogList();
+  modal.classList.remove('hidden');
+  lockBodyScroll();
+}
+function closeQuantityLog() {
+  const modal = document.getElementById('quantityLogModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('quantityLogModal'), closeQuantityLog);
+
+const QTY_LOG_ICONS = { added: 'fa-plus', deleted: 'fa-trash', increased: 'fa-arrow-up', decreased: 'fa-arrow-down' };
+const QTY_LOG_LABELS = { added: 'Added', deleted: 'Deleted', increased: 'Increased', decreased: 'Decreased' };
+
+function renderQuantityLogList() {
+  const container = document.getElementById('quantityLogListContainer');
+  if (!container) return;
+  const query = (document.getElementById('quantityLogSearchInput')?.value || '').toLowerCase().trim();
+  let entries = quantityLog.slice().reverse(); // newest first
+  if (query) {
+    entries = entries.filter(e =>
+      (e.medName || '').toLowerCase().includes(query) ||
+      (e.action || '').toLowerCase().includes(query) ||
+      (e.detail || '').toLowerCase().includes(query)
+    );
+  }
+  if (!entries.length) {
+    container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching log entries.' : 'No quantity changes logged yet.'}</p>`;
+    return;
+  }
+  container.innerHTML = entries.map(e => `
+    <div class="mgmt-item health-entry">
+      <span class="health-entry-body">
+        <span class="health-entry-date"><i class="fa-solid ${QTY_LOG_ICONS[e.action] || 'fa-circle'}"></i> ${QTY_LOG_LABELS[e.action] || e.action} — ${escHtml(formatQtyLogTime(e.ts))}</span>
+        <span class="health-entry-issue">${escHtml(e.medName)}</span>
+        ${e.detail ? `<span class="health-entry-meds">${escHtml(e.detail)}</span>` : ''}
+      </span>
+    </div>
+  `).join('');
+}
+
+function formatQtyLogTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' +
+    d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+}
+
 function renderHealthOwnerTabs() {
   const container = document.getElementById('healthOwnerTabs');
   if (!container) return;
@@ -1972,7 +2039,8 @@ function promptAddBranch() {
     forms: DEFAULT_FORMS.slice(),
     owners: [{ key: 'shared', label: '👨‍👩‍👧 Family — Shared by All', short: '👨‍👩‍👧 Family' }],
     types: DEFAULT_TYPES.slice(),
-    healthDiary: []
+    healthDiary: [],
+    quantityLog: []
   };
   branchOrder.push(id);
   saveAllBranches();
@@ -2067,6 +2135,10 @@ function deriveOwnerShort(label) {
   return label.trim();
 }
 function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function logQuantityChange(action, medName, detail) {
+  quantityLog.push({ id: 'q' + Date.now() + Math.random().toString(36).slice(2,6), ts: Date.now(), action, medName, detail: detail || '' });
+  if (quantityLog.length > 20) quantityLog = quantityLog.slice(-20);
+}
 
 // Some category/form names have a user-typed emoji baked into the start of
 // the string (e.g. "🍎 Skin Care"). Emoji sort before/after letters by
@@ -3072,6 +3144,15 @@ function localAssistantAnswer(rawQuery) {
     return `Recent health diary entries: ${lines.join('; ')}.`;
   }
 
+  // Quantity Log
+  if (/\bquantity log\b|\brecent (change|addition|deletion)/.test(q)) {
+    if (!quantityLog.length) return `No quantity changes logged yet in "${branchName}".`;
+    const lines = quantityLog.slice().reverse().slice(0, 5).map(e =>
+      `${e.action} ${e.medName}${e.detail ? ` (${e.detail})` : ''} on ${formatQtyLogTime(e.ts)}`
+    );
+    return `Recent quantity log: ${lines.join('; ')}.`;
+  }
+
   // Total count
   if (/\b(how many|total|count)\b.*\b(medicine|medicines|meds|items)\b/.test(q) ||
       /^(medicines|meds)\s*(count|total)?$/.test(q)) {
@@ -3172,6 +3253,16 @@ function buildInventoryContext() {
       return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}`;
     });
     parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
+  }
+
+  // Quantity Log (last 20 add/delete/increase/decrease actions)
+  if (!quantityLog.length) {
+    parts.push('Quantity Log: no changes logged yet.');
+  } else {
+    const logLines = quantityLog.slice().reverse().map(e =>
+      `- ${formatQtyLogTime(e.ts)} | ${e.action} | ${e.medName}${e.detail ? ` | ${e.detail}` : ''}`
+    );
+    parts.push(`Quantity Log (last ${logLines.length} changes):\n${logLines.join('\n')}`);
   }
 
   // Medicines
