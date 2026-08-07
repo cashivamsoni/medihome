@@ -1600,6 +1600,12 @@ const chk = idx => mgmtSelectMode
   const rowCls = idx => `mgmt-item ${mgmtSelectMode ? 'qty-log-selectable' : ''} ${mgmtSelected.has(idx) ? 'qty-log-selected' : ''}`;
   const rowClick = idx => mgmtSelectMode ? `onclick="toggleMgmtItemSelect(${idx})"` : '';
 
+  const chk = idx => mgmtSelectMode
+    ? `<input type="checkbox" class="qty-log-check" ${mgmtSelected.has(idx) ? 'checked' : ''} onclick="event.stopPropagation(); toggleMgmtItemSelect(${idx})" />`
+    : '';
+  const rowCls = idx => `mgmt-item ${mgmtSelectMode ? 'qty-log-selectable' : ''} ${mgmtSelected.has(idx) ? 'qty-log-selected' : ''}`;
+  const rowClick = idx => mgmtSelectMode ? `onclick="toggleMgmtItemSelect(${idx})"` : '';
+
   if (currentMgmtField === 'category') {
     const catOrder = customCategories.map((c, idx) => idx)
       .filter(idx => fuzzyMatch(query, sortKey(customCategories[idx])))
@@ -1650,6 +1656,7 @@ const chk = idx => mgmtSelectMode
         </div>` : ''}
       </div>`; }).join('');
   }
+  
 
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
 }
