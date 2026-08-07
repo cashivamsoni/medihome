@@ -1428,12 +1428,15 @@ function saveMedicine() {
     showToast('Medicine added ✓', 'success');
   }
 
-  saveData(); closeModal();
+ saveData(); closeModal();
   exitBulkMode();
-  searchMode = false; // ensure full list re-renders after save
   populateAllDropdowns();
   renderOwnerNavChips();
-  renderAll();
+  if (searchMode) {
+    runSearch();
+  } else {
+    renderAll();
+  }
 }
 
 function deleteMedicine(id) {
