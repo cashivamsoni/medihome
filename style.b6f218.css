@@ -2071,6 +2071,7 @@ body.bulk-mode .go-top-btn {
   align-items: center;
   gap: 5px;
 }
+
 .health-entry-date i,
 .health-entry-meds i {
   font-size: 0.7rem;
