@@ -1808,6 +1808,12 @@ function openQuantityLog() {
   if (!modal || !modal.classList.contains('hidden')) return;
   const search = document.getElementById('quantityLogSearchInput');
   if (search) search.value = '';
+  qtyLogSelectMode = false;
+  qtyLogSelected.clear();
+  const btn = document.getElementById('qtyLogSelectBtn');
+  const bar = document.getElementById('qtyLogSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
   renderQuantityLogList();
   modal.classList.remove('hidden');
   lockBodyScroll();
@@ -1823,6 +1829,40 @@ bindOverlayClose(document.getElementById('quantityLogModal'), closeQuantityLog);
 
 const QTY_LOG_ICONS = { added: 'fa-plus', deleted: 'fa-trash', increased: 'fa-arrow-up', decreased: 'fa-arrow-down' };
 const QTY_LOG_LABELS = { added: 'Added', deleted: 'Deleted', increased: 'Increased', decreased: 'Decreased' };
+
+let qtyLogSelectMode = false;
+let qtyLogSelected = new Set();
+
+function toggleQtyLogSelectMode() {
+  qtyLogSelectMode = !qtyLogSelectMode;
+  qtyLogSelected.clear();
+  renderQuantityLogList();
+  const btn = document.getElementById('qtyLogSelectBtn');
+  const bar = document.getElementById('qtyLogSelectBar');
+  if (btn) btn.textContent = qtyLogSelectMode ? 'Cancel' : 'Select';
+  if (bar) bar.classList.toggle('hidden', !qtyLogSelectMode);
+}
+
+function toggleQtyLogEntrySelect(id) {
+  if (qtyLogSelected.has(id)) qtyLogSelected.delete(id);
+  else qtyLogSelected.add(id);
+  renderQuantityLogList();
+}
+
+function deleteSelectedQtyLogEntries() {
+  if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
+  if (!confirm(`Delete ${qtyLogSelected.size} selected log entr${qtyLogSelected.size > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
+  quantityLog = quantityLog.filter(e => !qtyLogSelected.has(e.id));
+  saveData();
+  qtyLogSelectMode = false;
+  qtyLogSelected.clear();
+  const btn = document.getElementById('qtyLogSelectBtn');
+  const bar = document.getElementById('qtyLogSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderQuantityLogList();
+  showToast('Log entries deleted.', 'success');
+}
 
 function renderQuantityLogList() {
   const container = document.getElementById('quantityLogListContainer');
@@ -1841,7 +1881,8 @@ function renderQuantityLogList() {
     return;
   }
   container.innerHTML = entries.map(e => `
-    <div class="mgmt-item health-entry">
+    <div class="mgmt-item health-entry ${qtyLogSelectMode ? 'qty-log-selectable' : ''} ${qtyLogSelected.has(e.id) ? 'qty-log-selected' : ''}" ${qtyLogSelectMode ? `onclick="toggleQtyLogEntrySelect('${e.id}')"` : ''}>
+      ${qtyLogSelectMode ? `<input type="checkbox" class="qty-log-check" ${qtyLogSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleQtyLogEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid ${QTY_LOG_ICONS[e.action] || 'fa-circle'}"></i> ${QTY_LOG_LABELS[e.action] || e.action} — ${escHtml(formatQtyLogTime(e.ts))}</span>
         <span class="health-entry-issue">${escHtml(e.medName)}</span>
