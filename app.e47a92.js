@@ -2711,6 +2711,110 @@ function exportToPDF() {
   }
 }
 
+function exportHealthDiaryPDF() {
+  try {
+    if (!currentHealthOwner) { showToast('Select an owner first.', 'error'); return; }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast('The PDF tool did not load — check your connection and try again.', 'error');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateSlash   = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeColon   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeForName = timeColon.replace(/:/g, '-');
+    const ownerCfg = customOwners.find(o => o.key === currentHealthOwner);
+    const ownerLabel = stripEmoji(ownerCfg ? ownerCfg.label : currentHealthOwner);
+    const fileName = `MediHome Health Diary - ${ownerLabel} ${dateSlash} ${timeForName}`;
+
+    const entries = healthDiary
+      .filter(e => e.owner === currentHealthOwner)
+      .slice()
+      .sort((a, b) => a.date < b.date ? 1 : -1)
+      .map(e => ({
+        date: formatHealthDate(e.date),
+        issue: stripEmoji(e.issue),
+        meds: stripEmoji(e.medicines || '—')
+      }));
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = 210, pageH = 297;
+    const MARGIN = 3;
+    const PAD = 4;
+    const contentX = MARGIN + PAD;
+    const contentW = pageW - 2 * contentX;
+    const FONT = 'times';
+    const fontSize = entries.length > 30 ? 9 : 10;
+    const rowHeight = entries.length > 30 ? 6.5 : 8;
+
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+
+    let y = contentX + 3;
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(fontSize + 8);
+    doc.text(`MediHome - Health Diary (${ownerLabel})`, pageW / 2, y, { align: 'center' });
+    y += fontSize * 0.5 + 3;
+
+    doc.setFont(FONT, 'normal');
+    doc.setFontSize(fontSize - 1);
+    doc.text(
+      `Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`,
+      pageW / 2, y, { align: 'center' }
+    );
+    y += 5;
+
+    const dateW = 26, issueW = contentW * 0.42;
+    const medsW = contentW - dateW - issueW;
+    const cols = { date: contentX, issue: contentX + dateW, meds: contentX + dateW + issueW };
+
+    function drawHeaderRow(rowY) {
+      doc.setFont(FONT, 'bold'); doc.setFontSize(fontSize);
+      doc.setFillColor(232, 232, 232);
+      doc.rect(cols.date, rowY, dateW, rowHeight, 'FD');
+      doc.rect(cols.issue, rowY, issueW, rowHeight, 'FD');
+      doc.rect(cols.meds, rowY, medsW, rowHeight, 'FD');
+      const ty = rowY + rowHeight / 2 + fontSize * 0.15;
+      doc.text('Date', cols.date + dateW / 2, ty, { align: 'center' });
+      doc.text('Issue / Update', cols.issue + issueW / 2, ty, { align: 'center' });
+      doc.text('Medicines', cols.meds + medsW / 2, ty, { align: 'center' });
+    }
+
+    drawHeaderRow(y);
+    y += rowHeight;
+
+    if (!entries.length) {
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      doc.text('No health diary entries yet.', pageW / 2, y + 10, { align: 'center' });
+    }
+
+    entries.forEach(e => {
+      if (y + rowHeight > pageH - MARGIN - PAD) {
+        doc.addPage();
+        y = contentX + 3;
+        drawHeaderRow(y);
+        y += rowHeight;
+      }
+      doc.setDrawColor(0);
+      doc.rect(cols.date, y, dateW, rowHeight);
+      doc.rect(cols.issue, y, issueW, rowHeight);
+      doc.rect(cols.meds, y, medsW, rowHeight);
+      const ty = y + rowHeight / 2 + fontSize * 0.15;
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      doc.text(e.date, cols.date + 1.5, ty, { maxWidth: dateW - 3 });
+      doc.text(e.issue, cols.issue + 1.5, ty, { maxWidth: issueW - 3 });
+      doc.text(e.meds, cols.meds + 1.5, ty, { maxWidth: medsW - 3 });
+      y += rowHeight;
+    });
+
+    doc.save(fileName + '.pdf');
+  } catch (err) {
+    console.error('Export Health Diary PDF failed:', err);
+    showToast('Could not export PDF. Please try again.', 'error');
+  }
+}
 
 // Share button logic
 const shareBtn = document.getElementById("shareBtn");
