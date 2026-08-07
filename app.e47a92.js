@@ -2184,7 +2184,8 @@ function deriveOwnerShort(label) {
 function escHtml(s)    { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function logQuantityChange(action, medName, detail) {
   quantityLog.push({ id: 'q' + Date.now() + Math.random().toString(36).slice(2,6), ts: Date.now(), action, medName, detail: detail || '' });
-  if (quantityLog.length > 20) quantityLog = quantityLog.slice(-20);
+  const sixMonthsAgo = Date.now() - (183 * 24 * 60 * 60 * 1000);
+  quantityLog = quantityLog.filter(e => e.ts >= sixMonthsAgo);
 }
 
 // Some category/form names have a user-typed emoji baked into the start of
