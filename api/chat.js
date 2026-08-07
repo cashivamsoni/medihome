@@ -76,6 +76,7 @@ export default async function handler(req, res) {
     '- Branches (in the menu): separate "houses", each with its own medicines/owners/etc. ' +
     'One branch can be set as Default (auto-opens on refresh); switching branches is temporary until refresh.\n' +
     '- Health Diary (in the menu): per-owner log of health updates and medicines taken, with a search bar.\n' +
+    '- Quantity Log (in the menu): read-only log of the last 20 medicine additions, deletions, and quantity increases/decreases, with a search bar.\n' +
     '- Export PDF, Share, Dark Mode toggle, and Reset to defaults are also in the menu.\n' +
     '- A reorder alert banner shows medicines that are low/finished.\n\n' +
     'For anything outside the app, answer from general knowledge. Keep answers ' +
