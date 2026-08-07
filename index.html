@@ -180,6 +180,12 @@
             </button>
             <button
               class="menu-action-btn"
+              onclick="closeAppMenu(); openQuantityLog();"
+            >
+              <i class="fa-solid fa-clipboard-list"></i> Quantity Log
+            </button>
+            <button
+              class="menu-action-btn"
               id="menuBranchBtn"
               onclick="closeAppMenu(); openBranchModal();"
             >
@@ -770,6 +776,34 @@
           <div class="mgmt-list health-diary-list" id="healthDiaryListContainer"></div>
         </div>
         <button class="mgmt-fab" onclick="promptAddHealthEntry()" title="Add health entry" aria-label="Add health entry">+</button>
+      </div>
+    </div>
+    <!-- ── Quantity Log Modal ──────────────────────────────── -->
+    <div id="quantityLogModal" class="hidden mgmt-modal-overlay">
+      <div class="mgmt-modal-box">
+        <div class="mgmt-modal-header">
+          <h3>Quantity Log</h3>
+          <button
+            class="modal-close"
+            onclick="closeQuantityLog()"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="mgmt-modal-body">
+          <p class="branch-modal-hint">Last 20 additions, deletions, and quantity changes for this branch.</p>
+          <div class="mgmt-add-row">
+            <input
+              type="text"
+              id="quantityLogSearchInput"
+              class="form-input"
+              placeholder="Search log…"
+              oninput="renderQuantityLogList()"
+            />
+          </div>
+          <div class="mgmt-list health-diary-list" id="quantityLogListContainer"></div>
+        </div>
       </div>
     </div>
     <!-- ── Branches Modal ──────────────────────────────────── -->
