@@ -2423,6 +2423,9 @@ function bulkDelete() {
   if (!bulkSelected.size) { showToast('No medicines selected.', 'error'); return; }
   if (!confirm(`Delete ${bulkSelected.size} selected medicine(s)? This can be undone via the Undo button.`)) return;
   pushUndo(`Deleted ${bulkSelected.size} medicine(s)`);
+  medicines.forEach(m => {
+    if (bulkSelected.has(m.id)) logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
+  });
   medicines = medicines.filter(m => !bulkSelected.has(m.id));
   saveData();
   searchMode = false;
