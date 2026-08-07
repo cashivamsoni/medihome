@@ -2111,6 +2111,13 @@ body.bulk-mode .go-top-btn {
   background: var(--green-100);
   border-radius: 8px;
 }
+[data-theme="dark"] .qty-log-selected {
+  background: rgba(22, 163, 74, 0.18);
+}
+[data-theme="dark"] .qty-log-selected .health-entry-issue,
+[data-theme="dark"] .qty-log-selected .health-entry-meds {
+  color: var(--text-primary);
+}
 .qty-log-check {
   flex-shrink: 0;
   width: 18px;
