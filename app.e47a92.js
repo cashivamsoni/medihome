@@ -1428,7 +1428,7 @@ function saveMedicine() {
     showToast('Medicine added ✓', 'success');
   }
 
- saveData(); closeModal();
+  saveData(); closeModal();
   exitBulkMode();
   populateAllDropdowns();
   renderOwnerNavChips();
@@ -1594,12 +1594,6 @@ function renderMgmtList() {
   const query = searchEl ? searchEl.value : '';
   let listHtml = '';
 
-const chk = idx => mgmtSelectMode
-    ? `<input type="checkbox" class="qty-log-check" ${mgmtSelected.has(idx) ? 'checked' : ''} onclick="event.stopPropagation(); toggleMgmtItemSelect(${idx})" />`
-    : '';
-  const rowCls = idx => `mgmt-item ${mgmtSelectMode ? 'qty-log-selectable' : ''} ${mgmtSelected.has(idx) ? 'qty-log-selected' : ''}`;
-  const rowClick = idx => mgmtSelectMode ? `onclick="toggleMgmtItemSelect(${idx})"` : '';
-
   const chk = idx => mgmtSelectMode
     ? `<input type="checkbox" class="qty-log-check" ${mgmtSelected.has(idx) ? 'checked' : ''} onclick="event.stopPropagation(); toggleMgmtItemSelect(${idx})" />`
     : '';
@@ -1656,7 +1650,6 @@ const chk = idx => mgmtSelectMode
         </div>` : ''}
       </div>`; }).join('');
   }
-  
 
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
 }
@@ -1890,10 +1883,10 @@ function openQuantityLog() {
   if (search) search.value = '';
   qtyLogSelectMode = false;
   qtyLogSelected.clear();
-  const btn = document.getElementById('qtyLogSelectBtn');
-  const bar = document.getElementById('qtyLogSelectBar');
-  if (btn) btn.textContent = 'Select';
-  if (bar) bar.classList.add('hidden');
+  const qBtn = document.getElementById('qtyLogSelectBtn');
+  const qBar = document.getElementById('qtyLogSelectBar');
+  if (qBtn) qBtn.textContent = 'Select';
+  if (qBar) qBar.classList.add('hidden');
   renderQuantityLogList();
   modal.classList.remove('hidden');
   lockBodyScroll();
@@ -1912,6 +1905,7 @@ const QTY_LOG_LABELS = { added: 'Added', deleted: 'Deleted', increased: 'Increas
 
 let qtyLogSelectMode = false;
 let qtyLogSelected = new Set();
+let _qtyLogUndoData = null;
 
 function toggleQtyLogSelectMode() {
   qtyLogSelectMode = !qtyLogSelectMode;
@@ -1928,8 +1922,6 @@ function toggleQtyLogEntrySelect(id) {
   else qtyLogSelected.add(id);
   renderQuantityLogList();
 }
-
-let _qtyLogUndoData = null;
 
 function deleteSelectedQtyLogEntries() {
   if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
@@ -1964,19 +1956,16 @@ function renderQuantityLogList() {
     return;
   }
   container.innerHTML = entries.map(e => `
-    <div class="mgmt-item health-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
-      ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
+    <div class="mgmt-item health-entry ${qtyLogSelectMode ? 'qty-log-selectable' : ''} ${qtyLogSelected.has(e.id) ? 'qty-log-selected' : ''}" ${qtyLogSelectMode ? `onclick="toggleQtyLogEntrySelect('${e.id}')"` : ''}>
+      ${qtyLogSelectMode ? `<input type="checkbox" class="qty-log-check" ${qtyLogSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleQtyLogEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
-        <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
-        <span class="health-entry-issue">${escHtml(e.issue)}</span>
-        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+        <span class="health-entry-date"><i class="fa-solid ${QTY_LOG_ICONS[e.action] || 'fa-circle'}"></i> ${QTY_LOG_LABELS[e.action] || e.action} — ${escHtml(formatQtyLogTime(e.ts))}</span>
+        <span class="health-entry-issue">${escHtml(e.medName)}</span>
+        ${e.detail ? `<span class="health-entry-meds">${escHtml(e.detail)}</span>` : ''}
       </span>
-      ${!healthSelectMode ? `<div class="mgmt-actions">
-        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-      </div>` : ''}
     </div>
   `).join('');
+}
 
 function formatQtyLogTime(ts) {
   if (!ts) return '';
@@ -2031,16 +2020,17 @@ function renderHealthDiaryList() {
   }
 
   container.innerHTML = entries.map(e => `
-    <div class="mgmt-item health-entry">
+    <div class="mgmt-item health-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
+      ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
         <span class="health-entry-issue">${escHtml(e.issue)}</span>
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
-      <div class="mgmt-actions">
+      ${!healthSelectMode ? `<div class="mgmt-actions">
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-      </div>
+      </div>` : ''}
     </div>
   `).join('');
 }
@@ -2462,7 +2452,6 @@ function commitUndo() {
     return;
   }
   if (!_undoStack) return;
-  
   const s = _undoStack.snapshot;
   medicines        = s.medicines;
   customCategories = s.categories;
@@ -2930,6 +2919,7 @@ function exportHealthDiaryPDF() {
     showToast('Could not export PDF. Please try again.', 'error');
   }
 }
+
 
 // Share button logic
 const shareBtn = document.getElementById("shareBtn");
