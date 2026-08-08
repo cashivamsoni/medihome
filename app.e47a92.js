@@ -1926,6 +1926,7 @@ function toggleQtyLogEntrySelect(id) {
 function deleteSelectedQtyLogEntries() {
   if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
   const count = qtyLogSelected.size;
+  if (!confirm(`Delete ${count} selected log entr${count > 1 ? 'ies' : 'y'}?`)) return;
   _qtyLogUndoData = quantityLog.filter(e => qtyLogSelected.has(e.id));
   quantityLog = quantityLog.filter(e => !qtyLogSelected.has(e.id));
   saveData();
@@ -2111,6 +2112,7 @@ function toggleHealthEntrySelect(id) {
 function deleteSelectedHealthEntries() {
   if (!healthSelected.size) { showToast('No entries selected.', 'error'); return; }
   const count = healthSelected.size;
+  if (!confirm(`Delete ${count} selected health diary entr${count > 1 ? 'ies' : 'y'}?`)) return;
   pushUndo(`Deleted ${count} health diary entr${count > 1 ? 'ies' : 'y'}`);
   healthDiary = healthDiary.filter(e => !healthSelected.has(e.id));
   saveData();
