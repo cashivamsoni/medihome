@@ -48,7 +48,7 @@ const LOW_THRESHOLDS = {
   lozenges:3, lozenge:3, candy:3, candies:3,
   strips:1, strip:1,
   doses:5, dose:5, puffs:5, puff:5,
-  bandages:3, bandage:3, rolls:2, roll:2
+  bandages:3, bandage:3, rolls:3, roll:3
 };
 
 // Fallback defaults used only if a deleted category/form/owner/type needs somewhere to land
