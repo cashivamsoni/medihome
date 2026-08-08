@@ -31,9 +31,25 @@ let defaultBranchId = null;   // branch that auto-loads on every refresh
 let _branchInitialized = false; // true once the first real page load has run
 
 // Units that are countable → auto low-stock
-const COUNTABLE_UNITS = ['tablets','tablet','pieces','piece','pouches','pouch','capsules','capsule','lozenges','lozenge'];
+const COUNTABLE_UNITS = [
+  'tablets','tablet','capsules','capsule',
+  'pieces','piece',
+  'pouches','pouch','sachets','sachet',
+  'lozenges','lozenge','candy','candies',
+  'strips','strip',
+  'doses','dose','puffs','puff',
+  'bandages','bandage','rolls','roll'
+];
 // Thresholds for auto low-stock by unit type
-const LOW_THRESHOLDS = { tablets:5, tablet:5, pieces:3, piece:3, pouches:2, pouch:2, capsules:5, capsule:5, lozenges:3, lozenge:3 };
+const LOW_THRESHOLDS = {
+  tablets:5, tablet:5, capsules:5, capsule:5,
+  pieces:3, piece:3,
+  pouches:2, pouch:2, sachets:2, sachet:2,
+  lozenges:3, lozenge:3, candy:3, candies:3,
+  strips:1, strip:1,
+  doses:5, dose:5, puffs:5, puff:5,
+  bandages:2, bandage:2, rolls:2, roll:2
+};
 
 // Fallback defaults used only if a deleted category/form/owner/type needs somewhere to land
 const FALLBACK_CATEGORY = 'Debility & Wellness';
