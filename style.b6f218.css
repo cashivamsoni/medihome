@@ -2044,6 +2044,8 @@ body.bulk-mode .go-top-btn {
 }
 .health-entry {
   align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 .health-entry-body {
   display: flex;
@@ -2071,17 +2073,12 @@ body.bulk-mode .go-top-btn {
   align-items: center;
   gap: 5px;
 }
-.health-entry-meds-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .health-dose-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 5px;
-  flex-shrink: 0;
+  flex-basis: 100%;
 }
 .dose-tick {
   display: flex;
