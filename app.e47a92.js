@@ -2042,13 +2042,15 @@ function renderHealthDiaryList() {
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
         <span class="health-entry-issue">${escHtml(e.issue)}</span>
-        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+        <span class="health-entry-meds-line">
+          ${renderDoseTicks(e.doseTimes, e.id)}
+          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+        </span>
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </div>` : ''}
-      ${renderDoseTicks(e.doseTimes, e.id)}
     </div>
   `).join('');
 }
