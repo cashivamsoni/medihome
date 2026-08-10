@@ -2071,6 +2071,32 @@ body.bulk-mode .go-top-btn {
   align-items: center;
   gap: 5px;
 }
+.health-dose-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.dose-tick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--slate-100);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+.dose-tick-active {
+  background: var(--green-100);
+  color: var(--teal-600);
+  opacity: 1;
+}
+[data-theme="dark"] .dose-tick-active {
+  background: rgba(22, 163, 74, 0.18);
+}
 
 .mgmt-modal-header-actions {
   display: flex;
