@@ -2042,8 +2042,10 @@ function renderHealthDiaryList() {
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
         <span class="health-entry-issue">${escHtml(e.issue)}</span>
-        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
-        ${renderDoseTicks(e.doseTimes)}
+        <span class="health-entry-meds-row">
+          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : '<span></span>'}
+          ${renderDoseTicks(e.doseTimes, e.id)}
+        </span>
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
@@ -2068,8 +2070,10 @@ const DOSE_TIME_LETTER = { morning: 'M', afternoon: 'A', evening: 'E' };
 function parseDoseTimes(input) {
   const map = { m: 'morning', a: 'afternoon', e: 'evening' };
   const picked = new Set();
-  (input || '').toUpperCase().split(/[,\s]+/).forEach(tok => {
-    const key = map[tok.trim().toLowerCase()];
+  // Accepts any mix/order/case and any (or no) separators: "M,A,E", "m a e",
+  // "M/A/E", "mae" all work — we just pull out every M/A/E letter present.
+  (input || '').toUpperCase().replace(/[^MAE]/g, '').split('').forEach(ch => {
+    const key = map[ch.toLowerCase()];
     if (key) picked.add(key);
   });
   return DOSE_TIME_ORDER.filter(t => picked.has(t));
@@ -2079,15 +2083,24 @@ function doseTimesToLetters(arr) {
   return (arr || []).map(t => DOSE_TIME_LETTER[t]).join(', ');
 }
 
-function renderDoseTicks(doseTimes) {
-  if (!doseTimes || !doseTimes.length) return '';
-  const set = new Set(doseTimes);
+function renderDoseTicks(doseTimes, id) {
+  const set = new Set(doseTimes || []);
   const ticks = DOSE_TIME_ORDER.map(t => `
-    <span class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}">
+    <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="event.stopPropagation(); toggleDoseTime('${id}','${t}')">
       <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
-    </span>
+    </button>
   `).join('');
   return `<span class="health-dose-row">${ticks}</span>`;
+}
+
+function toggleDoseTime(id, time) {
+  const entry = healthDiary.find(e => e.id === id);
+  if (!entry) return;
+  const set = new Set(entry.doseTimes || []);
+  if (set.has(time)) set.delete(time); else set.add(time);
+  entry.doseTimes = DOSE_TIME_ORDER.filter(t => set.has(t));
+  saveData();
+  renderHealthDiaryList();
 }
 
 function promptAddHealthEntry() {
