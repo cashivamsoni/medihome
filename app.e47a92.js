@@ -2043,6 +2043,7 @@ function renderHealthDiaryList() {
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
         <span class="health-entry-issue">${escHtml(e.issue)}</span>
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+        ${renderDoseTicks(e.doseTimes)}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
@@ -2059,6 +2060,36 @@ function formatHealthDate(d) {
   return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Dose-time tracking: which part(s) of the day medicines were taken.
+const DOSE_TIME_ORDER = ['morning', 'afternoon', 'evening'];
+const DOSE_TIME_ICONS = { morning: 'fa-sun', afternoon: 'fa-cloud-sun', evening: 'fa-moon' };
+const DOSE_TIME_LETTER = { morning: 'M', afternoon: 'A', evening: 'E' };
+
+function parseDoseTimes(input) {
+  const map = { m: 'morning', a: 'afternoon', e: 'evening' };
+  const picked = new Set();
+  (input || '').toUpperCase().split(/[,\s]+/).forEach(tok => {
+    const key = map[tok.trim().toLowerCase()];
+    if (key) picked.add(key);
+  });
+  return DOSE_TIME_ORDER.filter(t => picked.has(t));
+}
+
+function doseTimesToLetters(arr) {
+  return (arr || []).map(t => DOSE_TIME_LETTER[t]).join(', ');
+}
+
+function renderDoseTicks(doseTimes) {
+  if (!doseTimes || !doseTimes.length) return '';
+  const set = new Set(doseTimes);
+  const ticks = DOSE_TIME_ORDER.map(t => `
+    <span class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}">
+      <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+    </span>
+  `).join('');
+  return `<span class="health-dose-row">${ticks}</span>`;
+}
+
 function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
   const today = new Date().toISOString().slice(0, 10);
@@ -2071,12 +2102,16 @@ function promptAddHealthEntry() {
 
   const meds = prompt('Medicines taken (optional):', '');
 
+  const doseInput = prompt('Doses taken — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:', '');
+  if (doseInput === null) return;
+
   healthDiary.push({
     id: 'h' + Date.now(),
     owner: currentHealthOwner,
     date: date.trim() || today,
     issue: issue.trim(),
     medicines: (meds || '').trim(),
+    doseTimes: parseDoseTimes(doseInput),
     createdAt: Date.now()
   });
   saveData();
@@ -2098,9 +2133,13 @@ function editHealthEntry(id) {
   const meds = prompt('Medicines taken (optional):', entry.medicines || '');
   if (meds === null) return;
 
+  const doseInput = prompt('Doses taken — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:', doseTimesToLetters(entry.doseTimes));
+  if (doseInput === null) return;
+
   entry.date = date.trim() || entry.date;
   entry.issue = issue.trim();
   entry.medicines = meds.trim();
+  entry.doseTimes = parseDoseTimes(doseInput);
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry updated.', 'success');
@@ -2857,7 +2896,7 @@ function exportHealthDiaryPDF() {
       .map(e => ({
         date: formatHealthDate(e.date),
         issue: stripEmoji(e.issue),
-        meds: stripEmoji(e.medicines || '—')
+        meds: stripEmoji(e.medicines || '—') + (e.doseTimes && e.doseTimes.length ? ` [${doseTimesToLetters(e.doseTimes)}]` : '')
       }));
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -3428,7 +3467,7 @@ function localAssistantAnswer(rawQuery) {
     const lines = entries.map(e => {
       const oCfg = customOwners.find(o => o.key === e.owner);
       const oName = oCfg ? oCfg.short : e.owner;
-      return `${e.date} (${oName}): ${e.issue}${e.medicines ? ` — took ${e.medicines}` : ''}`;
+      return `${e.date} (${oName}): ${e.issue}${e.medicines ? ` — took ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` [${doseTimesToLetters(e.doseTimes)}]` : ''}`;
     });
     return `Recent health diary entries: ${lines.join('; ')}.`;
   }
@@ -3539,7 +3578,7 @@ function buildInventoryContext() {
     const diaryLines = entries.map(e => {
       const ownerCfg = customOwners.find(o => o.key === e.owner);
       const ownerName = ownerCfg ? ownerCfg.short : e.owner;
-      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}`;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
     });
     parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
   }
