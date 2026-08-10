@@ -2044,8 +2044,6 @@ body.bulk-mode .go-top-btn {
 }
 .health-entry {
   align-items: flex-start;
-  flex-wrap: wrap;
-  row-gap: 4px;
 }
 .health-entry-body {
   display: flex;
@@ -2069,16 +2067,17 @@ body.bulk-mode .go-top-btn {
 .health-entry-meds {
   font-size: 0.78rem;
   color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 5px;
+}
+.health-entry-meds-line {
+  display: block;
+  overflow: hidden;
 }
 .health-dose-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 5px;
-  flex-basis: 100%;
+  float: right;
+  margin: 1px 0 4px 8px;
 }
 .dose-tick {
   display: flex;
@@ -2169,6 +2168,9 @@ body.bulk-mode .go-top-btn {
 .health-entry-date i,
 .health-entry-meds i {
   font-size: 0.7rem;
+}
+.health-entry-meds i {
+  margin-right: 5px;
 }
 .mgmt-actions {
   display: flex;
