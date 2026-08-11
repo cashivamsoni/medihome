@@ -2581,8 +2581,10 @@ function renderHealthDiaryList() {
       ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
-        <span class="health-entry-issue">${escHtml(e.issue)}</span>
-        ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured</span>` : ''}
+        <span class="health-entry-issue-row">
+          <span class="health-entry-issue">${escHtml(e.issue)}</span>
+          ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured</span>` : ''}
+        </span>
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
