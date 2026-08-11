@@ -2597,10 +2597,61 @@ body.bulk-mode .go-top-btn {
   border-radius: 50%;
   background: var(--teal-400);
 }
-.profile-recent-list {
-  height: auto;
-  max-height: 220px;
-  padding-bottom: 4px;
+.profile-update-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.profile-update-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.profile-update-row:last-child {
+  border-bottom: none;
+}
+.profile-update-date {
+  flex-shrink: 0;
+  width: 68px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.profile-update-issue {
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.profile-cured-details {
+  margin-top: 8px;
+}
+.profile-cured-details summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--green-600);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  list-style: none;
+}
+.profile-cured-details summary::-webkit-details-marker {
+  display: none;
+}
+.profile-cured-details .profile-update-list {
+  margin-top: 6px;
+  max-height: 160px;
+}
+.profile-update-row-cured .profile-update-issue {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+  text-decoration-thickness: 1.5px;
+  font-weight: 500;
 }
 .profile-med-chips {
   display: flex;
