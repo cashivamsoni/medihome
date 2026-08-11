@@ -1448,7 +1448,20 @@ function saveMedicine() {
   if (editingId) {
     pushUndo(`Edited "${name}"`);
     const idx = medicines.findIndex(m => m.id === editingId);
-    if (idx !== -1) medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
+    if (idx !== -1) {
+      const oldQty = medicines[idx].quantity;
+      const oldUnit = medicines[idx].quantityUnit;
+      medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
+      // The quantity field in this form doubles as a manual stock update, so
+      // treat a changed value the same as the quick +/- adjuster does —
+      // otherwise edits like "1 → 2" never show up in the Quantity Log.
+      if (quantity !== oldQty) {
+        const detail = quantityUnit === oldUnit
+          ? `${oldQty} → ${quantity} ${quantityUnit}`
+          : `${oldQty} ${oldUnit} → ${quantity} ${quantityUnit}`;
+        logQuantityChange(quantity > oldQty ? 'increased' : 'decreased', name, detail);
+      }
+    }
     showUndoToast(`"${name}" updated — tap Undo within 6s`, 'fa-pen');
   } else {
     medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId });
