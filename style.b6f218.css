@@ -2060,6 +2060,12 @@ body.bulk-mode .go-top-btn {
   align-items: center;
   gap: 5px;
 }
+.health-entry-issue-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .health-entry-issue {
   color: var(--text-primary);
   font-weight: 600;
@@ -2076,6 +2082,7 @@ body.bulk-mode .go-top-btn {
   padding: 2px 8px;
   border-radius: 10px;
   width: fit-content;
+  flex-shrink: 0;
 }
 [data-theme="dark"] .health-entry-cured-badge {
   background: rgba(22, 163, 74, 0.18);
