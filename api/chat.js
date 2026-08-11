@@ -77,6 +77,11 @@ export default async function handler(req, res) {
     'One branch can be set as Default (auto-opens on refresh); switching branches is temporary until refresh.\n' +
     '- Health Diary (in the menu): per-owner log of health updates and medicines taken, with a search bar.\n' +
     '- Health Diary entries may include a dose marker like "M", "A", "E" (Morning, Afternoon, Evening) showing which times of day medicine was taken that day.\n' +
+    '- Owner Health Profile (in the menu): a per-owner profile (not shown for the shared/family owner) with a photo, weight, height, date of birth, and gender, editable right there along with the owner\'s name. ' +
+    'It calculates actual BMI vs. the healthy 18.5–24.9 range, an overall wellbeing score out of 100, and Do/Avoid/Yoga-exercise suggestions based on the BMI category. ' +
+    'It also surfaces that owner\'s recent Health Diary entries and a tally of medicines they\'ve taken recently, pulled live from the Health Diary. ' +
+    'These recommendations and the score are simple rule-of-thumb guidance generated from the app\'s own data (BMI category + recent Health Diary activity), not a doctor\'s or dietitian\'s assessment — ' +
+    'if asked, say so plainly and suggest a doctor for anything specific or concerning.\n' +
     '- Quantity Log (in the menu): read-only log of the last 20 medicine additions, deletions, and quantity increases/decreases, with a search bar.\n' +
     '- Export PDF, Share, Dark Mode toggle, and Reset to defaults are also in the menu.\n' +
     '- A reorder alert banner shows medicines that are low/finished.\n\n' +
