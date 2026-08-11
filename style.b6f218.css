@@ -2290,6 +2290,277 @@ body.bulk-mode .go-top-btn {
   }
 }
 
+/* ── Owner Health Profile modal ──────────────────────────── */
+/* Bigger than the standard mgmt modals (Health Diary etc.) — sized in line
+   with the Add/Edit Medicine modal since this is effectively a form + report. */
+.profile-modal-box {
+  max-width: 600px;
+  max-height: 88vh;
+}
+.profile-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 4px;
+}
+.profile-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 92px;
+}
+.profile-avatar-drop {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  flex-direction: row;
+}
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.profile-avatar-placeholder {
+  font-size: 2rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.profile-avatar-placeholder.hidden {
+  display: none;
+}
+.profile-avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--teal-600);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  border: 2px solid var(--surface);
+}
+.profile-avatar-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.profile-avatar-link-btn {
+  color: var(--teal-700);
+  background: var(--teal-50);
+  border-color: var(--teal-200);
+  font-size: 0.68rem;
+  padding: 2px 8px;
+}
+.profile-avatar-link-btn:hover {
+  background: var(--teal-100);
+}
+.profile-name-col {
+  flex: 1;
+  min-width: 0;
+  padding-top: 4px;
+}
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-owner-name {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.profile-vitals-grid {
+  margin-top: 14px;
+}
+.profile-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.profile-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.profile-section-title i {
+  color: var(--teal-600);
+  font-size: 0.78rem;
+}
+.bmi-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.bmi-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bmi-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bmi-stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.bmi-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 14px;
+}
+.bmi-badge-under { background: #EFF6FF; color: #1D4ED8; }
+.bmi-badge-normal { background: var(--green-100); color: var(--green-600); }
+.bmi-badge-over { background: var(--amber-50); color: var(--amber-600); }
+.bmi-badge-obese { background: var(--red-50); color: var(--red-600); }
+[data-theme="dark"] .bmi-badge-under { background: rgba(29,78,216,0.18); }
+[data-theme="dark"] .bmi-badge-normal { background: rgba(22,163,74,0.18); }
+[data-theme="dark"] .bmi-badge-over { background: rgba(217,119,6,0.18); }
+[data-theme="dark"] .bmi-badge-obese { background: rgba(225,29,72,0.18); }
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.score-ring {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  position: relative;
+  background: conic-gradient(var(--score-color, var(--teal-500)) calc(var(--score-pct, 0) * 1%), var(--slate-200) 0);
+}
+.score-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.score-ring span {
+  position: relative;
+  z-index: 1;
+}
+.advice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.advice-col h6 {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+.advice-col h6 i {
+  font-size: 0.72rem;
+}
+.advice-col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.advice-col li {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding-left: 12px;
+  position: relative;
+}
+.advice-col li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--teal-400);
+}
+.profile-recent-list {
+  height: auto;
+  max-height: 220px;
+  padding-bottom: 4px;
+}
+.profile-med-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.profile-med-chip {
+  background: var(--teal-50);
+  color: var(--teal-700);
+  border: 1px solid var(--teal-200);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+[data-theme="dark"] .profile-med-chip {
+  background: rgba(20,184,166,0.14);
+  border-color: rgba(20,184,166,0.3);
+}
+@media (max-width: 480px) {
+  .profile-modal-box {
+    max-width: 100%;
+  }
+  .profile-header {
+    gap: 12px;
+  }
+  .profile-avatar-col {
+    width: 76px;
+  }
+  .profile-avatar-drop {
+    width: 72px;
+    height: 72px;
+  }
+  .profile-vitals-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .advice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Image Viewer Modal ──────────────────────────────────── */
 #imgViewerModal {
   position: fixed;
