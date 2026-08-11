@@ -1983,11 +1983,13 @@ function renderOwnerProfileContent() {
   container.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar-col">
-        <label class="img-drop-zone profile-avatar-drop" id="profileImgDropZone" for="profileImageFile" title="Click or drop to change photo">
-          <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
-          <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
+        <div class="profile-avatar-wrap">
+          <label class="img-drop-zone profile-avatar-drop" id="profileImgDropZone" for="profileImageFile" title="Click or drop to change photo">
+            <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
+            <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
+          </label>
           <span class="profile-avatar-edit-badge"><i class="fa-solid fa-camera"></i></span>
-        </label>
+        </div>
         <input type="file" id="profileImageFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="handleProfileImageFile(event)" />
         <div class="profile-avatar-actions">
           <button type="button" class="img-clear-btn profile-avatar-link-btn" onclick="toggleProfileImgUrlBox()"><i class="fa-solid fa-link"></i> URL</button>
