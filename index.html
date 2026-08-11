@@ -180,6 +180,12 @@
             </button>
             <button
               class="menu-action-btn"
+              onclick="closeAppMenu(); openOwnerProfile();"
+            >
+              <i class="fa-solid fa-heart-pulse"></i> Owner Health Profile
+            </button>
+            <button
+              class="menu-action-btn"
               onclick="closeAppMenu(); openQuantityLog();"
             >
               <i class="fa-solid fa-clipboard-list"></i> Quantity Log
@@ -789,6 +795,27 @@
           <div class="mgmt-list health-diary-list" id="healthDiaryListContainer"></div>
         </div>
         <button class="mgmt-fab" onclick="promptAddHealthEntry()" title="Add health entry" aria-label="Add health entry">+</button>
+      </div>
+    </div>
+    <!-- ── Owner Health Profile Modal ───────────────────────── -->
+    <div id="ownerProfileModal" class="hidden mgmt-modal-overlay">
+      <div class="mgmt-modal-box profile-modal-box">
+        <div class="mgmt-modal-header">
+          <h3>Owner Health Profile</h3>
+          <div class="mgmt-modal-header-actions">
+            <button
+              class="modal-close"
+              onclick="closeOwnerProfile()"
+              aria-label="Close"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mgmt-modal-body">
+          <div class="mgmt-tabs" id="profileOwnerTabs"></div>
+          <div id="profileContent"></div>
+        </div>
       </div>
     </div>
     <!-- ── Quantity Log Modal ──────────────────────────────── -->
