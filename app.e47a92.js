@@ -2065,10 +2065,15 @@ function updateProfileMetricsDisplay() {
   const bmi = computeBMI(p.weight, p.height);
   const cat = bmiCategory(bmi);
 
-  const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
+  const recentAll = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
-  }).slice(0, 5);
+  }).slice(0, 8);
+  // Split so the glanceable part of the card is "what still needs attention" —
+  // resolved issues are tucked into a collapsed summary rather than taking up
+  // the same visual weight as something still ongoing.
+  const activeEntries = recentAll.filter(e => !e.cured).slice(0, 5);
+  const curedEntries = recentAll.filter(e => e.cured);
 
   const recentMeds = summarizeRecentMedicines(key);
 
@@ -2124,14 +2129,22 @@ function updateProfileMetricsDisplay() {
 
     <div class="profile-section">
       <h5 class="profile-section-title"><i class="fa-solid fa-book-medical"></i> Recent Health Updates</h5>
-      ${entries.length ? `<div class="mgmt-list profile-recent-list">${entries.map(e => `
-        <div class="mgmt-item health-entry">
-          <span class="health-entry-body">
-            <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
-            <span class="health-entry-issue">${escHtml(e.issue)}</span>
-            ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
-          </span>
-        </div>`).join('')}</div>` : `<p class="branch-modal-hint">No health diary entries yet for this owner.</p>`}
+      ${activeEntries.length
+        ? `<div class="profile-update-list">${activeEntries.map(e => `
+            <div class="profile-update-row">
+              <span class="profile-update-date">${escHtml(formatHealthDate(e.date))}</span>
+              <span class="profile-update-issue">${escHtml(e.issue)}</span>
+            </div>`).join('')}</div>`
+        : `<p class="branch-modal-hint">${curedEntries.length ? 'No active issues right now — nice!' : 'No health diary entries yet for this owner.'}</p>`}
+      ${curedEntries.length ? `
+        <details class="profile-cured-details">
+          <summary><i class="fa-solid fa-circle-check"></i> ${curedEntries.length} resolved recently</summary>
+          <div class="profile-update-list profile-update-list-cured">${curedEntries.map(e => `
+            <div class="profile-update-row profile-update-row-cured">
+              <span class="profile-update-date">${escHtml(formatHealthDate(e.date))}</span>
+              <span class="profile-update-issue">${escHtml(e.issue)}</span>
+            </div>`).join('')}</div>
+        </details>` : ''}
     </div>
 
     <div class="profile-section">
