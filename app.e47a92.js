@@ -1828,6 +1828,7 @@ function deleteMgmtItem(idx) {
     customOwners.splice(idx, 1);
     medicines.forEach(m => { if (m.owner === removed.key) m.owner = dest; });
     delete ownerProfiles[removed.key]; // that owner's health profile no longer applies
+    delete profileInsightsCache[removed.key];
   } else if (currentMgmtField === 'type') {
     if (customTypes.length <= 1) { showToast('At least one type must remain.', 'error'); return; }
     const removed = customTypes[idx];
@@ -2063,8 +2064,6 @@ function updateProfileMetricsDisplay() {
   const p = ensureOwnerProfile(key);
   const bmi = computeBMI(p.weight, p.height);
   const cat = bmiCategory(bmi);
-  const score = computeHealthScore(key, bmi);
-  const advice = BMI_ADVICE[cat] || null;
 
   const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
@@ -2072,6 +2071,24 @@ function updateProfileMetricsDisplay() {
   }).slice(0, 5);
 
   const recentMeds = summarizeRecentMedicines(key);
+
+  // Prefer the Gemini-generated score/advice (reasons over the owner's real
+  // Health Diary text, so a pimple doesn't get penalized like a fever) when
+  // it's ready and still matches the current inputs; otherwise fall back
+  // instantly to the local BMI-only heuristic so the section is never blank,
+  // and kick off/refresh the AI request in the background.
+  const inputs = buildInsightsInputs(key);
+  const hash = hashInsightsInputs(inputs);
+  const cached = profileInsightsCache[key];
+  const aiReady = !!(cached && cached.hash === hash && cached.status === 'ready' && cached.data);
+  const aiLoading = !!(cached && cached.hash === hash && cached.status === 'loading');
+
+  const score = aiReady ? cached.data.score : computeHealthScore(key, bmi);
+  const advice = aiReady
+    ? { do: cached.data.do, avoid: cached.data.avoid, yoga: cached.data.yoga }
+    : (BMI_ADVICE[cat] || null);
+  const scoreNote = aiReady && cached.data.note ? cached.data.note : scoreLabel(score);
+  scheduleProfileInsightsFetch(key);
 
   container.innerHTML = `
     <div class="profile-section">
@@ -2089,8 +2106,9 @@ function updateProfileMetricsDisplay() {
       <h5 class="profile-section-title"><i class="fa-solid fa-gauge-high"></i> Health Score</h5>
       <div class="score-row">
         <div class="score-ring" style="--score-pct:${score};--score-color:${scoreColor(score)}"><span>${score}</span></div>
-        <p class="branch-modal-hint">${scoreLabel(score)}</p>
+        <p class="branch-modal-hint">${escHtml(scoreNote)}</p>
       </div>
+      <p class="profile-insights-tag">${aiReady ? '<i class="fa-solid fa-wand-magic-sparkles"></i> Personalized from your Health Diary' : aiLoading ? '<i class="fa-solid fa-spinner fa-spin"></i> Refining this with your Health Diary…' : '<i class="fa-solid fa-circle-info"></i> General guidance — add a weight & height for a fuller picture'}</p>
     </div>
 
     ${advice ? `
@@ -2101,6 +2119,7 @@ function updateProfileMetricsDisplay() {
         <div class="advice-col"><h6><i class="fa-solid fa-circle-xmark"></i> Avoid</h6><ul>${advice.avoid.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>
         <div class="advice-col"><h6><i class="fa-solid fa-person-praying"></i> Yoga / Exercise</h6><ul>${advice.yoga.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>
       </div>
+      <p class="profile-insights-disclaimer">General wellness suggestions, not medical advice — consult a doctor for anything specific or concerning.</p>
     </div>` : ''}
 
     <div class="profile-section">
@@ -2120,6 +2139,61 @@ function updateProfileMetricsDisplay() {
       ${recentMeds.length ? `<div class="profile-med-chips">${recentMeds.map(([name, count]) => `<span class="profile-med-chip">${escHtml(name)} <b>×${count}</b></span>`).join('')}</div>` : `<p class="branch-modal-hint">No medicines logged in the Health Diary yet.</p>`}
     </div>
   `;
+}
+
+// ── AI-personalized insights (Gemini) ───────────────────────
+// The local computeHealthScore()/BMI_ADVICE below remain as the instant,
+// offline-safe fallback (first paint, or if the API/network is unavailable).
+// When available, Gemini reasons over the owner's actual Health Diary text —
+// far better than a fixed keyword list at telling "dandruff" apart from a
+// genuinely serious, recurring problem — and its result takes over.
+let profileInsightsCache = {}; // ownerKey -> { hash, data, status: 'loading'|'ready'|'error' }
+let _insightsFetchTimer = null;
+
+function buildInsightsInputs(key) {
+  const p = ensureOwnerProfile(key);
+  const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '' }));
+  return { weight: p.weight, height: p.height, age: calculateAge(p.dob), gender: p.gender, entries };
+}
+function hashInsightsInputs(inputs) {
+  return JSON.stringify(inputs);
+}
+
+function scheduleProfileInsightsFetch(key) {
+  clearTimeout(_insightsFetchTimer);
+  _insightsFetchTimer = setTimeout(() => fetchProfileInsights(key), 900);
+}
+
+async function fetchProfileInsights(key) {
+  if (!key || key !== currentProfileOwner) return; // owner tab may have changed since scheduling
+  const inputs = buildInsightsInputs(key);
+  if (!inputs.weight || !inputs.height) return; // not enough to reason about yet — the local BMI hint already covers this
+  const hash = hashInsightsInputs(inputs);
+  const cached = profileInsightsCache[key];
+  if (cached && cached.hash === hash && (cached.status === 'ready' || cached.status === 'loading')) return; // nothing changed / already in flight
+
+  profileInsightsCache[key] = { hash, data: null, status: 'loading' };
+  if (key === currentProfileOwner) updateProfileMetricsDisplay();
+
+  try {
+    const resp = await fetch('/api/profile-insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inputs)
+    });
+    if (!resp.ok) throw new Error('bad status ' + resp.status);
+    const data = await resp.json();
+    if (!data || typeof data.score !== 'number') throw new Error('bad payload');
+    profileInsightsCache[key] = { hash, data, status: 'ready' };
+  } catch (err) {
+    // Silent fallback — the local heuristic is already on screen, no need
+    // to interrupt the person with an error for a "nice to have" upgrade.
+    profileInsightsCache[key] = { hash, data: null, status: 'error' };
+  }
+  if (key === currentProfileOwner) updateProfileMetricsDisplay();
 }
 
 // ── BMI / score / advice engine ─────────────────────────────
