@@ -1974,6 +1974,7 @@ body.bulk-mode .go-top-btn {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .mgmt-tabs {
   display: flex;
@@ -2469,6 +2470,11 @@ body.bulk-mode .go-top-btn {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+.score-row .branch-modal-hint {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .score-ring {
   width: 62px;
