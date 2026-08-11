@@ -77,6 +77,7 @@ export default async function handler(req, res) {
     'One branch can be set as Default (auto-opens on refresh); switching branches is temporary until refresh.\n' +
     '- Health Diary (in the menu): per-owner log of health updates and medicines taken, with a search bar.\n' +
     '- Health Diary entries may include a dose marker like "M", "A", "E" (Morning, Afternoon, Evening) showing which times of day medicine was taken that day.\n' +
+    '- A Health Diary entry tagged "[RESOLVED/CURED]" means that problem has been marked fixed by the user — treat it as resolved, not ongoing, when answering. Entries without that tag are still considered active/unresolved.\n' +
     '- Owner Health Profile (in the menu): a per-owner profile (not shown for the shared/family owner) with a photo, weight, height, date of birth, and gender, editable right there along with the owner\'s name. ' +
     'It calculates actual BMI vs. the healthy 18.5–24.9 range, an overall wellbeing score out of 100, and Do/Avoid/Yoga-exercise suggestions based on the BMI category. ' +
     'It also surfaces that owner\'s recent Health Diary entries and a tally of medicines they\'ve taken recently, pulled live from the Health Diary. ' +
