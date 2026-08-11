@@ -81,14 +81,15 @@ export default async function handler(req, res) {
   const safeEntries = entries.map(e => ({
     date: typeof e.date === 'string' ? e.date.slice(0, 10) : '',
     issue: typeof e.issue === 'string' ? e.issue.slice(0, 200) : '',
-    medicines: typeof e.medicines === 'string' ? e.medicines.slice(0, 200) : ''
+    medicines: typeof e.medicines === 'string' ? e.medicines.slice(0, 200) : '',
+    cured: e.cured === true
   })).filter(e => e.issue);
 
   const bmi = computeBMI(weight, height);
   const category = bmiCategory(bmi);
 
   const diaryText = safeEntries.length
-    ? safeEntries.map(e => `- ${e.date || 'undated'}: ${e.issue}${e.medicines ? ` (took: ${e.medicines})` : ''}`).join('\n')
+    ? safeEntries.map(e => `- ${e.date || 'undated'}: ${e.issue}${e.medicines ? ` (took: ${e.medicines})` : ''}${e.cured ? ' [RESOLVED — marked cured]' : ''}`).join('\n')
     : '(No Health Diary entries logged yet.)';
 
   const systemPrompt =
@@ -100,8 +101,9 @@ export default async function handler(req, res) {
     'encouraging tone>", "do": ["...", "..."], "avoid": ["...", "..."], "yoga": ["...", "..."]}\n' +
     '"do", "avoid", and "yoga" should each have 2-4 short, concrete, practical items ' +
     '(yoga asanas, breathing exercises, or light physical activity). Tailor them to ' +
-    'the actual issues in the diary below when there are any — not generic filler — ' +
-    'and to the BMI category otherwise.\n\n' +
+    'the actual STILL-ACTIVE issues in the diary below when there are any (skip ones ' +
+    'marked resolved/cured — no need to keep recommending for something already fixed) ' +
+    '— not generic filler — and to the BMI category otherwise.\n\n' +
     'Scoring guidance — use real judgment, not a fixed formula:\n' +
     '- Start from how close the BMI is to the healthy 18.5–24.9 range (closer to ' +
     'the middle, ~21.7, is better).\n' +
@@ -113,6 +115,9 @@ export default async function handler(req, res) {
     'a diagnosed condition, an injury, or the SAME issue recurring across multiple ' +
     'entries (suggesting it is not resolving) — should pull the score down more ' +
     'meaningfully, more so the more severe or persistent the pattern looks. ' +
+    'Entries marked "[RESOLVED — marked cured]" have already been fixed — do not ' +
+    'penalize the score for these at all; if anything, treat consistently marking ' +
+    'issues as resolved as a good sign of the person managing their health well. ' +
     'No data at all is neutral, not bad. Use your own reasoning about severity; ' +
     'do not just count entries.\n\n' +
     `Person: ${age != null ? age + ' years old, ' : ''}${gender || 'gender not specified'}.\n` +
