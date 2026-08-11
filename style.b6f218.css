@@ -2065,6 +2065,37 @@ body.bulk-mode .go-top-btn {
   font-weight: 600;
   line-height: 1.4;
 }
+.health-entry-cured-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--green-600);
+  background: var(--green-100);
+  padding: 2px 8px;
+  border-radius: 10px;
+  width: fit-content;
+}
+[data-theme="dark"] .health-entry-cured-badge {
+  background: rgba(22, 163, 74, 0.18);
+}
+.health-entry-cured .health-entry-issue {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+  text-decoration-thickness: 1.5px;
+}
+.mgmt-btn-cured-active {
+  color: var(--green-600);
+}
+.mgmt-btn-cured-active:hover {
+  background: var(--green-100);
+  color: var(--green-600);
+}
+[data-theme="dark"] .mgmt-btn-cured-active:hover {
+  background: rgba(22, 163, 74, 0.18);
+}
 .health-entry-meds {
   font-size: 0.78rem;
   color: var(--text-secondary);
