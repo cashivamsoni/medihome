@@ -2327,6 +2327,12 @@ body.bulk-mode .go-top-btn {
   object-fit: cover;
   border-radius: 50%;
 }
+.profile-avatar-img.hidden {
+  display: none;
+}
+#profileImageFile {
+  display: none;
+}
 .profile-avatar-placeholder {
   font-size: 2rem;
   color: var(--text-muted);
@@ -2373,7 +2379,7 @@ body.bulk-mode .go-top-btn {
 .profile-name-col {
   flex: 1;
   min-width: 0;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 .profile-name-row {
   display: flex;
@@ -2388,6 +2394,13 @@ body.bulk-mode .go-top-btn {
 }
 .profile-vitals-grid {
   margin-top: 14px;
+}
+.profile-age-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  min-height: 1em;
 }
 .profile-section {
   margin-top: 16px;
