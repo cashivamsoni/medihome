@@ -2311,6 +2311,11 @@ body.bulk-mode .go-top-btn {
   flex-shrink: 0;
   width: 92px;
 }
+.profile-avatar-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+}
 .profile-avatar-drop {
   width: 84px;
   height: 84px;
@@ -2347,8 +2352,8 @@ body.bulk-mode .go-top-btn {
 }
 .profile-avatar-edit-badge {
   position: absolute;
-  bottom: 0;
-  right: 0;
+  bottom: -2px;
+  right: -2px;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -2359,6 +2364,7 @@ body.bulk-mode .go-top-btn {
   justify-content: center;
   font-size: 0.7rem;
   border: 2px solid var(--surface);
+  pointer-events: none;
 }
 .profile-avatar-actions {
   display: flex;
@@ -2563,6 +2569,10 @@ body.bulk-mode .go-top-btn {
     width: 76px;
   }
   .profile-avatar-drop {
+    width: 72px;
+    height: 72px;
+  }
+  .profile-avatar-wrap {
     width: 72px;
     height: 72px;
   }
