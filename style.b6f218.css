@@ -2495,6 +2495,24 @@ body.bulk-mode .go-top-btn {
   position: relative;
   z-index: 1;
 }
+.profile-insights-tag {
+  font-size: 0.68rem;
+  color: var(--teal-600);
+  font-weight: 600;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.profile-insights-tag i {
+  font-size: 0.66rem;
+}
+.profile-insights-disclaimer {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 10px;
+  font-style: italic;
+}
 .advice-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
