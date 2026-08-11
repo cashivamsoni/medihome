@@ -16,6 +16,8 @@ let customOwners = [];      // [{key, label, short}]
 let customTypes = [];
 let healthDiary = [];       // current branch's health diary entries
 let currentHealthOwner = null; // which owner tab is selected in the Health Diary modal
+let ownerProfiles = {};     // current branch's owner health profiles: { [ownerKey]: {weight,height,age,gender,image,updatedAt} }
+let currentProfileOwner = null; // which owner tab is selected in the Owner Health Profile modal
 let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
@@ -285,6 +287,7 @@ function loadActiveBranchIntoState() {
   customOwners     = (b.owners && b.owners.length) ? b.owners : DEFAULT_OWNERS.slice();
   customTypes      = (b.types && b.types.length) ? b.types : DEFAULT_TYPES.slice();
   healthDiary      = b.healthDiary || [];
+  ownerProfiles    = b.ownerProfiles || {};
   quantityLog      = b.quantityLog || [];
   // Only clear the selected tab if it's genuinely no longer valid (e.g. we
   // just switched branches, or that owner was deleted) — NOT on every sync,
@@ -293,6 +296,9 @@ function loadActiveBranchIntoState() {
   // going blank right after adding/editing an entry.
   if (currentHealthOwner && !(b.owners || []).some(o => o.key === currentHealthOwner)) {
     currentHealthOwner = null;
+  }
+  if (currentProfileOwner && !(b.owners || []).some(o => o.key === currentProfileOwner)) {
+    currentProfileOwner = null;
   }
 
   reconcileDynamicLists();
@@ -309,6 +315,11 @@ function loadActiveBranchIntoState() {
   if (healthModal && !healthModal.classList.contains('hidden')) {
     renderHealthOwnerTabs();
     renderHealthDiaryList();
+  }
+  const profileModal = document.getElementById('ownerProfileModal');
+  if (profileModal && !profileModal.classList.contains('hidden')) {
+    renderProfileOwnerTabs();
+    renderOwnerProfileContent();
   }
   const qtyModal = document.getElementById('quantityLogModal');
   if (qtyModal && !qtyModal.classList.contains('hidden')) renderQuantityLogList();
@@ -382,6 +393,7 @@ function saveData() {
   branches[activeBranchId].owners      = customOwners;
   branches[activeBranchId].types       = customTypes;
   branches[activeBranchId].healthDiary = healthDiary;
+  branches[activeBranchId].ownerProfiles = ownerProfiles;
   branches[activeBranchId].quantityLog = quantityLog;
   saveAllBranches();
 }
@@ -981,7 +993,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'quantityLogModal'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -1802,6 +1814,7 @@ function deleteMgmtItem(idx) {
     } else if (!confirm(`Delete owner "${removed.short}"? No medicines are assigned to them.`)) return;
     customOwners.splice(idx, 1);
     medicines.forEach(m => { if (m.owner === removed.key) m.owner = dest; });
+    delete ownerProfiles[removed.key]; // that owner's health profile no longer applies
   } else if (currentMgmtField === 'type') {
     if (customTypes.length <= 1) { showToast('At least one type must remain.', 'error'); return; }
     const removed = customTypes[idx];
@@ -1888,6 +1901,384 @@ function closeHealthDiary() {
   setTimeout(reconcileBodyScrollLock, 50);
 }
 bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
+
+// ── Owner Health Profile ──────────────────────────────────────
+// Per-branch, per-owner health profile (excluding the "shared by all" owner —
+// like the Health Diary, this is per-person by design). Combines a simple
+// editable form (photo, weight/height/age/gender) with data pulled live from
+// the Health Diary to show recent updates, medicines taken, BMI, tailored
+// advice, and an overall score — all dynamic, nothing hard-coded per owner.
+function openOwnerProfile() {
+  const modal = document.getElementById('ownerProfileModal');
+  if (!modal || !modal.classList.contains('hidden')) return;
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!currentProfileOwner || !eligibleOwners.some(o => o.key === currentProfileOwner)) {
+    currentProfileOwner = eligibleOwners.length ? eligibleOwners[0].key : null;
+  }
+  renderProfileOwnerTabs();
+  renderOwnerProfileContent();
+  modal.classList.remove('hidden');
+  lockBodyScroll();
+}
+function closeOwnerProfile() {
+  const modal = document.getElementById('ownerProfileModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('ownerProfileModal'), closeOwnerProfile);
+
+function renderProfileOwnerTabs() {
+  const container = document.getElementById('profileOwnerTabs');
+  if (!container) return;
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!eligibleOwners.length) {
+    container.innerHTML = '<p class="branch-modal-hint">Add an owner first (via Manage) to build a health profile.</p>';
+    return;
+  }
+  container.innerHTML = eligibleOwners.map(o => `
+    <button class="mgmt-tab-btn ${o.key === currentProfileOwner ? 'active' : ''}" onclick="selectProfileOwnerTab('${o.key}')">${escHtml(o.short)}</button>
+  `).join('');
+}
+function selectProfileOwnerTab(key) {
+  currentProfileOwner = key;
+  renderProfileOwnerTabs();
+  renderOwnerProfileContent();
+}
+
+// Lazily creates (without saving) a blank profile record the first time an
+// owner's tab is viewed, so the form always has something to read/write.
+function ensureOwnerProfile(key) {
+  if (!ownerProfiles[key]) {
+    ownerProfiles[key] = { weight: null, height: null, age: null, gender: '', image: null, updatedAt: null };
+  }
+  return ownerProfiles[key];
+}
+
+function renderOwnerProfileContent() {
+  const container = document.getElementById('profileContent');
+  if (!container) return;
+  if (!currentProfileOwner) { container.innerHTML = ''; return; }
+
+  const key = currentProfileOwner;
+  const ownerCfg = customOwners.find(o => o.key === key);
+  const p = ensureOwnerProfile(key);
+  const hasImage = !!p.image;
+  const isUrlImage = hasImage && /^https?:\/\//i.test(p.image);
+
+  container.innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar-col">
+        <label class="img-drop-zone profile-avatar-drop" id="profileImgDropZone" for="profileImageFile" title="Click or drop to change photo">
+          <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}" src="${hasImage ? escHtml(p.image) : ''}" alt="Owner photo" />
+          <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
+          <span class="profile-avatar-edit-badge"><i class="fa-solid fa-camera"></i></span>
+        </label>
+        <input type="file" id="profileImageFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="handleProfileImageFile(event)" />
+        <div class="profile-avatar-actions">
+          <button type="button" class="img-clear-btn profile-avatar-link-btn" onclick="toggleProfileImgUrlBox()"><i class="fa-solid fa-link"></i> URL</button>
+          ${hasImage ? `<button type="button" class="img-clear-btn" onclick="clearProfileImage()" title="Remove photo"><i class="fa-solid fa-xmark"></i></button>` : ''}
+        </div>
+        <div class="img-panel hidden" id="profileImgUrlBox">
+          <input class="form-input" type="url" id="profileImageUrl" placeholder="https://example.com/photo.jpg" value="${isUrlImage ? escHtml(p.image) : ''}" oninput="handleProfileImageUrl()" />
+        </div>
+      </div>
+      <div class="profile-name-col">
+        <div class="profile-name-row">
+          <h4 class="profile-owner-name">${escHtml(ownerCfg ? ownerCfg.short : key)}</h4>
+          <button class="mgmt-btn" onclick="editProfileOwnerName()" title="Edit name"><i class="fa-solid fa-pen"></i></button>
+        </div>
+        <p class="branch-modal-hint">${p.updatedAt ? 'Last updated ' + formatHealthDate(new Date(p.updatedAt).toISOString().slice(0, 10)) : 'Fill in the details below to build this health profile.'}</p>
+      </div>
+    </div>
+
+    <div class="form-grid profile-vitals-grid">
+      <div class="form-group">
+        <label class="form-label" for="profileWeight">Weight (kg)</label>
+        <input class="form-input" type="number" min="1" step="0.1" id="profileWeight" placeholder="e.g. 62" value="${p.weight ?? ''}" oninput="handleProfileVitalInput('weight', this.value)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profileHeight">Height (cm)</label>
+        <input class="form-input" type="number" min="1" step="0.1" id="profileHeight" placeholder="e.g. 165" value="${p.height ?? ''}" oninput="handleProfileVitalInput('height', this.value)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profileAge">Age (years)</label>
+        <input class="form-input" type="number" min="0" step="1" id="profileAge" placeholder="e.g. 34" value="${p.age ?? ''}" oninput="handleProfileVitalInput('age', this.value)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profileGender">Gender</label>
+        <select class="form-select" id="profileGender" onchange="handleProfileVitalInput('gender', this.value)">
+          <option value="" ${!p.gender ? 'selected' : ''}>— Select —</option>
+          <option value="female" ${p.gender === 'female' ? 'selected' : ''}>Female</option>
+          <option value="male" ${p.gender === 'male' ? 'selected' : ''}>Male</option>
+          <option value="other" ${p.gender === 'other' ? 'selected' : ''}>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="profileMetricsContainer"></div>
+  `;
+
+  initProfileImageDropZone();
+  updateProfileMetricsDisplay();
+}
+
+// Only re-renders the read-only metrics block (BMI / score / advice / recent
+// data) — never the form fields themselves — so typing in weight/height/age
+// never loses input focus or cursor position.
+function updateProfileMetricsDisplay() {
+  const container = document.getElementById('profileMetricsContainer');
+  if (!container || !currentProfileOwner) return;
+  const key = currentProfileOwner;
+  const p = ensureOwnerProfile(key);
+  const bmi = computeBMI(p.weight, p.height);
+  const cat = bmiCategory(bmi);
+  const score = computeHealthScore(key, bmi);
+  const advice = BMI_ADVICE[cat] || null;
+
+  const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  }).slice(0, 5);
+
+  const recentMeds = summarizeRecentMedicines(key);
+
+  container.innerHTML = `
+    <div class="profile-section">
+      <h5 class="profile-section-title"><i class="fa-solid fa-weight-scale"></i> BMI</h5>
+      ${bmi == null
+        ? `<p class="branch-modal-hint">Add weight and height above to calculate BMI.</p>`
+        : `<div class="bmi-row">
+            <div class="bmi-stat"><span class="bmi-stat-label">Actual BMI</span><span class="bmi-stat-value">${bmi.toFixed(1)}</span></div>
+            <div class="bmi-stat"><span class="bmi-stat-label">Suggested BMI</span><span class="bmi-stat-value">18.5 – 24.9</span></div>
+            <span class="bmi-badge ${bmiCategoryClass(cat)}">${cat}</span>
+          </div>`}
+    </div>
+
+    <div class="profile-section">
+      <h5 class="profile-section-title"><i class="fa-solid fa-gauge-high"></i> Health Score</h5>
+      <div class="score-row">
+        <div class="score-ring" style="--score-pct:${score};--score-color:${scoreColor(score)}"><span>${score}</span></div>
+        <p class="branch-modal-hint">${scoreLabel(score)}</p>
+      </div>
+    </div>
+
+    ${advice ? `
+    <div class="profile-section">
+      <h5 class="profile-section-title"><i class="fa-solid fa-hand-holding-heart"></i> Recommendations</h5>
+      <div class="advice-grid">
+        <div class="advice-col"><h6><i class="fa-solid fa-circle-check"></i> Do</h6><ul>${advice.do.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>
+        <div class="advice-col"><h6><i class="fa-solid fa-circle-xmark"></i> Avoid</h6><ul>${advice.avoid.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>
+        <div class="advice-col"><h6><i class="fa-solid fa-person-praying"></i> Yoga / Exercise</h6><ul>${advice.yoga.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>
+      </div>
+    </div>` : ''}
+
+    <div class="profile-section">
+      <h5 class="profile-section-title"><i class="fa-solid fa-book-medical"></i> Recent Health Updates</h5>
+      ${entries.length ? `<div class="mgmt-list profile-recent-list">${entries.map(e => `
+        <div class="mgmt-item health-entry">
+          <span class="health-entry-body">
+            <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
+            <span class="health-entry-issue">${escHtml(e.issue)}</span>
+            ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+          </span>
+        </div>`).join('')}</div>` : `<p class="branch-modal-hint">No health diary entries yet for this owner.</p>`}
+    </div>
+
+    <div class="profile-section">
+      <h5 class="profile-section-title"><i class="fa-solid fa-pills"></i> Medicines Taken Recently</h5>
+      ${recentMeds.length ? `<div class="profile-med-chips">${recentMeds.map(([name, count]) => `<span class="profile-med-chip">${escHtml(name)} <b>×${count}</b></span>`).join('')}</div>` : `<p class="branch-modal-hint">No medicines logged in the Health Diary yet.</p>`}
+    </div>
+  `;
+}
+
+// ── BMI / score / advice engine ─────────────────────────────
+function computeBMI(weightKg, heightCm) {
+  if (!weightKg || !heightCm) return null;
+  const h = heightCm / 100;
+  if (h <= 0) return null;
+  const bmi = weightKg / (h * h);
+  return isFinite(bmi) ? bmi : null;
+}
+function bmiCategory(bmi) {
+  if (bmi == null) return null;
+  if (bmi < 18.5) return 'Underweight';
+  if (bmi < 25) return 'Normal';
+  if (bmi < 30) return 'Overweight';
+  return 'Obese';
+}
+function bmiCategoryClass(cat) {
+  return { Underweight: 'bmi-badge-under', Normal: 'bmi-badge-normal', Overweight: 'bmi-badge-over', Obese: 'bmi-badge-obese' }[cat] || '';
+}
+const BMI_ADVICE = {
+  Underweight: {
+    do: ['Eat calorie-dense, nutritious meals more frequently', 'Add protein-rich foods like milk, paneer, nuts & eggs', 'Light strength-focused exercise to build muscle'],
+    avoid: ['Skipping meals', 'Excess tea/coffee right before meals (reduces appetite)'],
+    yoga: ['Vajrasana after meals', 'Bhujangasana (Cobra Pose)', 'Simple Pranayama to improve appetite']
+  },
+  Normal: {
+    do: ['Maintain a balanced diet with fruits & vegetables', 'Stay active with regular walks or light exercise', 'Get 7–8 hours of sleep'],
+    avoid: ['Excess processed or sugary foods', 'Long sedentary periods without a break'],
+    yoga: ['Surya Namaskar (Sun Salutation)', 'Tadasana (Mountain Pose)', 'Anulom Vilom Pranayama']
+  },
+  Overweight: {
+    do: ['Increase daily physical activity (30+ min walk)', 'Prefer home-cooked, fiber-rich meals', 'Watch portion sizes at meals'],
+    avoid: ['Fried and sugary snacks', 'Late-night eating'],
+    yoga: ['Surya Namaskar (Sun Salutation)', 'Trikonasana (Triangle Pose)', 'Kapalbhati Pranayama']
+  },
+  Obese: {
+    do: ['Consult a doctor for a personalised plan', 'Start with low-impact activity like walking', 'Increase fiber intake and cut refined carbs'],
+    avoid: ['Sugary drinks and fried foods', 'Prolonged inactivity'],
+    yoga: ['Gentle walking-based warm-ups', 'Setu Bandhasana (Bridge Pose), if comfortable', 'Slow, deep breathing / Pranayama']
+  }
+};
+// Overall wellbeing score out of 100 — half from how close the actual BMI is
+// to the healthy midpoint, half from how many issues have been logged
+// recently in the Health Diary (fewer recent issues = higher score). Neutral
+// defaults are used for whichever half has no data yet, so the score never
+// falsely reads as "great" just because nothing has been filled in.
+function computeHealthScore(ownerKey, bmi) {
+  let bmiScore = 25;
+  if (bmi != null) {
+    const deviation = Math.abs(bmi - 21.7); // midpoint of the 18.5–24.9 healthy range
+    bmiScore = Math.max(0, 50 - deviation * 4);
+  }
+  const entries = healthDiary.filter(e => e.owner === ownerKey);
+  let diaryScore = 25;
+  if (entries.length) {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const recentCount = entries.filter(e => {
+      const t = e.createdAt || new Date(e.date + 'T00:00:00').getTime();
+      return t >= thirtyDaysAgo;
+    }).length;
+    diaryScore = Math.max(0, 50 - recentCount * 8);
+  }
+  return Math.round(Math.min(100, Math.max(0, bmiScore + diaryScore)));
+}
+function scoreColor(score) {
+  if (score >= 70) return 'var(--green-600)';
+  if (score >= 40) return 'var(--amber-500)';
+  return 'var(--red-500)';
+}
+function scoreLabel(score) {
+  if (score >= 80) return 'Excellent — keep up the great habits!';
+  if (score >= 60) return 'Good — a few small improvements can help.';
+  if (score >= 40) return 'Fair — some areas could use attention.';
+  return 'Needs attention — consider consulting a doctor.';
+}
+// Tallies medicine names mentioned across this owner's Health Diary entries,
+// most-frequent first — a lightweight "what have they actually been taking" view.
+function summarizeRecentMedicines(ownerKey) {
+  const entries = healthDiary.filter(e => e.owner === ownerKey && e.medicines && e.medicines.trim());
+  if (!entries.length) return [];
+  const counts = {};
+  entries.forEach(e => {
+    e.medicines.split(/[,;]/).map(s => s.trim()).filter(Boolean).forEach(med => {
+      counts[med] = (counts[med] || 0) + 1;
+    });
+  });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+}
+
+// ── Profile form field handlers ─────────────────────────────
+let _profileSaveTimer = null;
+function handleProfileVitalInput(field, value) {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const p = ensureOwnerProfile(key);
+  if (field === 'gender') {
+    p.gender = value;
+  } else {
+    const num = value === '' ? null : Number(value);
+    p[field] = (num === null || isNaN(num)) ? null : num;
+  }
+  p.updatedAt = Date.now();
+  updateProfileMetricsDisplay();
+  clearTimeout(_profileSaveTimer);
+  _profileSaveTimer = setTimeout(saveData, 600);
+}
+
+function editProfileOwnerName() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const idx = customOwners.findIndex(o => o.key === key);
+  if (idx === -1) return;
+  const current = customOwners[idx].label;
+  const newVal = prompt('Edit owner name:', current);
+  if (newVal === null) return;
+  const updated = newVal.trim();
+  if (!updated || updated === current) return;
+  customOwners[idx] = { ...customOwners[idx], label: updated, short: deriveOwnerShort(updated) };
+  pushUndo(`Edited owner "${current}" → "${updated}"`);
+  saveData();
+  populateAllDropdowns();
+  renderOwnerNavChips();
+  renderProfileOwnerTabs();
+  renderOwnerProfileContent();
+  showUndoToast(`"${updated}" saved — tap Undo within 6s`, 'fa-pen');
+}
+
+// ── Profile picture upload (mirrors the Add/Edit Medicine image pattern) ──
+function toggleProfileImgUrlBox() {
+  const box = document.getElementById('profileImgUrlBox');
+  if (box) box.classList.toggle('hidden');
+}
+function handleProfileImageFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 1.2 * 1024 * 1024) { showToast('Image too large (max 1 MB).', 'error'); return; }
+  const key = currentProfileOwner;
+  if (!key) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const p = ensureOwnerProfile(key);
+    p.image = e.target.result;
+    p.updatedAt = Date.now();
+    saveData();
+    renderOwnerProfileContent();
+  };
+  reader.readAsDataURL(file);
+}
+function handleProfileImageUrl() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const urlEl = document.getElementById('profileImageUrl');
+  const url = urlEl ? urlEl.value.trim() : '';
+  const p = ensureOwnerProfile(key);
+  p.image = url || null;
+  p.updatedAt = Date.now();
+  const img = document.getElementById('profileAvatarImg');
+  const placeholder = document.getElementById('profileAvatarPlaceholder');
+  if (img) {
+    if (url) { img.src = url; img.classList.remove('hidden'); if (placeholder) placeholder.classList.add('hidden'); }
+    else { img.classList.add('hidden'); if (placeholder) placeholder.classList.remove('hidden'); }
+  }
+  clearTimeout(_profileSaveTimer);
+  _profileSaveTimer = setTimeout(saveData, 600);
+}
+function clearProfileImage() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const p = ensureOwnerProfile(key);
+  p.image = null;
+  p.updatedAt = Date.now();
+  saveData();
+  renderOwnerProfileContent();
+}
+function initProfileImageDropZone() {
+  const zone = document.getElementById('profileImgDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleProfileImageFile({ target: { files: [file] } });
+    }
+  });
+}
 
 // ── Quantity Log ─────────────────────────────────────────────
 // Read-only per-branch log of add/delete/increase/decrease actions,
@@ -2260,6 +2651,7 @@ function promptAddBranch() {
     owners: [{ key: 'shared', label: '👨‍👩‍👧 Family — Shared by All', short: '👨‍👩‍👧 Family' }],
     types: DEFAULT_TYPES.slice(),
     healthDiary: [],
+    ownerProfiles: {},
     quantityLog: []
   };
   branchOrder.push(id);
