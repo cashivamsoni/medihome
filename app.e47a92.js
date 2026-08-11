@@ -1951,9 +1951,22 @@ function selectProfileOwnerTab(key) {
 // owner's tab is viewed, so the form always has something to read/write.
 function ensureOwnerProfile(key) {
   if (!ownerProfiles[key]) {
-    ownerProfiles[key] = { weight: null, height: null, age: null, gender: '', image: null, updatedAt: null };
+    ownerProfiles[key] = { weight: null, height: null, dob: null, gender: '', image: null, updatedAt: null };
   }
   return ownerProfiles[key];
+}
+
+// Age is derived from DOB on every read instead of being stored directly, so
+// it's always accurate rather than going stale the way a typed-in number would.
+function calculateAge(dobStr) {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr + 'T00:00:00');
+  if (isNaN(dob)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age >= 0 ? age : null;
 }
 
 function renderOwnerProfileContent() {
@@ -1971,7 +1984,7 @@ function renderOwnerProfileContent() {
     <div class="profile-header">
       <div class="profile-avatar-col">
         <label class="img-drop-zone profile-avatar-drop" id="profileImgDropZone" for="profileImageFile" title="Click or drop to change photo">
-          <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}" src="${hasImage ? escHtml(p.image) : ''}" alt="Owner photo" />
+          <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
           <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
           <span class="profile-avatar-edit-badge"><i class="fa-solid fa-camera"></i></span>
         </label>
@@ -1996,15 +2009,16 @@ function renderOwnerProfileContent() {
     <div class="form-grid profile-vitals-grid">
       <div class="form-group">
         <label class="form-label" for="profileWeight">Weight (kg)</label>
-        <input class="form-input" type="number" min="1" step="0.1" id="profileWeight" placeholder="e.g. 62" value="${p.weight ?? ''}" oninput="handleProfileVitalInput('weight', this.value)" />
+        <input class="form-input" type="text" inputmode="decimal" id="profileWeight" placeholder="e.g. 62.5" value="${p.weight ?? ''}" oninput="handleProfileVitalInput('weight', this.value)" />
       </div>
       <div class="form-group">
         <label class="form-label" for="profileHeight">Height (cm)</label>
-        <input class="form-input" type="number" min="1" step="0.1" id="profileHeight" placeholder="e.g. 165" value="${p.height ?? ''}" oninput="handleProfileVitalInput('height', this.value)" />
+        <input class="form-input" type="text" inputmode="decimal" id="profileHeight" placeholder="e.g. 165.1" value="${p.height ?? ''}" oninput="handleProfileVitalInput('height', this.value)" />
       </div>
       <div class="form-group">
-        <label class="form-label" for="profileAge">Age (years)</label>
-        <input class="form-input" type="number" min="0" step="1" id="profileAge" placeholder="e.g. 34" value="${p.age ?? ''}" oninput="handleProfileVitalInput('age', this.value)" />
+        <label class="form-label" for="profileDob">Date of Birth</label>
+        <input class="form-input" type="date" id="profileDob" value="${p.dob || ''}" oninput="handleProfileVitalInput('dob', this.value)" />
+        <span class="profile-age-hint" id="profileAgeHint">${p.dob ? `Age: ${calculateAge(p.dob)} years` : ''}</span>
       </div>
       <div class="form-group">
         <label class="form-label" for="profileGender">Gender</label>
@@ -2133,11 +2147,34 @@ const BMI_ADVICE = {
     yoga: ['Gentle walking-based warm-ups', 'Setu Bandhasana (Bridge Pose), if comfortable', 'Slow, deep breathing / Pranayama']
   }
 };
+// Keyword-based severity classification for Health Diary entries — deliberately
+// simple/lightweight rather than a full medical NLP model, but enough to stop
+// a stray pimple or dandruff note from dragging the score down as hard as a
+// fever or infection would.
+const MINOR_ISSUE_KEYWORDS = [
+  'pimple', 'acne', 'dandruff', 'dry skin', 'rash', 'itch', 'itching',
+  'blister', 'chapped', 'sunburn', 'scrape', 'minor cut', 'mild headache',
+  'mild cold', 'hiccup', 'bad breath', 'dry lips', 'hair fall'
+];
+const SEVERE_ISSUE_KEYWORDS = [
+  'fever', 'high fever', 'infection', 'severe', 'chronic', 'fracture',
+  'injury', 'accident', 'surgery', 'hospital', 'vomit', 'diarrhea',
+  'breathless', 'chest pain', 'blood pressure', 'diabetes', 'asthma',
+  'dengue', 'malaria', 'typhoid', 'covid', 'pneumonia', 'seizure', 'ulcer'
+];
+function issueSeverityWeight(issueText) {
+  const t = (issueText || '').toLowerCase();
+  if (SEVERE_ISSUE_KEYWORDS.some(k => t.includes(k))) return 10;
+  if (MINOR_ISSUE_KEYWORDS.some(k => t.includes(k))) return 3;
+  return 6; // unclassified — treated as moderate by default
+}
 // Overall wellbeing score out of 100 — half from how close the actual BMI is
-// to the healthy midpoint, half from how many issues have been logged
-// recently in the Health Diary (fewer recent issues = higher score). Neutral
-// defaults are used for whichever half has no data yet, so the score never
-// falsely reads as "great" just because nothing has been filled in.
+// to the healthy midpoint, half from recent Health Diary activity. The diary
+// half weighs each recent entry by severity (a pimple costs far less than a
+// fever) and adds an extra penalty when the same issue keeps recurring,
+// since a persistent problem deserves more attention than an isolated one.
+// Neutral defaults are used for whichever half has no data yet, so the score
+// never falsely reads as "great" just because nothing has been filled in.
 function computeHealthScore(ownerKey, bmi) {
   let bmiScore = 25;
   if (bmi != null) {
@@ -2148,11 +2185,21 @@ function computeHealthScore(ownerKey, bmi) {
   let diaryScore = 25;
   if (entries.length) {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const recentCount = entries.filter(e => {
+    const recent = entries.filter(e => {
       const t = e.createdAt || new Date(e.date + 'T00:00:00').getTime();
       return t >= thirtyDaysAgo;
-    }).length;
-    diaryScore = Math.max(0, 50 - recentCount * 8);
+    });
+    let penalty = recent.reduce((sum, e) => sum + issueSeverityWeight(e.issue), 0);
+    // Recurring instances of the *same* issue text signal a persistent
+    // problem rather than several unrelated one-offs, so pile on an
+    // escalating penalty for repeats beyond the first.
+    const freq = {};
+    recent.forEach(e => {
+      const norm = (e.issue || '').toLowerCase().trim();
+      if (norm) freq[norm] = (freq[norm] || 0) + 1;
+    });
+    Object.values(freq).forEach(count => { if (count >= 2) penalty += (count - 1) * 5; });
+    diaryScore = Math.max(0, 50 - penalty);
   }
   return Math.round(Math.min(100, Math.max(0, bmiScore + diaryScore)));
 }
@@ -2189,8 +2236,15 @@ function handleProfileVitalInput(field, value) {
   const p = ensureOwnerProfile(key);
   if (field === 'gender') {
     p.gender = value;
+  } else if (field === 'dob') {
+    p.dob = value || null;
+    const hint = document.getElementById('profileAgeHint');
+    if (hint) hint.textContent = p.dob ? `Age: ${calculateAge(p.dob)} years` : '';
   } else {
-    const num = value === '' ? null : Number(value);
+    // weight / height — parseFloat tolerates a trailing "." while still
+    // typing (e.g. "62.") without flashing NaN, and works reliably even on
+    // keyboards where type="number" doesn't surface a decimal key.
+    const num = value.trim() === '' ? null : parseFloat(value);
     p[field] = (num === null || isNaN(num)) ? null : num;
   }
   p.updatedAt = Date.now();
@@ -2204,13 +2258,19 @@ function editProfileOwnerName() {
   if (!key) return;
   const idx = customOwners.findIndex(o => o.key === key);
   if (idx === -1) return;
-  const current = customOwners[idx].label;
-  const newVal = prompt('Edit owner name:', current);
+  const current = customOwners[idx];
+  const newVal = prompt('Edit owner name:', current.short);
   if (newVal === null) return;
   const updated = newVal.trim();
-  if (!updated || updated === current) return;
-  customOwners[idx] = { ...customOwners[idx], label: updated, short: deriveOwnerShort(updated) };
-  pushUndo(`Edited owner "${current}" → "${updated}"`);
+  if (!updated || updated === current.short) return;
+  // Preserve whatever suffix pattern the full label already used (e.g. "'s
+  // Medicines" or " — Shared by All") by swapping just the short portion,
+  // rather than dragging that suffix into the edit prompt itself.
+  const newLabel = current.label.includes(current.short)
+    ? current.label.replace(current.short, updated)
+    : `${updated}'s Medicines`;
+  customOwners[idx] = { ...current, label: newLabel, short: updated };
+  pushUndo(`Edited owner "${current.short}" → "${updated}"`);
   saveData();
   populateAllDropdowns();
   renderOwnerNavChips();
@@ -2251,8 +2311,8 @@ function handleProfileImageUrl() {
   const img = document.getElementById('profileAvatarImg');
   const placeholder = document.getElementById('profileAvatarPlaceholder');
   if (img) {
-    if (url) { img.src = url; img.classList.remove('hidden'); if (placeholder) placeholder.classList.add('hidden'); }
-    else { img.classList.add('hidden'); if (placeholder) placeholder.classList.remove('hidden'); }
+    if (url) { img.setAttribute('src', url); img.classList.remove('hidden'); if (placeholder) placeholder.classList.add('hidden'); }
+    else { img.removeAttribute('src'); img.classList.add('hidden'); if (placeholder) placeholder.classList.remove('hidden'); }
   }
   clearTimeout(_profileSaveTimer);
   _profileSaveTimer = setTimeout(saveData, 600);
