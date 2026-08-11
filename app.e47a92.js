@@ -2155,7 +2155,7 @@ function buildInsightsInputs(key) {
   const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
-  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '' }));
+  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '', cured: !!e.cured }));
   return { weight: p.weight, height: p.height, age: calculateAge(p.dob), gender: p.gender, entries };
 }
 function hashInsightsInputs(inputs) {
@@ -2276,7 +2276,7 @@ function computeHealthScore(ownerKey, bmi) {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const recent = entries.filter(e => {
       const t = e.createdAt || new Date(e.date + 'T00:00:00').getTime();
-      return t >= thirtyDaysAgo;
+      return t >= thirtyDaysAgo && !e.cured; // resolved issues no longer count against the score
     });
     let penalty = recent.reduce((sum, e) => sum + issueSeverityWeight(e.issue), 0);
     // Recurring instances of the *same* issue text signal a persistent
@@ -2577,14 +2577,16 @@ function renderHealthDiaryList() {
   }
 
   container.innerHTML = entries.map(e => `
-    <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
+    <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
       ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
         <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
         <span class="health-entry-issue">${escHtml(e.issue)}</span>
+        ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured</span>` : ''}
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
+        <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </div>` : ''}
@@ -2641,6 +2643,19 @@ function toggleDoseTime(id, time) {
   renderHealthDiaryList();
 }
 
+// Marking a problem as cured tells the health score, recommendations, and
+// assistant that it's resolved — it stops counting against the score and
+// stops reading like an ongoing issue in the AI-personalized advice.
+function toggleHealthEntryCured(id) {
+  const entry = healthDiary.find(e => e.id === id);
+  if (!entry) return;
+  entry.cured = !entry.cured;
+  entry.curedAt = entry.cured ? Date.now() : null;
+  saveData();
+  renderHealthDiaryList();
+  showToast(entry.cured ? `Marked "${entry.issue}" as cured ✓` : `Marked "${entry.issue}" as active again`, 'success');
+}
+
 function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
   const today = new Date().toISOString().slice(0, 10);
@@ -2663,6 +2678,7 @@ function promptAddHealthEntry() {
     issue: issue.trim(),
     medicines: (meds || '').trim(),
     doseTimes: parseDoseTimes(doseInput),
+    cured: false,
     createdAt: Date.now()
   });
   saveData();
@@ -4122,6 +4138,35 @@ function buildInventoryContext() {
     `Forms: ${customForms.join(', ') || 'none'}`
   );
 
+  // Owner Health Profiles (vitals/BMI/score) — placed just before the Health
+  // Diary detail below, since the diary is what that score/BMI are derived from
+  const profileOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!profileOwners.length) {
+    parts.push('Owner Health Profiles: no owners yet.');
+  } else {
+    const profileLines = profileOwners.map(o => {
+      const p = ownerProfiles[o.key];
+      if (!p || (p.weight == null && p.height == null && !p.dob && !p.gender)) {
+        return `- ${o.short}: profile not filled in yet.`;
+      }
+      const bmi = computeBMI(p.weight, p.height);
+      const cat = bmiCategory(bmi);
+      const age = calculateAge(p.dob);
+      // Prefer the AI-personalized score already computed for the Owner
+      // Health Profile modal if it's fresh; otherwise fall back to the same
+      // instant local estimate the modal itself shows before that loads.
+      const cachedInsight = profileInsightsCache[o.key];
+      const score = (cachedInsight && cachedInsight.status === 'ready' && cachedInsight.data)
+        ? cachedInsight.data.score
+        : computeHealthScore(o.key, bmi);
+      return `- ${o.short}: ${p.weight != null ? p.weight + ' kg' : 'weight not set'}, ` +
+        `${p.height != null ? p.height + ' cm' : 'height not set'}` +
+        `${age != null ? `, ${age}y old` : ''}${p.gender ? `, ${p.gender}` : ''}` +
+        `${bmi != null ? `, BMI ${bmi.toFixed(1)} (${cat})` : ''}, health score ${score}/100`;
+    });
+    parts.push(`Owner Health Profiles:\n${profileLines.join('\n')}`);
+  }
+
   // Health Diary (placed before Medicines since that list can get long)
   if (!healthDiary.length) {
     parts.push('Health Diary: no entries yet.');
@@ -4130,7 +4175,7 @@ function buildInventoryContext() {
     const diaryLines = entries.map(e => {
       const ownerCfg = customOwners.find(o => o.key === e.owner);
       const ownerName = ownerCfg ? ownerCfg.short : e.owner;
-      return `- ${e.date} | ${ownerName} | ${e.issue}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.cured ? ' [RESOLVED/CURED]' : ''}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
     });
     parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
   }
