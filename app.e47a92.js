@@ -3750,22 +3750,36 @@ function exportHealthDiaryPDF() {
     }
 
     entries.forEach(e => {
-      if (y + rowHeight > pageH - MARGIN - PAD) {
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      // Wrap each cell's text ourselves first so we know exactly how tall
+      // this row needs to be — a fixed row height meant multi-line medicine
+      // summaries (e.g. a merged ongoing entry's per-day dose breakdown)
+      // would silently overflow into the row below instead of the row
+      // growing to fit.
+      const dateLines = doc.splitTextToSize(e.date, dateW - 3);
+      const issueLines = doc.splitTextToSize(e.issue, issueW - 3);
+      const medsLines = doc.splitTextToSize(e.meds, medsW - 3);
+      const lineCount = Math.max(dateLines.length, issueLines.length, medsLines.length, 1);
+      const linePitch = fontSize * 0.352778 * 1.15; // pt → mm, at jsPDF's default 1.15 line-height factor
+      const blockHeight = lineCount * linePitch;
+      const thisRowHeight = Math.max(rowHeight, blockHeight + 3);
+
+      if (y + thisRowHeight > pageH - MARGIN - PAD) {
         doc.addPage();
         y = contentX + 3;
         drawHeaderRow(y);
         y += rowHeight;
       }
       doc.setDrawColor(0);
-      doc.rect(cols.date, y, dateW, rowHeight);
-      doc.rect(cols.issue, y, issueW, rowHeight);
-      doc.rect(cols.meds, y, medsW, rowHeight);
-      const ty = y + rowHeight / 2 + fontSize * 0.15;
+      doc.rect(cols.date, y, dateW, thisRowHeight);
+      doc.rect(cols.issue, y, issueW, thisRowHeight);
+      doc.rect(cols.meds, y, medsW, thisRowHeight);
+      const firstBaselineY = y + (thisRowHeight - blockHeight) / 2 + fontSize * 0.352778 * 0.75;
       doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
-      doc.text(e.date, cols.date + 1.5, ty, { maxWidth: dateW - 3 });
-      doc.text(e.issue, cols.issue + 1.5, ty, { maxWidth: issueW - 3 });
-      doc.text(e.meds, cols.meds + 1.5, ty, { maxWidth: medsW - 3 });
-      y += rowHeight;
+      doc.text(dateLines, cols.date + 1.5, firstBaselineY);
+      doc.text(issueLines, cols.issue + 1.5, firstBaselineY);
+      doc.text(medsLines, cols.meds + 1.5, firstBaselineY);
+      y += thisRowHeight;
     });
 
     doc.save(fileName + '.pdf');
