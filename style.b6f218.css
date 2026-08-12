@@ -78,18 +78,18 @@ html {
   margin: 0;
   padding: 0;
 }
-/* Only present for a brief window around an explicit theme toggle (see
-   toggleTheme() in app.js) — NOT a permanent rule. An always-on `* { transition:
-   background-color... }` sounds like the right fix for a smooth theme switch,
-   but it actually animates every dynamic re-render in the app (search
-   filtering, cards being added, menus opening — anything that changes a
-   background/border/text color for any reason), which reads as sluggish
-   everywhere, not just during the toggle. Scoping it to only exist while
-   .theme-transitioning is present keeps the toggle itself smooth without
-   slowing down normal use. */
-.theme-transitioning,
-.theme-transitioning * {
-  transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease !important;
+/* Smooth theme toggle: the browser's native View Transitions API crossfades
+   the whole screen as one GPU-composited operation — no per-element CSS
+   transition needed, so it doesn't force a style recalculation across every
+   DOM node the way `.theme-transitioning *` did (that approach measured
+   worse than doing nothing, since matching + transitioning every element
+   three times per toggle — class add, attribute change, class remove — costs
+   more than it saves on a card-heavy page). See toggleTheme() in app.js;
+   browsers without support just apply the change instantly, same as before
+   either of these edits existed. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.28s;
 }
 html {
   scroll-behavior: smooth;
