@@ -77,6 +77,14 @@ html {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Smooths the light/dark toggle across the whole page — cards, modals,
+     and every other surface fade together instead of only the handful of
+     interactive elements that already had their own hover transition.
+     More specific selectors below (buttons, tabs, etc.) already declare
+     their own `transition: var(--transition)`, which wins the cascade for
+     those elements and covers this same set of properties, so there's no
+     conflict — this just fills the gap everywhere else. */
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 html {
   scroll-behavior: smooth;
