@@ -2614,7 +2614,7 @@ function renderHealthDiaryList() {
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </div>` : ''}
-      ${renderDoseTicks(e.doseTimes, e.id)}
+      ${renderDoseTicks(e)}
     </div>
   `;
   }).join('');
@@ -2648,22 +2648,62 @@ function doseTimesToLetters(arr) {
   return (arr || []).map(t => DOSE_TIME_LETTER[t]).join(', ');
 }
 
-function renderDoseTicks(doseTimes, id) {
-  const set = new Set(doseTimes || []);
+// Doses are tracked per calendar day (doseLog: { 'YYYY-MM-DD': ['morning',...] }),
+// so an ongoing entry gets a fresh, empty set of M/A/E ticks each time it's
+// checked in for a new day — rather than one flat list shared across every day.
+// Legacy entries (from before this) only ever had a single flat `doseTimes`
+// array for their one date; these helpers fall back to that transparently.
+function getDoseTimesForDay(entry, dateStr) {
+  if (entry.doseLog && typeof entry.doseLog === 'object') {
+    return entry.doseLog[dateStr] || [];
+  }
+  return (dateStr === entry.date) ? (entry.doseTimes || []) : [];
+}
+function setDoseTimesForDay(entry, dateStr, times) {
+  if (!entry.doseLog || typeof entry.doseLog !== 'object') {
+    entry.doseLog = {};
+    if (entry.doseTimes && entry.doseTimes.length) entry.doseLog[entry.date] = entry.doseTimes;
+    delete entry.doseTimes;
+  }
+  if (times && times.length) entry.doseLog[dateStr] = times;
+  else delete entry.doseLog[dateStr];
+}
+// Every day this entry has dose data for, most recent first.
+function allDoseDays(entry) {
+  if (entry.doseLog && typeof entry.doseLog === 'object') {
+    return Object.keys(entry.doseLog).filter(d => entry.doseLog[d] && entry.doseLog[d].length).sort().reverse();
+  }
+  return (entry.doseTimes && entry.doseTimes.length) ? [entry.date] : [];
+}
+// Compact text summary across all logged days — a single day just shows its
+// letters ("M, E"), a multi-day entry breaks it out per date so history isn't
+// silently collapsed into one ambiguous list.
+function doseSummaryText(entry) {
+  const days = allDoseDays(entry);
+  if (!days.length) return '';
+  if (days.length === 1) return doseTimesToLetters(getDoseTimesForDay(entry, days[0]));
+  return days.map(d => `${formatHealthDate(d)}: ${doseTimesToLetters(getDoseTimesForDay(entry, d))}`).join('; ');
+}
+
+function renderDoseTicks(entry) {
+  const activeDay = entry.lastActiveDate || entry.date;
+  const doseTimes = getDoseTimesForDay(entry, activeDay);
+  const set = new Set(doseTimes);
   const ticks = DOSE_TIME_ORDER.map(t => `
-    <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="event.stopPropagation(); toggleDoseTime('${id}','${t}')">
+    <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${activeDay !== entry.date ? ` (${formatHealthDate(activeDay)})` : ''}" onclick="event.stopPropagation(); toggleDoseTime('${entry.id}','${t}','${activeDay}')">
       <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
     </button>
   `).join('');
   return `<span class="health-dose-row">${ticks}</span>`;
 }
 
-function toggleDoseTime(id, time) {
+function toggleDoseTime(id, time, dateStr) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry) return;
-  const set = new Set(entry.doseTimes || []);
-  if (set.has(time)) set.delete(time); else set.add(time);
-  entry.doseTimes = DOSE_TIME_ORDER.filter(t => set.has(t));
+  const day = dateStr || entry.lastActiveDate || entry.date;
+  const current = new Set(getDoseTimesForDay(entry, day));
+  if (current.has(time)) current.delete(time); else current.add(time);
+  setDoseTimesForDay(entry, day, DOSE_TIME_ORDER.filter(t => current.has(t)));
   saveData();
   renderHealthDiaryList();
 }
@@ -2716,15 +2756,17 @@ function promptAddHealthEntry() {
   const doseInput = prompt('Doses taken — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:', '');
   if (doseInput === null) return;
 
+  const entryDate = date.trim() || today;
+  const initialDoses = parseDoseTimes(doseInput);
   healthDiary.push({
     id: 'h' + Date.now(),
     owner: currentHealthOwner,
-    date: date.trim() || today,
+    date: entryDate,
     issue: issue.trim(),
     medicines: (meds || '').trim(),
-    doseTimes: parseDoseTimes(doseInput),
+    doseLog: initialDoses.length ? { [entryDate]: initialDoses } : {},
     cured: false,
-    lastActiveDate: date.trim() || today, // bumped by "check in" instead of creating a new entry each day
+    lastActiveDate: entryDate, // bumped by "check in" instead of creating a new entry each day
     checkInCount: 1,
     createdAt: Date.now()
   });
@@ -2747,13 +2789,14 @@ function editHealthEntry(id) {
   const meds = prompt('Medicines taken (optional):', entry.medicines || '');
   if (meds === null) return;
 
-  const doseInput = prompt('Doses taken — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:', doseTimesToLetters(entry.doseTimes));
+  const activeDay = entry.lastActiveDate || entry.date;
+  const doseInput = prompt(`Doses taken on ${formatHealthDate(activeDay)} — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:`, doseTimesToLetters(getDoseTimesForDay(entry, activeDay)));
   if (doseInput === null) return;
 
   entry.date = date.trim() || entry.date;
   entry.issue = issue.trim();
   entry.medicines = meds.trim();
-  entry.doseTimes = parseDoseTimes(doseInput);
+  setDoseTimesForDay(entry, activeDay, parseDoseTimes(doseInput));
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry updated.', 'success');
@@ -3511,7 +3554,7 @@ function exportHealthDiaryPDF() {
       .map(e => ({
         date: formatHealthDate(e.date),
         issue: stripEmoji(e.issue),
-        meds: stripEmoji(e.medicines || '—') + (e.doseTimes && e.doseTimes.length ? ` [${doseTimesToLetters(e.doseTimes)}]` : '')
+        meds: stripEmoji(e.medicines || '—') + (doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : '')
       }));
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -4082,7 +4125,7 @@ function localAssistantAnswer(rawQuery) {
     const lines = entries.map(e => {
       const oCfg = customOwners.find(o => o.key === e.owner);
       const oName = oCfg ? oCfg.short : e.owner;
-      return `${e.date} (${oName}): ${e.issue}${e.medicines ? ` — took ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` [${doseTimesToLetters(e.doseTimes)}]` : ''}`;
+      return `${e.date} (${oName}): ${e.issue}${e.medicines ? ` — took ${e.medicines}` : ''}${doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : ''}`;
     });
     return `Recent health diary entries: ${lines.join('; ')}.`;
   }
@@ -4222,7 +4265,7 @@ function buildInventoryContext() {
     const diaryLines = entries.map(e => {
       const ownerCfg = customOwners.find(o => o.key === e.owner);
       const ownerName = ownerCfg ? ownerCfg.short : e.owner;
-      return `- ${e.date} | ${ownerName} | ${e.issue}${e.cured ? ` [RESOLVED/CURED${(e.checkInCount || 1) > 1 ? ` after ${e.checkInCount} days` : ''}]` : ((e.checkInCount || 1) > 1 ? ` [ongoing, day ${e.checkInCount}]` : '')}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.cured ? ` [RESOLVED/CURED${(e.checkInCount || 1) > 1 ? ` after ${e.checkInCount} days` : ''}]` : ((e.checkInCount || 1) > 1 ? ` [ongoing, day ${e.checkInCount}]` : '')}${e.medicines ? ` | took: ${e.medicines}` : ''}${doseSummaryText(e) ? ` | doses: ${doseSummaryText(e)}` : ''}`;
     });
     parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
   }
