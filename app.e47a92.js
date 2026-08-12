@@ -3865,22 +3865,29 @@ document.addEventListener('click', e => {
   if (wrap && !wrap.contains(e.target)) closeSortDropdown();
 });
 
-let _themeTransitionTimer = null;
 function toggleTheme() {
-  // Scope the smooth fade to just this moment — see the CSS comment on
-  // .theme-transitioning for why this can't just be a permanent rule.
   const root = document.documentElement;
-  root.classList.add('theme-transitioning');
-  clearTimeout(_themeTransitionTimer);
-  _themeTransitionTimer = setTimeout(() => root.classList.remove('theme-transitioning'), 260);
-
   const isDark = root.getAttribute('data-theme') === 'dark';
-  root.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  localStorage.setItem('theme', isDark ? 'light' : 'dark');
-  updateMenuThemeLabel();
-  // legacy hidden btn
-  const btn = document.getElementById('themeToggleBtn');
-  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+  const next = isDark ? 'light' : 'dark';
+
+  const applyTheme = () => {
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateMenuThemeLabel();
+    // legacy hidden btn
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+  };
+
+  // Where supported, the browser crossfades the whole screen as one
+  // GPU-composited snapshot — smooth with no per-element cost. Where it
+  // isn't, this just applies instantly: identical to how the toggle behaved
+  // before any of this smoothing was attempted, so there's no regression.
+  if (document.startViewTransition) {
+    document.startViewTransition(applyTheme);
+  } else {
+    applyTheme();
+  }
 }
 function updateMenuThemeLabel() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
