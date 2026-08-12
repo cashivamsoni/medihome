@@ -2133,7 +2133,7 @@ function updateProfileMetricsDisplay() {
         ? `<div class="profile-update-list">${activeEntries.map(e => `
             <div class="profile-update-row">
               <span class="profile-update-date">${escHtml(formatHealthDate(e.date))}</span>
-              <span class="profile-update-issue">${escHtml(e.issue)}</span>
+              <span class="profile-update-issue">${escHtml(e.issue)}${(e.checkInCount || 1) > 1 ? ` <span class="profile-update-daycount">· Day ${e.checkInCount}</span>` : ''}</span>
             </div>`).join('')}</div>`
         : `<p class="branch-modal-hint">${curedEntries.length ? 'No active issues right now — nice!' : 'No health diary entries yet for this owner.'}</p>`}
       ${curedEntries.length ? `
@@ -2168,7 +2168,7 @@ function buildInsightsInputs(key) {
   const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
-  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '', cured: !!e.cured }));
+  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '', cured: !!e.cured, daysTracked: e.checkInCount || 1, lastActive: e.lastActiveDate || e.date }));
   return { weight: p.weight, height: p.height, age: calculateAge(p.dob), gender: p.gender, entries };
 }
 function hashInsightsInputs(inputs) {
@@ -2291,16 +2291,16 @@ function computeHealthScore(ownerKey, bmi) {
       const t = e.createdAt || new Date(e.date + 'T00:00:00').getTime();
       return t >= thirtyDaysAgo && !e.cured; // resolved issues no longer count against the score
     });
-    let penalty = recent.reduce((sum, e) => sum + issueSeverityWeight(e.issue), 0);
-    // Recurring instances of the *same* issue text signal a persistent
-    // problem rather than several unrelated one-offs, so pile on an
-    // escalating penalty for repeats beyond the first.
-    const freq = {};
-    recent.forEach(e => {
-      const norm = (e.issue || '').toLowerCase().trim();
-      if (norm) freq[norm] = (freq[norm] || 0) + 1;
-    });
-    Object.values(freq).forEach(count => { if (count >= 2) penalty += (count - 1) * 5; });
+    // A single ongoing issue is tracked as ONE entry with a check-in count
+    // (see checkInHealthEntry), not a duplicate entry per day — so a longer-
+    // running issue nudges the penalty up gently per entry, rather than the
+    // old approach of multiplying penalty for every repeated diary entry
+    // (which unfairly punished faithfully logging the same ongoing thing).
+    let penalty = recent.reduce((sum, e) => {
+      const days = Math.max(1, e.checkInCount || 1);
+      const durationBump = Math.min(8, Math.max(0, days - 3) * 1.2);
+      return sum + issueSeverityWeight(e.issue) + durationBump;
+    }, 0);
     diaryScore = Math.max(0, 50 - penalty);
   }
   return Math.round(Math.min(100, Math.max(0, bmiScore + diaryScore)));
@@ -2589,25 +2589,35 @@ function renderHealthDiaryList() {
     return;
   }
 
-  container.innerHTML = entries.map(e => `
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  container.innerHTML = entries.map(e => {
+    const daysTracked = e.checkInCount || 1;
+    const checkedInToday = (e.lastActiveDate || e.date) === todayStr;
+    return `
     <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
       ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
       <span class="health-entry-body">
-        <span class="health-entry-date"><i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}</span>
+        <span class="health-entry-date">
+          <i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}
+          ${!e.cured && daysTracked > 1 ? `<span class="health-entry-day-count">· Day ${daysTracked}</span>` : ''}
+        </span>
         <span class="health-entry-issue-row">
           <span class="health-entry-issue">${escHtml(e.issue)}</span>
-          ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured</span>` : ''}
+          ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
         </span>
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
+        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? 'Already checked in today' : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
         <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </div>` : ''}
       ${renderDoseTicks(e.doseTimes, e.id)}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function formatHealthDate(d) {
@@ -2671,6 +2681,26 @@ function toggleHealthEntryCured(id) {
   showToast(entry.cured ? `Marked "${entry.issue}" as cured ✓` : `Marked "${entry.issue}" as active again`, 'success');
 }
 
+// "Still happening today" check-in for an ongoing issue — bumps this SAME
+// entry's last-active date and day count instead of creating a duplicate
+// entry per day. Keeps the diary clean, and lets the score/AI recommendations
+// treat it as one persisting issue with a duration rather than a fresh
+// problem appearing daily (which used to tank the score unfairly).
+function checkInHealthEntry(id) {
+  const entry = healthDiary.find(e => e.id === id);
+  if (!entry || entry.cured) return;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if ((entry.lastActiveDate || entry.date) === todayStr) {
+    showToast('Already checked in for today.', 'info');
+    return;
+  }
+  entry.lastActiveDate = todayStr;
+  entry.checkInCount = (entry.checkInCount || 1) + 1;
+  saveData();
+  renderHealthDiaryList();
+  showToast(`"${entry.issue}" checked in — Day ${entry.checkInCount}`, 'success');
+}
+
 function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
   const today = new Date().toISOString().slice(0, 10);
@@ -2694,6 +2724,8 @@ function promptAddHealthEntry() {
     medicines: (meds || '').trim(),
     doseTimes: parseDoseTimes(doseInput),
     cured: false,
+    lastActiveDate: date.trim() || today, // bumped by "check in" instead of creating a new entry each day
+    checkInCount: 1,
     createdAt: Date.now()
   });
   saveData();
@@ -4190,7 +4222,7 @@ function buildInventoryContext() {
     const diaryLines = entries.map(e => {
       const ownerCfg = customOwners.find(o => o.key === e.owner);
       const ownerName = ownerCfg ? ownerCfg.short : e.owner;
-      return `- ${e.date} | ${ownerName} | ${e.issue}${e.cured ? ' [RESOLVED/CURED]' : ''}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
+      return `- ${e.date} | ${ownerName} | ${e.issue}${e.cured ? ` [RESOLVED/CURED${(e.checkInCount || 1) > 1 ? ` after ${e.checkInCount} days` : ''}]` : ((e.checkInCount || 1) > 1 ? ` [ongoing, day ${e.checkInCount}]` : '')}${e.medicines ? ` | took: ${e.medicines}` : ''}${e.doseTimes && e.doseTimes.length ? ` | doses: ${doseTimesToLetters(e.doseTimes)}` : ''}`;
     });
     parts.push(`Health Diary (${entries.length} entries):\n${diaryLines.join('\n')}`);
   }
