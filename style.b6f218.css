@@ -77,14 +77,19 @@ html {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* Smooths the light/dark toggle across the whole page — cards, modals,
-     and every other surface fade together instead of only the handful of
-     interactive elements that already had their own hover transition.
-     More specific selectors below (buttons, tabs, etc.) already declare
-     their own `transition: var(--transition)`, which wins the cascade for
-     those elements and covers this same set of properties, so there's no
-     conflict — this just fills the gap everywhere else. */
-  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+/* Only present for a brief window around an explicit theme toggle (see
+   toggleTheme() in app.js) — NOT a permanent rule. An always-on `* { transition:
+   background-color... }` sounds like the right fix for a smooth theme switch,
+   but it actually animates every dynamic re-render in the app (search
+   filtering, cards being added, menus opening — anything that changes a
+   background/border/text color for any reason), which reads as sluggish
+   everywhere, not just during the toggle. Scoping it to only exist while
+   .theme-transitioning is present keeps the toggle itself smooth without
+   slowing down normal use. */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease !important;
 }
 html {
   scroll-behavior: smooth;
