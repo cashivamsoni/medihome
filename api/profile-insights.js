@@ -82,14 +82,15 @@ export default async function handler(req, res) {
     date: typeof e.date === 'string' ? e.date.slice(0, 10) : '',
     issue: typeof e.issue === 'string' ? e.issue.slice(0, 200) : '',
     medicines: typeof e.medicines === 'string' ? e.medicines.slice(0, 200) : '',
-    cured: e.cured === true
+    cured: e.cured === true,
+    daysTracked: typeof e.daysTracked === 'number' && e.daysTracked > 0 ? Math.round(e.daysTracked) : 1
   })).filter(e => e.issue);
 
   const bmi = computeBMI(weight, height);
   const category = bmiCategory(bmi);
 
   const diaryText = safeEntries.length
-    ? safeEntries.map(e => `- ${e.date || 'undated'}: ${e.issue}${e.medicines ? ` (took: ${e.medicines})` : ''}${e.cured ? ' [RESOLVED — marked cured]' : ''}`).join('\n')
+    ? safeEntries.map(e => `- ${e.date || 'undated'}: ${e.issue}${e.medicines ? ` (took: ${e.medicines})` : ''}${e.daysTracked > 1 ? ` [ongoing ${e.daysTracked} days via check-ins, same single issue — not ${e.daysTracked} separate occurrences]` : ''}${e.cured ? ` [RESOLVED — marked cured${e.daysTracked > 1 ? ` after ${e.daysTracked} days` : ''}]` : ''}`).join('\n')
     : '(No Health Diary entries logged yet.)';
 
   const systemPrompt =
@@ -112,9 +113,14 @@ export default async function handler(req, res) {
     'should barely move the score at all — a couple of these with an otherwise ' +
     'healthy BMI should still land in the 80s or 90s. ' +
     'Genuinely concerning things — a fever, an infection, chest pain, breathlessness, ' +
-    'a diagnosed condition, an injury, or the SAME issue recurring across multiple ' +
-    'entries (suggesting it is not resolving) — should pull the score down more ' +
+    'a diagnosed condition, an injury, or a DIFFERENT issue that keeps coming back across ' +
+    'separate entries (suggesting a recurring pattern) — should pull the score down more ' +
     'meaningfully, more so the more severe or persistent the pattern looks. ' +
+    'An entry marked "[ongoing N days via check-ins]" is ONE single issue the person has ' +
+    'been honestly checking in on day after day — it is not N separate problems, so do not ' +
+    'multiply the penalty by the day count. It is fine for a longer-running issue to weigh ' +
+    'a little more than a same-day one, but scale that gently, and reward the fact that ' +
+    'they are tracking it consistently rather than penalizing the honesty of logging it. ' +
     'Entries marked "[RESOLVED — marked cured]" have already been fixed — do not ' +
     'penalize the score for these at all; if anything, treat consistently marking ' +
     'issues as resolved as a good sign of the person managing their health well. ' +
