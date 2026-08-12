@@ -3865,9 +3865,17 @@ document.addEventListener('click', e => {
   if (wrap && !wrap.contains(e.target)) closeSortDropdown();
 });
 
+let _themeTransitionTimer = null;
 function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  // Scope the smooth fade to just this moment — see the CSS comment on
+  // .theme-transitioning for why this can't just be a permanent rule.
+  const root = document.documentElement;
+  root.classList.add('theme-transitioning');
+  clearTimeout(_themeTransitionTimer);
+  _themeTransitionTimer = setTimeout(() => root.classList.remove('theme-transitioning'), 260);
+
+  const isDark = root.getAttribute('data-theme') === 'dark';
+  root.setAttribute('data-theme', isDark ? 'light' : 'dark');
   localStorage.setItem('theme', isDark ? 'light' : 'dark');
   updateMenuThemeLabel();
   // legacy hidden btn
