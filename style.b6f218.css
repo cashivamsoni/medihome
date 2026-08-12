@@ -2060,6 +2060,10 @@ body.bulk-mode .go-top-btn {
   align-items: center;
   gap: 5px;
 }
+.health-entry-day-count {
+  font-weight: 600;
+  color: var(--text-muted);
+}
 .health-entry-issue-row {
   display: flex;
   align-items: center;
@@ -2102,6 +2106,17 @@ body.bulk-mode .go-top-btn {
 }
 [data-theme="dark"] .mgmt-btn-cured-active:hover {
   background: rgba(22, 163, 74, 0.18);
+}
+.mgmt-btn-checkin-done {
+  color: var(--teal-600);
+  opacity: 0.65;
+}
+.mgmt-btn-checkin-done:hover {
+  background: var(--teal-50);
+  color: var(--teal-600);
+}
+[data-theme="dark"] .mgmt-btn-checkin-done:hover {
+  background: rgba(20, 184, 166, 0.14);
 }
 .health-entry-meds {
   font-size: 0.78rem;
@@ -2625,6 +2640,11 @@ body.bulk-mode .go-top-btn {
   color: var(--text-primary);
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+.profile-update-daycount {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.76rem;
 }
 .profile-cured-details {
   margin-top: 8px;
