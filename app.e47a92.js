@@ -2609,7 +2609,7 @@ function renderHealthDiaryList() {
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
-        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? 'Already checked in today' : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
+        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
         <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
         <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
@@ -2721,21 +2721,56 @@ function toggleHealthEntryCured(id) {
   showToast(entry.cured ? `Marked "${entry.issue}" as cured ✓` : `Marked "${entry.issue}" as active again`, 'success');
 }
 
+// The set of days this entry has been checked in on, oldest first. Kept as
+// real dates (not just a count) so an accidental tap — or a genuine "actually
+// it's fine now" — can be undone precisely instead of just guessing back one.
+// Falls back to reconstructing from date/lastActiveDate for entries created
+// before this existed.
+function getCheckInDates(entry) {
+  if (Array.isArray(entry.checkInDates) && entry.checkInDates.length) {
+    return entry.checkInDates.slice().sort();
+  }
+  const set = new Set([entry.date]);
+  if (entry.lastActiveDate) set.add(entry.lastActiveDate);
+  return Array.from(set).sort();
+}
+
 // "Still happening today" check-in for an ongoing issue — bumps this SAME
 // entry's last-active date and day count instead of creating a duplicate
 // entry per day. Keeps the diary clean, and lets the score/AI recommendations
 // treat it as one persisting issue with a duration rather than a fresh
 // problem appearing daily (which used to tank the score unfairly).
+// Tapping it again on a day already checked in undoes that day's check-in.
 function checkInHealthEntry(id) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry || entry.cured) return;
   const todayStr = new Date().toISOString().slice(0, 10);
-  if ((entry.lastActiveDate || entry.date) === todayStr) {
-    showToast('Already checked in for today.', 'info');
+  const dates = getCheckInDates(entry);
+  const todayIdx = dates.indexOf(todayStr);
+
+  if (todayIdx !== -1) {
+    // Already checked in today — tapping again undoes it, unless it's the
+    // entry's only/starting date (that's what Delete is for).
+    if (dates.length === 1) {
+      showToast("This is the entry's starting date — delete the entry to remove it.", 'info');
+      return;
+    }
+    dates.splice(todayIdx, 1);
+    if (entry.doseLog) delete entry.doseLog[todayStr]; // no longer a tracked day, drop its dose data too
+    entry.checkInDates = dates;
+    entry.lastActiveDate = dates[dates.length - 1];
+    entry.checkInCount = dates.length;
+    saveData();
+    renderHealthDiaryList();
+    showToast(`Undid today's check-in for "${entry.issue}" — Day ${entry.checkInCount}`, 'info');
     return;
   }
+
+  dates.push(todayStr);
+  dates.sort();
+  entry.checkInDates = dates;
   entry.lastActiveDate = todayStr;
-  entry.checkInCount = (entry.checkInCount || 1) + 1;
+  entry.checkInCount = dates.length;
   saveData();
   renderHealthDiaryList();
   showToast(`"${entry.issue}" checked in — Day ${entry.checkInCount}`, 'success');
@@ -2767,6 +2802,7 @@ function promptAddHealthEntry() {
     doseLog: initialDoses.length ? { [entryDate]: initialDoses } : {},
     cured: false,
     lastActiveDate: entryDate, // bumped by "check in" instead of creating a new entry each day
+    checkInDates: [entryDate],
     checkInCount: 1,
     createdAt: Date.now()
   });
