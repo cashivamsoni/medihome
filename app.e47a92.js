@@ -2776,6 +2776,110 @@ function checkInHealthEntry(id) {
   showToast(`"${entry.issue}" checked in — Day ${entry.checkInCount}`, 'success');
 }
 
+// ── Merge duplicate entries ─────────────────────────────────
+// Catches the "logged the same thing again every day before check-ins
+// existed" pattern: groups this owner's not-cured entries by matching issue
+// text, then clusters same-text entries that sit within MAX_GAP_DAYS of each
+// other (so an unrelated pimple 3 months later isn't wrongly folded in).
+// Each qualifying cluster can be collapsed into one entry with the union of
+// every date logged, merged per-day dose history, and deduped medicines.
+const MERGE_MAX_GAP_DAYS = 14;
+
+function findHealthEntryMergeGroups(ownerKey) {
+  const byIssue = {};
+  healthDiary
+    .filter(e => e.owner === ownerKey && !e.cured)
+    .forEach(e => {
+      const key = (e.issue || '').toLowerCase().trim();
+      if (!key) return;
+      (byIssue[key] = byIssue[key] || []).push(e);
+    });
+
+  const groups = [];
+  Object.values(byIssue).forEach(list => {
+    if (list.length < 2) return;
+    const sorted = list.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    let cluster = [sorted[0]];
+    for (let i = 1; i < sorted.length; i++) {
+      const prevTime = new Date(cluster[cluster.length - 1].date + 'T00:00:00').getTime();
+      const curTime = new Date(sorted[i].date + 'T00:00:00').getTime();
+      const gapDays = (curTime - prevTime) / (24 * 60 * 60 * 1000);
+      if (gapDays <= MERGE_MAX_GAP_DAYS) {
+        cluster.push(sorted[i]);
+      } else {
+        if (cluster.length >= 2) groups.push(cluster);
+        cluster = [sorted[i]];
+      }
+    }
+    if (cluster.length >= 2) groups.push(cluster);
+  });
+  return groups;
+}
+
+function mergeDuplicateHealthEntries() {
+  if (!currentHealthOwner) { showToast('Select an owner first.', 'error'); return; }
+  const groups = findHealthEntryMergeGroups(currentHealthOwner);
+  if (!groups.length) {
+    showToast('No duplicate entries found to merge for this owner.', 'info');
+    return;
+  }
+
+  const totalDupes = groups.reduce((sum, g) => sum + g.length - 1, 0);
+  const preview = groups.map(g => {
+    const sorted = g.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    return `• "${sorted[0].issue}" — ${sorted.length} entries (${sorted.map(e => formatHealthDate(e.date)).join(', ')})`;
+  }).join('\n');
+
+  const ok = confirm(
+    `Found ${groups.length} group${groups.length > 1 ? 's' : ''} to merge:\n\n${preview}\n\n` +
+    `Each group becomes one entry (earliest date kept, correct Day count) with dose history and medicines combined. ` +
+    `${totalDupes} duplicate ${totalDupes > 1 ? 'entries' : 'entry'} will be deleted — this can't be undone. Merge now?`
+  );
+  if (!ok) return;
+
+  groups.forEach(group => {
+    const sorted = group.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    const base = sorted[0];
+    const rest = sorted.slice(1);
+
+    // Union of every date logged or checked-in across the whole group.
+    const dateSet = new Set();
+    sorted.forEach(e => getCheckInDates(e).forEach(d => dateSet.add(d)));
+    const mergedDates = Array.from(dateSet).sort();
+
+    // Merge each entry's dose history onto its own specific date.
+    const mergedDoseLog = {};
+    sorted.forEach(e => {
+      getCheckInDates(e).forEach(d => {
+        const doses = getDoseTimesForDay(e, d);
+        if (doses.length) mergedDoseLog[d] = doses;
+      });
+    });
+
+    // Dedupe medicine mentions across the group, preserving first-seen order.
+    const mergedMeds = [];
+    sorted.forEach(e => {
+      (e.medicines || '').split(/[,;]/).map(s => s.trim()).filter(Boolean).forEach(m => {
+        if (!mergedMeds.some(x => x.toLowerCase() === m.toLowerCase())) mergedMeds.push(m);
+      });
+    });
+
+    base.checkInDates = mergedDates;
+    base.checkInCount = mergedDates.length;
+    base.lastActiveDate = mergedDates[mergedDates.length - 1];
+    base.doseLog = mergedDoseLog;
+    delete base.doseTimes;
+    base.medicines = mergedMeds.join(', ');
+
+    const restIds = new Set(rest.map(e => e.id));
+    healthDiary = healthDiary.filter(e => !restIds.has(e.id));
+  });
+
+  saveData();
+  renderHealthDiaryList();
+  showToast(`Merged ${groups.length} group${groups.length > 1 ? 's' : ''} — removed ${totalDupes} duplicate ${totalDupes > 1 ? 'entries' : 'entry'}.`, 'success');
+}
+
 function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
   const today = new Date().toISOString().slice(0, 10);
