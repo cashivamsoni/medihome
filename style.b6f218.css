@@ -3683,7 +3683,7 @@ body.compact-view.bulk-mode .medicine-card {
 #dlgOverlay,
 #healthFormOverlay {
   position: fixed;
-  top: var(--header-h, 0px);
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
