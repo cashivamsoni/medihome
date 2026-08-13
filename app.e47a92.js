@@ -2140,10 +2140,9 @@ function closeOwnerProfile() {
 bindOverlayClose(document.getElementById('ownerProfileModal'), closeOwnerProfile);
 
 // Jump from a profile's "Recent Health Updates" straight into the full
-// Health Diary for that same owner.
+// Health Diary for that same owner — opens on top, profile stays open behind.
 function openHealthDiaryForProfileOwner() {
   if (currentProfileOwner) currentHealthOwner = currentProfileOwner;
-  closeOwnerProfile();
   openHealthDiary();
 }
 
