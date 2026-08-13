@@ -989,7 +989,6 @@
               oninput="_hfMedsInput()"
               onfocus="_hfMedsInput()"
             />
-            <div class="hf-suggest-list hidden" id="hfMedsSuggest"></div>
           </div>
           <div class="form-group">
             <label class="form-label" id="hfDoseLabel">Doses taken</label>
@@ -1003,6 +1002,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Lives outside the modal's DOM tree on purpose: .dlg-box has a
+         `transform` for its open/close animation, and a transformed ancestor
+         becomes the containing block for `position: fixed` descendants — so
+         nested here it would silently get clipped by the modal's own
+         overflow instead of floating over the whole page. -->
+    <div class="hf-suggest-list hidden" id="hfMedsSuggest"></div>
 
     <!-- hidden compat elements for JS references -->
     <button id="themeToggleBtn" style="display: none">🌙</button>
