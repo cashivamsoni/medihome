@@ -200,6 +200,11 @@ function _closeHealthFormOverlay() {
   setTimeout(() => ov.classList.add('hidden'), 250);
   unlockBodyScroll();
   setTimeout(reconcileBodyScrollLock, 300);
+  // The suggestion box lives outside the modal (see index.html note), so it
+  // won't auto-hide with the modal itself — close it explicitly here,
+  // covering every close path (Save, Cancel, X, Escape, backdrop click).
+  const box = document.getElementById('hfMedsSuggest');
+  if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
 }
 
 // ── "Medicines taken" autocomplete ─────────────────────────────────────
