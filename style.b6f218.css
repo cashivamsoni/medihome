@@ -2703,7 +2703,6 @@ body.bulk-mode .go-top-btn {
 [data-theme="dark"] .profile-med-chip {
   background: rgba(20,184,166,0.14);
   border-color: rgba(20,184,166,0.3);
-  color: var(--teal-300);   /* ← add this line */
 }
 @media (max-width: 480px) {
   .profile-modal-box {
@@ -2986,6 +2985,37 @@ body.bulk-mode .main {
 .bulk-btn i {
   margin-right: 0;
 }
+.bulk-select-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.bulk-select-group .bulk-select-field {
+  flex: 1;
+  min-width: 0;
+}
+.bulk-manage-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: var(--transition);
+}
+.bulk-manage-btn:hover {
+  background: var(--teal-50);
+  border-color: var(--teal-200);
+  color: var(--teal-700);
+}
 .bulk-btn:hover {
   background: var(--teal-50);
   border-color: var(--teal-200);
@@ -3082,12 +3112,19 @@ body.bulk-mode .main {
     min-width: 80px;
   }
   /* Change Owner, Change Category — two selects share second row */
-  .bulk-select-field {
+  .bulk-select-group {
     flex: 1 1 calc(50% - 3px);
+    min-width: 100px;
+  }
+  .bulk-select-field {
     font-size: 0.72rem;
     height: 30px;
     padding: 0 6px;
-    min-width: 100px;
+  }
+  .bulk-manage-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
   }
   .app-menu-inner {
     flex-direction: column;
@@ -3258,6 +3295,16 @@ body.bulk-mode .medicine-card {
   color: var(--text-primary);
 }
 [data-theme="dark"] .bulk-btn:hover {
+  background: #16302C;
+  border-color: #1F4641;
+  color: #5EEAD4;
+}
+[data-theme="dark"] .bulk-manage-btn {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .bulk-manage-btn:hover {
   background: #16302C;
   border-color: #1F4641;
   color: #5EEAD4;
