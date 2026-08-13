@@ -2139,6 +2139,14 @@ function closeOwnerProfile() {
 }
 bindOverlayClose(document.getElementById('ownerProfileModal'), closeOwnerProfile);
 
+// Jump from a profile's "Recent Health Updates" straight into the full
+// Health Diary for that same owner.
+function openHealthDiaryForProfileOwner() {
+  if (currentProfileOwner) currentHealthOwner = currentProfileOwner;
+  closeOwnerProfile();
+  openHealthDiary();
+}
+
 function renderProfileOwnerTabs() {
   const container = document.getElementById('profileOwnerTabs');
   if (!container) return;
@@ -2324,7 +2332,10 @@ function updateProfileMetricsDisplay() {
     </div>` : ''}
 
     <div class="profile-section">
-      <h5 class="profile-section-title"><i class="fa-solid fa-book-medical"></i> Recent Health Updates</h5>
+      <div class="profile-section-title-row">
+        <h5 class="profile-section-title"><i class="fa-solid fa-book-medical"></i> Recent Health Updates</h5>
+        <button class="profile-section-link-btn" onclick="openHealthDiaryForProfileOwner()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Health Diary</button>
+      </div>
       ${activeEntries.length
         ? `<div class="profile-update-list">${activeEntries.map(e => `
             <div class="profile-update-row">
