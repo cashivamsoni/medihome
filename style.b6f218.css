@@ -3905,6 +3905,51 @@ body.compact-view.bulk-mode .medicine-card {
 [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
 }
+.hf-meds-group {
+  position: relative;
+}
+.hf-suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  max-height: 190px;
+  overflow-y: auto;
+}
+.hf-suggest-list.hidden {
+  display: none;
+}
+.hf-suggest-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.hf-suggest-item:last-child {
+  border-bottom: none;
+}
+.hf-suggest-item:hover,
+.hf-suggest-item.hf-suggest-active {
+  background: var(--teal-50);
+  color: var(--teal-700);
+}
+[data-theme="dark"] .hf-suggest-item:hover,
+[data-theme="dark"] .hf-suggest-item.hf-suggest-active {
+  background: rgba(20,184,166,0.14);
+  color: var(--teal-300);
+}
 
 /* ── Last synced label in menu ───────────────────────────── */
 .menu-sync-label {
