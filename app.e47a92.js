@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// MediHome — Medicine Inventory Management
+// MediHome — Family Health Companion
 // ═══════════════════════════════════════════════════════════
 
 let medicines = [];
@@ -3872,8 +3872,8 @@ function exportToPDF() {
     doc.setFontSize(fontSize + 8);
     const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
     const titleText = branchName
-      ? `MediHome - Family Medicine Inventory (${branchName})`
-      : 'MediHome - Family Medicine Inventory';
+      ? `MediHome - Family Health Companion (${branchName})`
+      : 'MediHome - Family Health Companion';
     doc.text(titleText, pageW / 2, y, { align: 'center' });
     y += fontSize * 0.5 + 3;
 
