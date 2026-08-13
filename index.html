@@ -978,14 +978,18 @@
               placeholder="e.g. Fever, sore throat…"
             />
           </div>
-          <div class="form-group">
+          <div class="form-group hf-meds-group">
             <label class="form-label" for="hfMeds">Medicines taken (optional)</label>
             <input
               class="form-input"
               type="text"
               id="hfMeds"
               placeholder="e.g. Paracetamol 500mg"
+              autocomplete="off"
+              oninput="_hfMedsInput()"
+              onfocus="_hfMedsInput()"
             />
+            <div class="hf-suggest-list hidden" id="hfMedsSuggest"></div>
           </div>
           <div class="form-group">
             <label class="form-label" id="hfDoseLabel">Doses taken</label>
