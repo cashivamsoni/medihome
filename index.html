@@ -899,6 +899,97 @@
         <div class="modal-body" id="histModalBody"></div>
       </div>
     </div>
+
+    <!-- ── Custom Dialog (replaces native prompt/confirm/alert) ── -->
+    <div id="dlgOverlay" class="hidden">
+      <div
+        class="dlg-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dlgTitle"
+        onclick="event.stopPropagation()"
+      >
+        <div class="modal-header">
+          <h2 class="modal-title" id="dlgTitle">Confirm</h2>
+          <button
+            class="modal-close"
+            onclick="_dlgResolveClick(null)"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="dlg-message" id="dlgMessage"></p>
+          <div class="dlg-field hidden" id="dlgFieldWrap">
+            <input class="form-input" id="dlgInput" />
+          </div>
+          <div class="dlg-choices hidden" id="dlgChoices"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" id="dlgCancelBtn" onclick="_dlgResolveClick(null)">Cancel</button>
+          <button class="btn-save" id="dlgOkBtn" onclick="_dlgResolveClick(true)">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Health Diary Entry Form (replaces chained prompts) ──── -->
+    <div id="healthFormOverlay" class="hidden">
+      <div
+        class="dlg-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="healthFormTitle"
+        onclick="event.stopPropagation()"
+      >
+        <div class="modal-header">
+          <h2 class="modal-title" id="healthFormTitle">Health Diary Entry</h2>
+          <button
+            class="modal-close"
+            onclick="_healthFormResolve(null)"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="hfDate">Date</label>
+            <input class="form-input" type="date" id="hfDate" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="hfIssue"
+              >Health update / issue <span class="req">*</span></label
+            >
+            <input
+              class="form-input"
+              type="text"
+              id="hfIssue"
+              placeholder="e.g. Fever, sore throat…"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="hfMeds">Medicines taken (optional)</label>
+            <input
+              class="form-input"
+              type="text"
+              id="hfMeds"
+              placeholder="e.g. Paracetamol 500mg"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="hfDoseLabel">Doses taken</label>
+            <div class="dlg-dose-row" id="hfDoseRow"></div>
+          </div>
+          <span class="dlg-error hidden" id="healthFormError"></span>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="_healthFormResolve(null)">Cancel</button>
+          <button class="btn-save" onclick="_healthFormResolve(true)">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- hidden compat elements for JS references -->
     <button id="themeToggleBtn" style="display: none">🌙</button>
     <button id="bulkToggleBtn" style="display: none"></button>
