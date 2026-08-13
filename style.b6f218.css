@@ -2528,10 +2528,10 @@ body.bulk-mode .go-top-btn {
 .bmi-badge-normal { background: var(--green-100); color: var(--green-600); }
 .bmi-badge-over { background: var(--amber-50); color: var(--amber-600); }
 .bmi-badge-obese { background: var(--red-50); color: var(--red-600); }
-[data-theme="dark"] .bmi-badge-under { background: rgba(29,78,216,0.18); }
-[data-theme="dark"] .bmi-badge-normal { background: rgba(22,163,74,0.18); }
-[data-theme="dark"] .bmi-badge-over { background: rgba(217,119,6,0.18); }
-[data-theme="dark"] .bmi-badge-obese { background: rgba(225,29,72,0.18); }
+[data-theme="dark"] .bmi-badge-under { background: rgba(29,78,216,0.18); color: #93C5FD; }
+[data-theme="dark"] .bmi-badge-normal { background: rgba(22,163,74,0.18); color: #86EFAC; }
+[data-theme="dark"] .bmi-badge-over { background: rgba(217,119,6,0.18); color: #FCD34D; }
+[data-theme="dark"] .bmi-badge-obese { background: rgba(225,29,72,0.18); color: #FCA5A5; }
 .score-row {
   display: flex;
   align-items: center;
@@ -2703,7 +2703,7 @@ body.bulk-mode .go-top-btn {
 [data-theme="dark"] .profile-med-chip {
   background: rgba(20,184,166,0.14);
   border-color: rgba(20,184,166,0.3);
-  color: var(--teal-300);   /* ← add this line */
+  color: var(--teal-300);
 }
 @media (max-width: 480px) {
   .profile-modal-box {
