@@ -180,6 +180,9 @@ function openHealthEntryForm(opts = {}) {
     document.getElementById('hfDate').value = opts.date || '';
     document.getElementById('hfIssue').value = opts.issue || '';
     document.getElementById('hfMeds').value = opts.meds || '';
+    document.getElementById('hfMedsSuggest').classList.add('hidden');
+    document.getElementById('hfMedsSuggest').innerHTML = '';
+    _hfMedicinePool = null; // rebuilt on next keystroke, picking up anything added since the form last opened
     document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
     _hfSelectedDoses = new Set(parseDoseTimes(opts.doseLetters || ''));
     _renderHfDoseTicks();
@@ -198,6 +201,68 @@ function _closeHealthFormOverlay() {
   unlockBodyScroll();
   setTimeout(reconcileBodyScrollLock, 300);
 }
+
+// ── "Medicines taken" autocomplete ─────────────────────────────────────
+// Suggests from medicines already in inventory plus anything typed into
+// past Health Diary entries, so it works even for things like home
+// remedies that were never added as inventory items.
+let _hfMedicinePool = null;
+let _hfSuggestMatches = [];
+
+function _hfBuildMedicinePool() {
+  const pool = new Set();
+  medicines.forEach(m => { if (m.name) pool.add(m.name.trim()); });
+  healthDiary.forEach(e => {
+    if (e.medicines) e.medicines.split(/[,;]/).forEach(s => { const t = s.trim(); if (t) pool.add(t); });
+  });
+  return Array.from(pool);
+}
+
+function _hfMedsInput() {
+  const input = document.getElementById('hfMeds');
+  const box = document.getElementById('hfMedsSuggest');
+  const currentSegment = input.value.split(',').pop().trim();
+  if (!currentSegment) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+
+  if (!_hfMedicinePool) _hfMedicinePool = _hfBuildMedicinePool();
+  const lower = currentSegment.toLowerCase();
+  const matches = _hfMedicinePool
+    .filter(name => name.toLowerCase().includes(lower))
+    .sort((a, b) => {
+      const aStarts = a.toLowerCase().startsWith(lower) ? 0 : 1;
+      const bStarts = b.toLowerCase().startsWith(lower) ? 0 : 1;
+      return aStarts !== bStarts ? aStarts - bStarts : a.localeCompare(b);
+    })
+    .slice(0, 5);
+
+  if (!matches.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  _hfSuggestMatches = matches;
+  box.innerHTML = matches.map((name, i) =>
+    `<button type="button" class="hf-suggest-item" onmousedown="event.preventDefault(); _hfPickSuggestion(${i})">${escHtml(name)}</button>`
+  ).join('');
+  box.classList.remove('hidden');
+}
+
+function _hfPickSuggestion(i) {
+  const name = _hfSuggestMatches[i];
+  if (!name) return;
+  const input = document.getElementById('hfMeds');
+  const idx = input.value.lastIndexOf(',');
+  const prefix = idx === -1 ? '' : input.value.slice(0, idx + 1) + ' ';
+  input.value = prefix + name;
+  document.getElementById('hfMedsSuggest').classList.add('hidden');
+  input.focus();
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
+}
+
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('hfMedsSuggest');
+  const input = document.getElementById('hfMeds');
+  if (box && !box.classList.contains('hidden') && e.target !== input && !box.contains(e.target)) {
+    box.classList.add('hidden');
+  }
+});
 function _healthFormResolve(save) {
   if (!_hfResolve) return;
   if (save) {
