@@ -2489,6 +2489,45 @@ body.bulk-mode .go-top-btn {
   gap: 6px;
   margin-bottom: 8px;
 }
+.profile-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.profile-section-title-row .profile-section-title {
+  margin-bottom: 0;
+}
+.profile-section-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal-600);
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  padding: 4px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.profile-section-link-btn i {
+  font-size: 0.66rem;
+}
+.profile-section-link-btn:hover {
+  background: var(--teal-100);
+}
+[data-theme="dark"] .profile-section-link-btn {
+  background: rgba(20,184,166,0.14);
+  border-color: rgba(20,184,166,0.3);
+  color: var(--teal-300);
+}
+[data-theme="dark"] .profile-section-link-btn:hover {
+  background: rgba(20,184,166,0.24);
+}
 .profile-section-title i {
   color: var(--teal-600);
   font-size: 0.78rem;
@@ -2728,6 +2767,14 @@ body.bulk-mode .go-top-btn {
   }
   .advice-grid {
     grid-template-columns: 1fr;
+  }
+  .profile-section-title-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .profile-section-link-btn {
+    font-size: 0.68rem;
+    padding: 4px 8px;
   }
 }
 
