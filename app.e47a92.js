@@ -22,6 +22,207 @@ let quantityLog = [];       // current branch's log of add/delete/increase/decre
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
+// ── Custom Dialog System (replaces native prompt/confirm/alert) ───────────
+// Promise-based, styled to match the app's modal system. Each opener resets
+// every optional field so leftover state from a previous call (e.g. choices)
+// never bleeds into the next one.
+let _dlgResolve = null;
+
+function _dlgReset() {
+  document.getElementById('dlgMessage').classList.remove('hidden');
+  document.getElementById('dlgFieldWrap').classList.add('hidden');
+  document.getElementById('dlgChoices').classList.add('hidden');
+  document.getElementById('dlgChoices').innerHTML = '';
+  document.getElementById('dlgCancelBtn').classList.remove('hidden');
+  document.getElementById('dlgCancelBtn').textContent = 'Cancel';
+  const okBtn = document.getElementById('dlgOkBtn');
+  okBtn.classList.remove('hidden', 'dlg-danger');
+  okBtn.textContent = 'OK';
+}
+
+function _openDlgOverlay() {
+  const ov = document.getElementById('dlgOverlay');
+  ov.classList.remove('hidden');
+  setTimeout(() => ov.classList.add('active'), 10);
+  lockBodyScroll();
+}
+function _closeDlgOverlay() {
+  const ov = document.getElementById('dlgOverlay');
+  ov.classList.remove('active');
+  setTimeout(() => ov.classList.add('hidden'), 250);
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
+}
+
+// Called by the OK/Cancel/close buttons and by choice items (with the chosen
+// value). `val` is `true` for a plain OK, a string for a chosen value, or
+// `null`/`undefined` for cancel.
+function _dlgResolveClick(val) {
+  if (!_dlgResolve) return;
+  const resolve = _dlgResolve;
+  _dlgResolve = null;
+  _closeDlgOverlay();
+  resolve(val);
+}
+
+function customAlert(message, opts = {}) {
+  return new Promise(resolve => {
+    _dlgResolve = () => resolve(undefined);
+    _dlgReset();
+    document.getElementById('dlgTitle').textContent = opts.title || 'Notice';
+    document.getElementById('dlgMessage').textContent = message;
+    document.getElementById('dlgCancelBtn').classList.add('hidden');
+    _openDlgOverlay();
+  });
+}
+
+function customConfirm(message, opts = {}) {
+  return new Promise(resolve => {
+    _dlgResolve = (val) => resolve(!!val);
+    _dlgReset();
+    document.getElementById('dlgTitle').textContent = opts.title || 'Please Confirm';
+    document.getElementById('dlgMessage').textContent = message;
+    const okBtn = document.getElementById('dlgOkBtn');
+    okBtn.textContent = opts.okLabel || (opts.danger ? 'Delete' : 'OK');
+    okBtn.classList.toggle('dlg-danger', !!opts.danger);
+    _openDlgOverlay();
+    setTimeout(() => okBtn.focus(), 60);
+  });
+}
+
+function customPrompt(message, defaultValue = '', opts = {}) {
+  return new Promise(resolve => {
+    _dlgResolve = (val) => resolve(val === true ? document.getElementById('dlgInput').value : null);
+    _dlgReset();
+    document.getElementById('dlgTitle').textContent = opts.title || 'Enter Value';
+    document.getElementById('dlgMessage').textContent = message || '';
+    document.getElementById('dlgMessage').classList.toggle('hidden', !message);
+    document.getElementById('dlgFieldWrap').classList.remove('hidden');
+    const input = document.getElementById('dlgInput');
+    input.type = opts.type || 'text';
+    input.value = defaultValue || '';
+    input.placeholder = opts.placeholder || '';
+    document.getElementById('dlgOkBtn').textContent = opts.okLabel || 'OK';
+    _openDlgOverlay();
+    setTimeout(() => { input.focus(); input.select(); }, 60);
+  });
+}
+
+// Numbered/typed-answer prompt replaced with a tappable list of choices.
+// `choices`: [{label, value}]. Resolves to the chosen value, or undefined if
+// cancelled — matching the old promptMoveDestination() contract.
+// Values are dispatched by index (not embedded in the onclick attribute) so
+// labels/values containing quotes or apostrophes can never break the markup.
+let _dlgChoiceValues = [];
+function _dlgChoiceClick(i) {
+  _dlgResolveClick(_dlgChoiceValues[i]);
+}
+function customChoice(message, choices, opts = {}) {
+  return new Promise(resolve => {
+    _dlgResolve = (val) => resolve(typeof val === 'string' ? val : undefined);
+    _dlgReset();
+    document.getElementById('dlgTitle').textContent = opts.title || 'Choose an Option';
+    document.getElementById('dlgMessage').textContent = message || '';
+    document.getElementById('dlgMessage').classList.toggle('hidden', !message);
+    _dlgChoiceValues = choices.map(c => c.value);
+    const choicesEl = document.getElementById('dlgChoices');
+    choicesEl.classList.remove('hidden');
+    choicesEl.innerHTML = choices.map((c, i) => `
+      <button type="button" class="dlg-choice-item" onclick="_dlgChoiceClick(${i})">${escHtml(c.label)}</button>
+    `).join('');
+    document.getElementById('dlgOkBtn').classList.add('hidden'); // choices double as the OK action
+    _openDlgOverlay();
+  });
+}
+
+bindOverlayClose(document.getElementById('dlgOverlay'), () => _dlgResolveClick(null));
+
+document.addEventListener('keydown', (e) => {
+  const dlg = document.getElementById('dlgOverlay');
+  if (dlg && dlg.classList.contains('active')) {
+    if (e.key === 'Enter' && !document.getElementById('dlgOkBtn').classList.contains('hidden')) {
+      e.preventDefault();
+      _dlgResolveClick(true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      _dlgResolveClick(null);
+    }
+  }
+  const hf = document.getElementById('healthFormOverlay');
+  if (hf && hf.classList.contains('active') && e.key === 'Escape') {
+    e.preventDefault();
+    _healthFormResolve(null);
+  }
+});
+
+// ── Health Diary Entry Form (replaces the 4 chained prompt() calls) ───────
+let _hfResolve = null;
+let _hfSelectedDoses = new Set();
+
+function _renderHfDoseTicks() {
+  const wrap = document.getElementById('hfDoseRow');
+  wrap.innerHTML = DOSE_TIME_ORDER.map(t => `
+    <button type="button" class="dose-tick ${_hfSelectedDoses.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="_hfToggleDose('${t}')">
+      <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+    </button>`).join('');
+}
+function _hfToggleDose(t) {
+  if (_hfSelectedDoses.has(t)) _hfSelectedDoses.delete(t); else _hfSelectedDoses.add(t);
+  _renderHfDoseTicks();
+}
+
+// opts: {title, date, issue, meds, doseLabel, doseLetters}
+// Resolves to {date, issue, meds, doseLetters} or null if cancelled.
+function openHealthEntryForm(opts = {}) {
+  return new Promise(resolve => {
+    _hfResolve = resolve;
+    document.getElementById('healthFormTitle').textContent = opts.title || 'Add Health Diary Entry';
+    document.getElementById('hfDate').value = opts.date || '';
+    document.getElementById('hfIssue').value = opts.issue || '';
+    document.getElementById('hfMeds').value = opts.meds || '';
+    document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
+    _hfSelectedDoses = new Set(parseDoseTimes(opts.doseLetters || ''));
+    _renderHfDoseTicks();
+    document.getElementById('healthFormError').classList.add('hidden');
+    const ov = document.getElementById('healthFormOverlay');
+    ov.classList.remove('hidden');
+    setTimeout(() => ov.classList.add('active'), 10);
+    lockBodyScroll();
+    setTimeout(() => document.getElementById('hfIssue').focus(), 60);
+  });
+}
+function _closeHealthFormOverlay() {
+  const ov = document.getElementById('healthFormOverlay');
+  ov.classList.remove('active');
+  setTimeout(() => ov.classList.add('hidden'), 250);
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
+}
+function _healthFormResolve(save) {
+  if (!_hfResolve) return;
+  if (save) {
+    const issue = document.getElementById('hfIssue').value.trim();
+    if (!issue) {
+      const err = document.getElementById('healthFormError');
+      err.textContent = 'Please enter a health update.';
+      err.classList.remove('hidden');
+      document.getElementById('hfIssue').focus();
+      return; // keep the form open so the person can fix it
+    }
+  }
+  const resolve = _hfResolve;
+  _hfResolve = null;
+  const result = save ? {
+    date: document.getElementById('hfDate').value,
+    issue: document.getElementById('hfIssue').value.trim(),
+    meds: document.getElementById('hfMeds').value.trim(),
+    doseLetters: doseTimesToLetters(DOSE_TIME_ORDER.filter(t => _hfSelectedDoses.has(t)))
+  } : null;
+  _closeHealthFormOverlay();
+  resolve(result);
+}
+bindOverlayClose(document.getElementById('healthFormOverlay'), () => _healthFormResolve(null));
+
 // ── Branches ("houses") ─────────────────────────────────────
 // Each branch is a fully independent set of medicines/categories/forms/owners/types.
 // `medicines`/`customCategories`/etc. above always mirror the *active* branch —
@@ -189,8 +390,8 @@ function friendlyAuthError(err) {
   return (code && map[code]) || 'Could not sign in. Please try again.';
 }
 
-function confirmLogout() {
-  if (confirm('Log out of MediHome on this device?')) logout();
+async function confirmLogout() {
+  if (await customConfirm('Log out of MediHome on this device?', { title: 'Log Out' })) logout();
 }
 
 function logout() {
@@ -406,8 +607,8 @@ function saveAllBranches() {
   });
 }
 
-function resetToDefault() {
-  if (confirm('Empty the entire medicine database? All medicines will be deleted. This cannot be undone.')) {
+async function resetToDefault() {
+  if (await customConfirm('Empty the entire medicine database? All medicines will be deleted. This cannot be undone.', { title: 'Empty Database', danger: true })) {
     medicines = [];
     saveData();
     populateAllDropdowns();
@@ -993,7 +1194,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'dlgOverlay', 'healthFormOverlay'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -1480,9 +1681,9 @@ function saveMedicine() {
   }
 }
 
-function deleteMedicine(id) {
+async function deleteMedicine(id) {
   const m = medicines.find(x => x.id === id);
-  if (!m || !confirm(`Delete "${m.name}"?`)) return;
+  if (!m || !(await customConfirm(`Delete "${m.name}"?`, { title: 'Delete Medicine', danger: true }))) return;
   pushUndo(`Deleted "${m.name}"`);
   logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
   medicines = medicines.filter(x => x.id !== id);
@@ -1695,9 +1896,9 @@ function renderMgmtList() {
   container.innerHTML = listHtml || `<p style="font-size:0.8rem;color:var(--text-muted, #888);">No entries found.</p>`;
 }
 
-function promptAddMgmtItem() {
+async function promptAddMgmtItem() {
   const labels = { category:'category', form:'form', type:'type', owner:'owner' };
-  const val = prompt(`Add new ${labels[currentMgmtField] || 'entry'}:`);
+  const val = await customPrompt(`Add new ${labels[currentMgmtField] || 'entry'}:`, '', { title: 'Add Entry' });
   if (val === null) return; // cancelled
   addMgmtValue(val.trim());
 }
@@ -1726,7 +1927,7 @@ function addMgmtValue(val) {
   showUndoToast(`"${val}" added — tap Undo within 6s`, 'fa-check');
 }
 
-function editMgmtItem(idx) {
+async function editMgmtItem(idx) {
   let current;
   if (currentMgmtField === 'category') current = customCategories[idx];
   else if (currentMgmtField === 'form') current = customForms[idx];
@@ -1740,7 +1941,7 @@ function editMgmtItem(idx) {
   if (currentMgmtField === 'category') promptDefault = `${getCategoryIcon(current)}${current}`;
   else if (currentMgmtField === 'form') promptDefault = `${getFormIcon(current)}${current}`;
 
-  const newVal = prompt('Edit value:', promptDefault);
+  const newVal = await customPrompt('Edit value:', promptDefault, { title: 'Edit Entry' });
   if (newVal === null) return; // cancelled
   const updated = newVal.trim();
   if (!updated) { showToast('Value cannot be empty.', 'error'); return; }
@@ -1777,20 +1978,13 @@ function editMgmtItem(idx) {
 // the affected medicines should move instead of silently picking a fallback.
 // choices: array of {label, value}. Returns the chosen value, or undefined if
 // the user cancelled or entered something that didn't match any option.
-function promptMoveDestination(count, itemType, removedLabel, choices) {
-  const list = choices.map((c, i) => `${i + 1}. ${c.label}`).join('\n');
+async function promptMoveDestination(count, itemType, removedLabel, choices) {
   const msg = `${count} medicine${count === 1 ? '' : 's'} ${count === 1 ? 'is' : 'are'} currently in "${removedLabel}".\n` +
-    `Which ${itemType} would you like to move ${count === 1 ? 'it' : 'them'} to?\n\n${list}`;
-  const answer = prompt(msg, '1');
-  if (answer === null) return undefined; // cancelled
-  const trimmed = answer.trim();
-  const num = parseInt(trimmed, 10);
-  if (!isNaN(num) && num >= 1 && num <= choices.length) return choices[num - 1].value;
-  const match = choices.find(c => c.label.toLowerCase() === trimmed.toLowerCase());
-  return match ? match.value : undefined;
+    `Which ${itemType} would you like to move ${count === 1 ? 'it' : 'them'} to?`;
+  return await customChoice(msg, choices, { title: 'Move Medicines' });
 }
 
-function deleteMgmtItem(idx) {
+async function deleteMgmtItem(idx) {
   if (currentMgmtField === 'category') {
     if (customCategories.length <= 1) { showToast('At least one category must remain.', 'error'); return; }
     const removed = customCategories[idx];
@@ -1798,9 +1992,9 @@ function deleteMgmtItem(idx) {
     const remaining = customCategories.filter((c, i) => i !== idx);
     let dest = FALLBACK_CATEGORY;
     if (affected.length) {
-      dest = promptMoveDestination(affected.length, 'category', removed, remaining.map(c => ({ label: c, value: c })));
+      dest = await promptMoveDestination(affected.length, 'category', removed, remaining.map(c => ({ label: c, value: c })));
       if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
-    } else if (!confirm(`Delete category "${removed}"? No medicines are using it.`)) return;
+    } else if (!(await customConfirm(`Delete category "${removed}"? No medicines are using it.`, { title: 'Delete Category', danger: true }))) return;
     customCategories.splice(idx, 1);
     medicines.forEach(m => { if (m.category === removed) m.category = dest; });
   } else if (currentMgmtField === 'form') {
@@ -1810,9 +2004,9 @@ function deleteMgmtItem(idx) {
     const remaining = customForms.filter((f, i) => i !== idx);
     let dest = FALLBACK_FORM;
     if (affected.length) {
-      dest = promptMoveDestination(affected.length, 'form', removed, remaining.map(f => ({ label: f, value: f })));
+      dest = await promptMoveDestination(affected.length, 'form', removed, remaining.map(f => ({ label: f, value: f })));
       if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
-    } else if (!confirm(`Delete form "${removed}"? No medicines are using it.`)) return;
+    } else if (!(await customConfirm(`Delete form "${removed}"? No medicines are using it.`, { title: 'Delete Form', danger: true }))) return;
     customForms.splice(idx, 1);
     medicines.forEach(m => { if (m.form === removed) m.form = dest; });
   } else if (currentMgmtField === 'owner') {
@@ -1822,9 +2016,9 @@ function deleteMgmtItem(idx) {
     const remaining = customOwners.filter((o, i) => i !== idx);
     let dest = customOwners.some(o => o.key === FALLBACK_OWNER) ? FALLBACK_OWNER : remaining[0].key;
     if (affected.length) {
-      dest = promptMoveDestination(affected.length, 'owner', removed.short, remaining.map(o => ({ label: o.short, value: o.key })));
+      dest = await promptMoveDestination(affected.length, 'owner', removed.short, remaining.map(o => ({ label: o.short, value: o.key })));
       if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
-    } else if (!confirm(`Delete owner "${removed.short}"? No medicines are assigned to them.`)) return;
+    } else if (!(await customConfirm(`Delete owner "${removed.short}"? No medicines are assigned to them.`, { title: 'Delete Owner', danger: true }))) return;
     customOwners.splice(idx, 1);
     medicines.forEach(m => { if (m.owner === removed.key) m.owner = dest; });
     delete ownerProfiles[removed.key]; // that owner's health profile no longer applies
@@ -1836,9 +2030,9 @@ function deleteMgmtItem(idx) {
     const remaining = customTypes.filter((t, i) => i !== idx);
     let dest = FALLBACK_TYPE;
     if (affected.length) {
-      dest = promptMoveDestination(affected.length, 'type', formatTypeLabel(removed), remaining.map(t => ({ label: formatTypeLabel(t), value: t })));
+      dest = await promptMoveDestination(affected.length, 'type', formatTypeLabel(removed), remaining.map(t => ({ label: formatTypeLabel(t), value: t })));
       if (dest === undefined) { showToast('Deletion cancelled.', 'error'); return; }
-    } else if (!confirm(`Delete type "${formatTypeLabel(removed)}"? No medicines are using it.`)) return;
+    } else if (!(await customConfirm(`Delete type "${formatTypeLabel(removed)}"? No medicines are using it.`, { title: 'Delete Type', danger: true }))) return;
     customTypes.splice(idx, 1);
     medicines.forEach(m => { if (m.type === removed) m.type = dest; });
   }
@@ -2355,13 +2549,13 @@ function handleProfileVitalInput(field, value) {
   _profileSaveTimer = setTimeout(saveData, 600);
 }
 
-function editProfileOwnerName() {
+async function editProfileOwnerName() {
   const key = currentProfileOwner;
   if (!key) return;
   const idx = customOwners.findIndex(o => o.key === key);
   if (idx === -1) return;
   const current = customOwners[idx];
-  const newVal = prompt('Edit owner name:', current.short);
+  const newVal = await customPrompt('Edit owner name:', current.short, { title: 'Edit Owner Name' });
   if (newVal === null) return;
   const updated = newVal.trim();
   if (!updated || updated === current.short) return;
@@ -2492,10 +2686,10 @@ function toggleQtyLogEntrySelect(id) {
   renderQuantityLogList();
 }
 
-function deleteSelectedQtyLogEntries() {
+async function deleteSelectedQtyLogEntries() {
   if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
   const count = qtyLogSelected.size;
-  if (!confirm(`Delete ${count} selected log entr${count > 1 ? 'ies' : 'y'}?`)) return;
+  if (!(await customConfirm(`Delete ${count} selected log entr${count > 1 ? 'ies' : 'y'}?`, { title: 'Delete Entries', danger: true }))) return;
   _qtyLogUndoData = quantityLog.filter(e => qtyLogSelected.has(e.id));
   quantityLog = quantityLog.filter(e => !qtyLogSelected.has(e.id));
   saveData();
@@ -2816,7 +3010,7 @@ function findHealthEntryMergeGroups(ownerKey) {
   return groups;
 }
 
-function mergeDuplicateHealthEntries() {
+async function mergeDuplicateHealthEntries() {
   if (!currentHealthOwner) { showToast('Select an owner first.', 'error'); return; }
   const groups = findHealthEntryMergeGroups(currentHealthOwner);
   if (!groups.length) {
@@ -2830,10 +3024,11 @@ function mergeDuplicateHealthEntries() {
     return `• "${sorted[0].issue}" — ${sorted.length} entries (${sorted.map(e => formatHealthDate(e.date)).join(', ')})`;
   }).join('\n');
 
-  const ok = confirm(
+  const ok = await customConfirm(
     `Found ${groups.length} group${groups.length > 1 ? 's' : ''} to merge:\n\n${preview}\n\n` +
     `Each group becomes one entry (earliest date kept, correct Day count) with dose history and medicines combined. ` +
-    `${totalDupes} duplicate ${totalDupes > 1 ? 'entries' : 'entry'} will be deleted — this can't be undone. Merge now?`
+    `${totalDupes} duplicate ${totalDupes > 1 ? 'entries' : 'entry'} will be deleted — this can't be undone. Merge now?`,
+    { title: 'Merge Duplicate Entries', danger: true, okLabel: 'Merge' }
   );
   if (!ok) return;
 
@@ -2880,29 +3075,20 @@ function mergeDuplicateHealthEntries() {
   showToast(`Merged ${groups.length} group${groups.length > 1 ? 's' : ''} — removed ${totalDupes} duplicate ${totalDupes > 1 ? 'entries' : 'entry'}.`, 'success');
 }
 
-function promptAddHealthEntry() {
+async function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
   const today = new Date().toISOString().slice(0, 10);
-  const date = prompt('Date (YYYY-MM-DD):', today);
-  if (date === null) return;
+  const result = await openHealthEntryForm({ title: 'Add Health Diary Entry', date: today });
+  if (!result) return;
 
-  const issue = prompt('Health update / issue:');
-  if (issue === null) return;
-  if (!issue.trim()) { showToast('Please enter a health update.', 'error'); return; }
-
-  const meds = prompt('Medicines taken (optional):', '');
-
-  const doseInput = prompt('Doses taken — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:', '');
-  if (doseInput === null) return;
-
-  const entryDate = date.trim() || today;
-  const initialDoses = parseDoseTimes(doseInput);
+  const entryDate = result.date || today;
+  const initialDoses = parseDoseTimes(result.doseLetters);
   healthDiary.push({
     id: 'h' + Date.now(),
     owner: currentHealthOwner,
     date: entryDate,
-    issue: issue.trim(),
-    medicines: (meds || '').trim(),
+    issue: result.issue,
+    medicines: result.meds,
     doseLog: initialDoses.length ? { [entryDate]: initialDoses } : {},
     cured: false,
     lastActiveDate: entryDate, // bumped by "check in" instead of creating a new entry each day
@@ -2915,28 +3101,25 @@ function promptAddHealthEntry() {
   showToast('Health diary entry added.', 'success');
 }
 
-function editHealthEntry(id) {
+async function editHealthEntry(id) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry) return;
 
-  const date = prompt('Date (YYYY-MM-DD):', entry.date);
-  if (date === null) return;
-
-  const issue = prompt('Health update / issue:', entry.issue);
-  if (issue === null) return;
-  if (!issue.trim()) { showToast('Please enter a health update.', 'error'); return; }
-
-  const meds = prompt('Medicines taken (optional):', entry.medicines || '');
-  if (meds === null) return;
-
   const activeDay = entry.lastActiveDate || entry.date;
-  const doseInput = prompt(`Doses taken on ${formatHealthDate(activeDay)} — type M/A/E for Morning/Afternoon/Evening (e.g. "M, E"). Leave blank if not tracked:`, doseTimesToLetters(getDoseTimesForDay(entry, activeDay)));
-  if (doseInput === null) return;
+  const result = await openHealthEntryForm({
+    title: 'Edit Health Diary Entry',
+    date: entry.date,
+    issue: entry.issue,
+    meds: entry.medicines || '',
+    doseLabel: `Doses taken on ${formatHealthDate(activeDay)}`,
+    doseLetters: doseTimesToLetters(getDoseTimesForDay(entry, activeDay))
+  });
+  if (!result) return;
 
-  entry.date = date.trim() || entry.date;
-  entry.issue = issue.trim();
-  entry.medicines = meds.trim();
-  setDoseTimesForDay(entry, activeDay, parseDoseTimes(doseInput));
+  entry.date = result.date || entry.date;
+  entry.issue = result.issue;
+  entry.medicines = result.meds;
+  setDoseTimesForDay(entry, activeDay, parseDoseTimes(result.doseLetters));
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry updated.', 'success');
@@ -2961,10 +3144,10 @@ function toggleHealthEntrySelect(id) {
   renderHealthDiaryList();
 }
 
-function deleteSelectedHealthEntries() {
+async function deleteSelectedHealthEntries() {
   if (!healthSelected.size) { showToast('No entries selected.', 'error'); return; }
   const count = healthSelected.size;
-  if (!confirm(`Delete ${count} selected health diary entr${count > 1 ? 'ies' : 'y'}?`)) return;
+  if (!(await customConfirm(`Delete ${count} selected health diary entr${count > 1 ? 'ies' : 'y'}?`, { title: 'Delete Entries', danger: true }))) return;
   pushUndo(`Deleted ${count} health diary entr${count > 1 ? 'ies' : 'y'}`);
   healthDiary = healthDiary.filter(e => !healthSelected.has(e.id));
   saveData();
@@ -2978,10 +3161,10 @@ function deleteSelectedHealthEntries() {
   showUndoToast(`Deleted ${count} entr${count > 1 ? 'ies' : 'y'} — tap Undo within 6s`, 'fa-trash');
 }
 
-function deleteHealthEntry(id) {
+async function deleteHealthEntry(id) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry) return;
-  if (!confirm('Delete this health diary entry?')) return;
+  if (!(await customConfirm('Delete this health diary entry?', { title: 'Delete Entry', danger: true }))) return;
   pushUndo('Deleted health diary entry');
   healthDiary = healthDiary.filter(e => e.id !== id);
   saveData();
@@ -3028,8 +3211,8 @@ function switchBranch(id) {
   showToast(`Switched to "${branches[id].name}"`, 'info');
 }
 
-function promptAddBranch() {
-  const name = prompt('Name this branch (e.g. a family member\'s house):');
+async function promptAddBranch() {
+  const name = await customPrompt("Name this branch (e.g. a family member's house):", '', { title: 'Add Branch' });
   if (name === null) return;
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -3055,10 +3238,10 @@ function promptAddBranch() {
   showToast(`Branch "${trimmed}" created.`, 'success');
 }
 
-function promptRenameBranch(id) {
+async function promptRenameBranch(id) {
   const b = branches[id];
   if (!b) return;
-  const name = prompt('Rename branch:', b.name);
+  const name = await customPrompt('Rename branch:', b.name, { title: 'Rename Branch' });
   if (name === null) return;
   const trimmed = name.trim();
   if (!trimmed) { showToast('Name cannot be empty.', 'error'); return; }
@@ -3077,7 +3260,7 @@ function setDefaultBranch(id) {
   showToast(`"${branches[id].name}" will now open by default on refresh.`, 'success');
 }
 
-function deleteBranch(id) {
+async function deleteBranch(id) {
   const b = branches[id];
   if (!b) return;
   if (branchOrder.length <= 1) { showToast('At least one branch must remain.', 'error'); return; }
@@ -3085,7 +3268,7 @@ function deleteBranch(id) {
   const warning = count
     ? `Delete branch "${b.name}"? This will permanently delete all ${count} medicine${count === 1 ? '' : 's'} in it. This cannot be undone.`
     : `Delete branch "${b.name}"?`;
-  if (!confirm(warning)) return;
+  if (!(await customConfirm(warning, { title: 'Delete Branch', danger: true }))) return;
 
   delete branches[id];
   branchOrder = branchOrder.filter(x => x !== id);
@@ -3437,9 +3620,9 @@ function bulkDeselectAll() {
   updateBulkCount();
 }
 
-function bulkDelete() {
+async function bulkDelete() {
   if (!bulkSelected.size) { showToast('No medicines selected.', 'error'); return; }
-  if (!confirm(`Delete ${bulkSelected.size} selected medicine(s)? This can be undone via the Undo button.`)) return;
+  if (!(await customConfirm(`Delete ${bulkSelected.size} selected medicine(s)? This can be undone via the Undo button.`, { title: 'Delete Medicines', danger: true }))) return;
   pushUndo(`Deleted ${bulkSelected.size} medicine(s)`);
   medicines.forEach(m => {
     if (bulkSelected.has(m.id)) logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
@@ -3807,7 +3990,7 @@ if (shareBtn) {
       }
     } else {
       // Fallback if Web Share API not supported
-      alert("Sharing not supported on this browser.");
+      customAlert("Sharing not supported on this browser.", { title: "Share" });
     }
   });
 }
