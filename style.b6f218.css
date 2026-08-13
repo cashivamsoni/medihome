@@ -3909,11 +3909,8 @@ body.compact-view.bulk-mode .medicine-card {
   position: relative;
 }
 .hf-suggest-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 20;
+  position: fixed;
+  z-index: 1400;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
