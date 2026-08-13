@@ -218,6 +218,15 @@ function _hfBuildMedicinePool() {
   return Array.from(pool);
 }
 
+function _hfPositionSuggestBox() {
+  const input = document.getElementById('hfMeds');
+  const box = document.getElementById('hfMedsSuggest');
+  const r = input.getBoundingClientRect();
+  box.style.left = r.left + 'px';
+  box.style.top = (r.bottom + 4) + 'px';
+  box.style.width = r.width + 'px';
+}
+
 function _hfMedsInput() {
   const input = document.getElementById('hfMeds');
   const box = document.getElementById('hfMedsSuggest');
@@ -240,6 +249,7 @@ function _hfMedsInput() {
   box.innerHTML = matches.map((name, i) =>
     `<button type="button" class="hf-suggest-item" onmousedown="event.preventDefault(); _hfPickSuggestion(${i})">${escHtml(name)}</button>`
   ).join('');
+  _hfPositionSuggestBox();
   box.classList.remove('hidden');
 }
 
@@ -262,6 +272,18 @@ document.addEventListener('click', (e) => {
   if (box && !box.classList.contains('hidden') && e.target !== input && !box.contains(e.target)) {
     box.classList.add('hidden');
   }
+});
+// Keep the suggestion box glued to the input if the modal (or page) scrolls
+// or the viewport resizes while it's open — it's fixed-positioned so it can
+// escape the modal's own overflow clipping, but that means it won't move
+// with the input automatically.
+window.addEventListener('scroll', () => {
+  const box = document.getElementById('hfMedsSuggest');
+  if (box && !box.classList.contains('hidden')) _hfPositionSuggestBox();
+}, true);
+window.addEventListener('resize', () => {
+  const box = document.getElementById('hfMedsSuggest');
+  if (box && !box.classList.contains('hidden')) _hfPositionSuggestBox();
 });
 function _healthFormResolve(save) {
   if (!_hfResolve) return;
