@@ -275,12 +275,22 @@
           <button class="bulk-btn bulk-deselect" onclick="bulkDeselectAll()">
             Deselect All
           </button>
-          <select class="bulk-select-field" id="bulkOwnerSel">
-            <option value="">Change Owner…</option>
-          </select>
-          <select class="bulk-select-field" id="bulkCatSel">
-            <option value="">Change Category…</option>
-          </select>
+          <div class="bulk-select-group">
+            <select class="bulk-select-field" id="bulkOwnerSel">
+              <option value="">Change Owner…</option>
+            </select>
+            <button class="bulk-manage-btn" onclick="manageField('owner')" title="Manage Owners">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+          <div class="bulk-select-group">
+            <select class="bulk-select-field" id="bulkCatSel">
+              <option value="">Change Category…</option>
+            </select>
+            <button class="bulk-manage-btn" onclick="manageField('category')" title="Manage Categories">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
           <button class="bulk-btn bulk-delete" onclick="bulkDelete()">
             <i class="fa-solid fa-trash"></i> Delete Selected
           </button>
