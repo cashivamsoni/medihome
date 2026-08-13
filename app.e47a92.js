@@ -2515,13 +2515,22 @@ function scoreLabel(score) {
 function summarizeRecentMedicines(ownerKey) {
   const entries = healthDiary.filter(e => e.owner === ownerKey && e.medicines && e.medicines.trim());
   if (!entries.length) return [];
-  const counts = {};
+  const stats = {}; // med -> { count, lastDate }
   entries.forEach(e => {
     e.medicines.split(/[,;]/).map(s => s.trim()).filter(Boolean).forEach(med => {
-      counts[med] = (counts[med] || 0) + 1;
+      const s = stats[med] || (stats[med] = { count: 0, lastDate: '' });
+      s.count++;
+      if (e.date > s.lastDate) s.lastDate = e.date;
     });
   });
-  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  // Most recently taken first; ties broken by how often it's come up.
+  return Object.entries(stats)
+    .sort((a, b) => {
+      if (a[1].lastDate !== b[1].lastDate) return a[1].lastDate < b[1].lastDate ? 1 : -1;
+      return b[1].count - a[1].count;
+    })
+    .slice(0, 6)
+    .map(([name, s]) => [name, s.count]);
 }
 
 // ── Profile form field handlers ─────────────────────────────
