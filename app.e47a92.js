@@ -812,6 +812,7 @@ function renderMedicineCard(m, serialNum) {
     else                      classes.push('expiry-soon');
   }
   if (m.image) classes.push('has-image');
+  if (bulkSelected.has(m.id)) classes.push('bulk-selected');
 
   const imageHtml = m.image
     ? `<div class="card-image-wrap" onclick="openImgViewer('${escHtml(m.image)}','${escHtml(m.name)}')" style="cursor:pointer;" title="Click to view image"><img src="${escHtml(m.image)}" alt="${escHtml(m.name)}" onerror="this.parentElement.style.display='none'" /></div>`
@@ -1765,6 +1766,7 @@ function closeMgmtModal() {
   unlockBodyScroll();
   // Refresh the underlying add/edit form dropdowns to reflect any changes made
   populateAllDropdowns();
+  if (bulkMode) populateBulkDropdowns(); // keep the bulk-bar selects in sync too
   renderOwnerNavChips();
   renderAll();
   setTimeout(reconcileBodyScrollLock, 50);
@@ -3567,10 +3569,15 @@ window.addEventListener('resize', () => { if (bulkMode) updateBulkBarHeightVar()
 function populateBulkDropdowns() {
   const ownerSel = document.getElementById('bulkOwnerSel');
   const catSel   = document.getElementById('bulkCatSel');
+  const prevOwner = ownerSel.value;
+  const prevCat   = catSel.value;
   ownerSel.innerHTML = '<option value="">Change Owner</option>' +
     customOwners.map(o => `<option value="${escHtml(o.key)}">${escHtml(o.short)}</option>`).join('');
+  const sortedCategories = customCategories.slice().sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   catSel.innerHTML = '<option value="">Change Category…</option>' +
-    customCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
+    sortedCategories.map(c => `<option value="${escHtml(c)}">${getCategoryIcon(c)}${escHtml(c)}</option>`).join('');
+  if (prevOwner && customOwners.some(o => o.key === prevOwner)) ownerSel.value = prevOwner;
+  if (prevCat && customCategories.includes(prevCat)) catSel.value = prevCat;
   ownerSel.onchange = () => { if (ownerSel.value) bulkChangeOwner(ownerSel.value); ownerSel.value=''; };
   catSel.onchange   = () => { if (catSel.value)   bulkChangeCategory(catSel.value); catSel.value=''; };
 }
