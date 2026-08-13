@@ -1954,6 +1954,11 @@ body.bulk-mode .go-top-btn {
 .mgmt-modal-overlay.hidden {
   display: none;
 }
+/* Opened from within the Owner Health Profile ("Open Health Diary"), so it
+   needs to stack above that modal rather than behind it. */
+#healthDiaryModal {
+  z-index: 1150;
+}
 .mgmt-modal-box {
   background: var(--surface);
   border-radius: var(--radius-lg);
