@@ -3679,6 +3679,132 @@ body.compact-view.bulk-mode .medicine-card {
 }
 #histModal.active .hist-modal-box { transform: translateY(0); }
 
+/* ── Custom Dialog (replaces native prompt/confirm/alert) ─── */
+#dlgOverlay,
+#healthFormOverlay {
+  position: fixed;
+  top: var(--header-h, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+#dlgOverlay.active,
+#healthFormOverlay.active {
+  opacity: 1;
+}
+#dlgOverlay.hidden,
+#healthFormOverlay.hidden {
+  display: none;
+}
+.dlg-box {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100% - 50px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+#dlgOverlay.active .dlg-box,
+#healthFormOverlay.active .dlg-box {
+  transform: translateY(0);
+}
+.dlg-message {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-line;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.dlg-message.hidden {
+  display: none;
+}
+.dlg-field {
+  margin-top: 12px;
+}
+.dlg-field.hidden {
+  display: none;
+}
+.dlg-error {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--red-600);
+  margin-top: 8px;
+}
+.dlg-error.hidden {
+  display: none;
+}
+.dlg-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.dlg-choices.hidden {
+  display: none;
+}
+.dlg-choice-item {
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.dlg-choice-item:hover {
+  border-color: var(--teal-400);
+  background: var(--teal-50);
+}
+[data-theme="dark"] .dlg-choice-item:hover {
+  background: rgba(20, 184, 166, 0.14);
+}
+.btn-save.dlg-danger {
+  background: var(--red-500);
+}
+.btn-save.dlg-danger:hover {
+  background: var(--red-600);
+}
+.btn-save.hidden,
+.btn-cancel.hidden {
+  display: none;
+}
+.dlg-dose-row {
+  display: flex;
+  gap: 8px;
+}
+.dlg-dose-row .dose-tick {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.dlg-dose-row .dose-tick-active {
+  opacity: 1;
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* ── Last synced label in menu ───────────────────────────── */
 .menu-sync-label {
   font-size: 0.7rem;
