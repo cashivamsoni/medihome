@@ -2703,6 +2703,7 @@ body.bulk-mode .go-top-btn {
 [data-theme="dark"] .profile-med-chip {
   background: rgba(20,184,166,0.14);
   border-color: rgba(20,184,166,0.3);
+  color: var(--teal-300);   /* ← add this line */
 }
 @media (max-width: 480px) {
   .profile-modal-box {
