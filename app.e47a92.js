@@ -987,6 +987,47 @@ function openOwnerHealthProfile(key) {
   openOwnerProfile();
 }
 
+// Swipe navigation for the carousel — bound once, directly to #ownerHealthTrack.
+// That element itself is never recreated (renderOwnerHealthCarousel only
+// replaces its innerHTML on data changes), so a single binding at startup
+// keeps working across every re-render without needing to be re-attached.
+let _ohTouchStartX = 0;
+let _ohTouchStartY = 0;
+let _ohSwiped = false;
+function initOwnerHealthSwipe() {
+  const track = document.getElementById('ownerHealthTrack');
+  if (!track) return;
+  track.addEventListener('touchstart', e => {
+    if (!e.touches || e.touches.length !== 1) return;
+    _ohTouchStartX = e.touches[0].clientX;
+    _ohTouchStartY = e.touches[0].clientY;
+    _ohSwiped = false;
+  }, { passive: true });
+  track.addEventListener('touchmove', e => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - _ohTouchStartX;
+    const dy = e.touches[0].clientY - _ohTouchStartY;
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) _ohSwiped = true;
+  }, { passive: true });
+  track.addEventListener('touchend', e => {
+    const touch = e.changedTouches && e.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - _ohTouchStartX;
+    const dy = touch.clientY - _ohTouchStartY;
+    if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
+      _ohSwiped = true;
+      if (dx < 0) nextOwnerHealthSlide(); else prevOwnerHealthSlide();
+    }
+  }, { passive: true });
+  // A swipe still ends in a "touchend" on whichever slide sits under the
+  // finger, and browsers follow that with a synthetic "click" — without
+  // this, every swipe would also fire the slide's onclick and pop open
+  // that owner's profile modal right after navigating.
+  track.addEventListener('click', e => {
+    if (_ohSwiped) { e.stopPropagation(); e.preventDefault(); _ohSwiped = false; }
+  }, true);
+}
+
 function sortMeds(arr) {
   const copy = arr.slice();
   if (sortOrder === 'name') {
@@ -1193,6 +1234,7 @@ let searchIndex  = -1;
 
 function bindEvents() {
   const inp = document.getElementById('searchInput');
+  initOwnerHealthSwipe();
 
   // Enter in modal fields → save medicine (except textarea which needs Enter for newlines)
   document.getElementById('modal').addEventListener('keydown', e => {
