@@ -1649,7 +1649,7 @@ body.bulk-mode .assistant-panel {
   font-size: 0.72rem;
   color: var(--text-muted);
   line-height: 1.45;
-  margin-top: -4px;
+  margin: 10px 0 14px;
 }
 .hf-required-hint .req {
   color: var(--red-500);
