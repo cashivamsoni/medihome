@@ -294,9 +294,10 @@ function _healthFormResolve(save) {
   if (!_hfResolve) return;
   if (save) {
     const issue = document.getElementById('hfIssue').value.trim();
-    if (!issue) {
+    const meds = document.getElementById('hfMeds').value.trim();
+    if (!issue && !meds) {
       const err = document.getElementById('healthFormError');
-      err.textContent = 'Please enter a health update.';
+      err.textContent = 'Please fill in either a health update or a medicine taken.';
       err.classList.remove('hidden');
       document.getElementById('hfIssue').focus();
       return; // keep the form open so the person can fix it
@@ -304,9 +305,16 @@ function _healthFormResolve(save) {
   }
   const resolve = _hfResolve;
   _hfResolve = null;
+  // A blank "issue" (medicine-only entry, e.g. a general wellness supplement
+  // with no specific problem behind it) still needs a non-empty headline —
+  // every other part of the app (diary list, PDF export, AI assistant
+  // context, severity scoring) reads entry.issue as the entry's display
+  // label. Falling back to "General / Preventive" keeps all of that working
+  // without forcing the person to invent a fake "issue" just to save.
+  const issueVal = document.getElementById('hfIssue').value.trim();
   const result = save ? {
     date: document.getElementById('hfDate').value,
-    issue: document.getElementById('hfIssue').value.trim(),
+    issue: issueVal || 'General / Preventive',
     meds: document.getElementById('hfMeds').value.trim(),
     doseLetters: doseTimesToLetters(DOSE_TIME_ORDER.filter(t => _hfSelectedDoses.has(t)))
   } : null;
@@ -2747,6 +2755,7 @@ const SEVERE_ISSUE_KEYWORDS = [
 ];
 function issueSeverityWeight(issueText) {
   const t = (issueText || '').toLowerCase();
+  if (t === 'general / preventive') return 1; // medicine-only entry, no actual issue — shouldn't weigh on the score like a real problem would
   if (SEVERE_ISSUE_KEYWORDS.some(k => t.includes(k))) return 10;
   if (MINOR_ISSUE_KEYWORDS.some(k => t.includes(k))) return 3;
   return 6; // unclassified — treated as moderate by default
