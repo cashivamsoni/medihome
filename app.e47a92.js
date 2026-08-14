@@ -920,14 +920,31 @@ function startOwnerHealthAutoplay(count) {
   }
 }
 
-function goToOwnerHealthSlide(idx) {
-  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
-  if (!eligibleOwners.length) return;
-  ownerHealthSlideIndex = ((idx % eligibleOwners.length) + eligibleOwners.length) % eligibleOwners.length;
-  renderOwnerHealthCarousel(); // manual interaction resets the auto-advance timer too
+// Navigation (auto-advance, arrows, dots) only ever toggles the .active class
+// on the slide/dot elements that are ALREADY in the DOM — it never rebuilds
+// them. Rebuilding on every tick (like the old goToOwnerHealthSlide did) was
+// why the fade never actually showed: a freshly-created element with
+// .active already baked in has no "from" state, so the browser just paints
+// the end result instantly instead of transitioning to it. Full re-renders
+// (renderOwnerHealthCarousel) still happen when the underlying data changes,
+// e.g. after saveData() — navigation alone stays cheap and animated.
+function setOwnerHealthActiveIndex(idx) {
+  const track = document.getElementById('ownerHealthTrack');
+  const dotsWrap = document.getElementById('ownerHealthDots');
+  if (!track) return;
+  const slideEls = track.querySelectorAll('.owner-health-slide');
+  if (!slideEls.length) return;
+  ownerHealthSlideIndex = ((idx % slideEls.length) + slideEls.length) % slideEls.length;
+  slideEls.forEach((el, i) => el.classList.toggle('active', i === ownerHealthSlideIndex));
+  if (dotsWrap) {
+    dotsWrap.querySelectorAll('.owner-health-dot').forEach((el, i) => el.classList.toggle('active', i === ownerHealthSlideIndex));
+  }
+  startOwnerHealthAutoplay(slideEls.length); // manual interaction resets the auto-advance timer too
 }
-function nextOwnerHealthSlide() { goToOwnerHealthSlide(ownerHealthSlideIndex + 1); }
-function prevOwnerHealthSlide() { goToOwnerHealthSlide(ownerHealthSlideIndex - 1); }
+
+function goToOwnerHealthSlide(idx) { setOwnerHealthActiveIndex(idx); }
+function nextOwnerHealthSlide() { setOwnerHealthActiveIndex(ownerHealthSlideIndex + 1); }
+function prevOwnerHealthSlide() { setOwnerHealthActiveIndex(ownerHealthSlideIndex - 1); }
 
 // Tapping a slide opens that owner's full Health Profile — same modal the
 // homepage's "Owner Health Profile" entry point already uses.
