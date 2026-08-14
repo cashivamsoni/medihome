@@ -562,8 +562,9 @@ body.modal-open {
   padding: 18px 20px 20px;
   margin-bottom: 28px;
 }
-.owner-health-section.hidden {
-  display: none;
+.owner-health-section.hidden,
+.owner-health-section.owner-health-search-hidden {
+  display: none !important;
 }
 .owner-health-header {
   display: flex;
