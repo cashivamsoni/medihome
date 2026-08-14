@@ -3577,6 +3577,25 @@ body.bulk-mode .medicine-card {
 [data-theme="dark"] .owner-title {
   color: var(--teal-100);
 }
+[data-theme="dark"] .owner-header {
+  border-bottom-color: #1F4641;
+}
+[data-theme="dark"] .owner-count {
+  background: #172F2A;
+  border-color: rgba(94, 234, 212, 0.22);
+  color: var(--teal-200);
+}
+[data-theme="dark"] .active-filter-bar {
+  background: #172F2A;
+  border-color: rgba(94, 234, 212, 0.28);
+  color: var(--teal-200);
+}
+[data-theme="dark"] .active-filter-bar button {
+  color: var(--teal-300);
+}
+[data-theme="dark"] .active-filter-bar button:hover {
+  background: rgba(94, 234, 212, 0.15);
+}
 [data-theme="dark"] .category-label {
   color: #cbd5e1;
 }
