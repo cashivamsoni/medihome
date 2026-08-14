@@ -3110,15 +3110,13 @@ function renderHealthDiaryList() {
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
         ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i> ${escHtml(e.notes)}</span>` : ''}
       </span>
-      <div class="health-entry-right">
-        ${!healthSelectMode ? `<div class="mgmt-actions">
-          ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
-          <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
-          <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-          <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>` : ''}
-        ${renderDoseTicks(e)}
-      </div>
+      ${!healthSelectMode ? `<div class="mgmt-actions">
+        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
+        <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
+        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      </div>` : ''}
+      ${renderDoseTicks(e)}
     </div>
   `;
   }).join('');
