@@ -554,6 +554,249 @@ body.modal-open {
   font-size: 0.7rem;
 }
 
+/* ── Owner Health Carousel ───────────────────────────────── */
+.owner-health-section {
+  background: linear-gradient(135deg, var(--teal-50) 0%, var(--teal-100) 100%);
+  border: 1.5px solid var(--teal-100);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px 20px;
+  margin-bottom: 28px;
+}
+.owner-health-section.hidden {
+  display: none;
+}
+.owner-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.owner-health-title {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--teal-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.owner-health-title i {
+  font-size: 0.9rem;
+}
+.owner-health-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.owner-health-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal-200);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.owner-health-dot:hover {
+  background: var(--teal-400);
+}
+.owner-health-dot.active {
+  background: var(--teal-600);
+  width: 20px;
+  border-radius: 4px;
+}
+.owner-health-viewport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.owner-health-nav {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--teal-200);
+  color: var(--teal-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: var(--transition);
+}
+.owner-health-nav:hover {
+  background: var(--teal-600);
+  color: #fff;
+  border-color: var(--teal-600);
+}
+.owner-health-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 132px;
+}
+.owner-health-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease;
+  cursor: pointer;
+}
+.owner-health-slide.active {
+  opacity: 1;
+  visibility: visible;
+  z-index: 1;
+}
+.owner-health-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.owner-health-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.owner-health-name .owner-health-label {
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: var(--teal-600);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.owner-health-block {
+  background: var(--surface);
+  border: 1px solid var(--teal-100);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+.owner-health-block-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.owner-health-block-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+.owner-health-block-text.owner-health-ok {
+  color: var(--green-600);
+  font-weight: 600;
+}
+.owner-health-block-text.owner-health-warn {
+  color: var(--red-600);
+  font-weight: 600;
+}
+.owner-health-avatar-col {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 92px;
+}
+.owner-health-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(var(--score-color, var(--teal-500)) calc(var(--score-pct, 0) * 1%), var(--slate-200) 0);
+}
+.owner-health-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--surface);
+  padding: 3px;
+  overflow: hidden;
+}
+.owner-health-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.owner-health-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  background: var(--slate-100);
+}
+.owner-health-score-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  background: var(--score-color, var(--teal-600));
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface);
+}
+.owner-health-vitals {
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+[data-theme="dark"] .owner-health-section {
+  background: linear-gradient(135deg, #10231F 0%, #142D28 100%);
+  border-color: #1F4641;
+}
+[data-theme="dark"] .owner-health-block {
+  border-color: #1F4641;
+}
+[data-theme="dark"] .owner-health-avatar-placeholder {
+  background: var(--surface-2);
+}
+
+@media (max-width: 640px) {
+  .owner-health-slide {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .owner-health-track {
+    min-height: 240px;
+  }
+  .owner-health-avatar-col {
+    flex-direction: row;
+    width: auto;
+    justify-content: center;
+  }
+}
+
 /* ── Owner Sections ──────────────────────────────────────── */
 .owner-section {
   margin-bottom: 40px;
