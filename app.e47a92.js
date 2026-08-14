@@ -171,8 +171,8 @@ function _hfToggleDose(t) {
   _renderHfDoseTicks();
 }
 
-// opts: {title, date, issue, meds, doseLabel, doseLetters}
-// Resolves to {date, issue, meds, doseLetters} or null if cancelled.
+// opts: {title, date, issue, meds, notes, doseLabel, doseLetters}
+// Resolves to {date, issue, meds, notes, doseLetters} or null if cancelled.
 function openHealthEntryForm(opts = {}) {
   return new Promise(resolve => {
     _hfResolve = resolve;
@@ -180,6 +180,7 @@ function openHealthEntryForm(opts = {}) {
     document.getElementById('hfDate').value = opts.date || '';
     document.getElementById('hfIssue').value = opts.issue || '';
     document.getElementById('hfMeds').value = opts.meds || '';
+    document.getElementById('hfNotes').value = opts.notes || '';
     document.getElementById('hfMedsSuggest').classList.add('hidden');
     document.getElementById('hfMedsSuggest').innerHTML = '';
     _hfMedicinePool = null; // rebuilt on next keystroke, picking up anything added since the form last opened
@@ -316,6 +317,7 @@ function _healthFormResolve(save) {
     date: document.getElementById('hfDate').value,
     issue: issueVal || 'General / Preventive',
     meds: document.getElementById('hfMeds').value.trim(),
+    notes: document.getElementById('hfNotes').value.trim(),
     doseLetters: doseTimesToLetters(DOSE_TIME_ORDER.filter(t => _hfSelectedDoses.has(t)))
   } : null;
   _closeHealthFormOverlay();
@@ -2657,7 +2659,7 @@ function buildInsightsInputs(key) {
   const entries = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
-  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '', cured: !!e.cured, daysTracked: e.checkInCount || 1, lastActive: e.lastActiveDate || e.date }));
+  }).slice(0, 12).map(e => ({ date: e.date, issue: e.issue, medicines: e.medicines || '', notes: e.notes || '', cured: !!e.cured, daysTracked: e.checkInCount || 1, lastActive: e.lastActiveDate || e.date }));
   return { weight: p.weight, height: p.height, age: calculateAge(p.dob), gender: p.gender, entries };
 }
 function hashInsightsInputs(inputs) {
@@ -3106,14 +3108,17 @@ function renderHealthDiaryList() {
           ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
         </span>
         ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
+        ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i> ${escHtml(e.notes)}</span>` : ''}
       </span>
-      ${!healthSelectMode ? `<div class="mgmt-actions">
-        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
-        <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
-        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-      </div>` : ''}
-      ${renderDoseTicks(e)}
+      <div class="health-entry-right">
+        ${!healthSelectMode ? `<div class="mgmt-actions">
+          ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
+          <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
+          <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>` : ''}
+        ${renderDoseTicks(e)}
+      </div>
     </div>
   `;
   }).join('');
@@ -3394,6 +3399,7 @@ async function promptAddHealthEntry() {
     date: entryDate,
     issue: result.issue,
     medicines: result.meds,
+    notes: result.notes || '',
     doseLog: initialDoses.length ? { [entryDate]: initialDoses } : {},
     cured: false,
     lastActiveDate: entryDate, // bumped by "check in" instead of creating a new entry each day
@@ -3416,6 +3422,7 @@ async function editHealthEntry(id) {
     date: entry.date,
     issue: entry.issue,
     meds: entry.medicines || '',
+    notes: entry.notes || '',
     doseLabel: `Doses taken on ${formatHealthDate(activeDay)}`,
     doseLetters: doseTimesToLetters(getDoseTimesForDay(entry, activeDay))
   });
@@ -3424,6 +3431,7 @@ async function editHealthEntry(id) {
   entry.date = result.date || entry.date;
   entry.issue = result.issue;
   entry.medicines = result.meds;
+  entry.notes = result.notes || '';
   setDoseTimesForDay(entry, activeDay, parseDoseTimes(result.doseLetters));
   saveData();
   renderHealthDiaryList();
