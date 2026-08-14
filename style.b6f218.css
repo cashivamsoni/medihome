@@ -441,7 +441,16 @@ body.modal-open {
   text-align: center;
   font-size: 0.75rem;
   color: var(--text-muted);
-  padding: 18px 16px 90px;
+  line-height: 1.6;
+  /* Bottom padding has to clear the tallest fixed floating button (the AI
+     assistant FAB sits at bottom:150px + 44px tall = 194px from viewport
+     bottom) with a little breathing room above it — otherwise, once the
+     page is scrolled all the way down, this text's last line sits in the
+     exact same vertical band as the floating buttons and gets visually
+     cut by them (buttons are viewport-fixed, not part of document flow,
+     so only generous bottom padding — not horizontal padding — reliably
+     keeps them apart on every screen size). */
+  padding: 18px 16px 230px;
 }
 .app-credit a {
   color: var(--teal-600);
