@@ -858,11 +858,34 @@ function ownerHealthSlideData(ownerCfg) {
   return { key, ownerCfg, bmi, cat, score, recommendation, reminder, hasImage, image: p.image };
 }
 
+// Hidden the moment the person types anything (≥1 character) into search —
+// the carousel is a "glance" feature and shouldn't compete with search
+// results for space — and restored the moment the box is emptied again.
+// Kept as its own class (not the 'hidden' class renderOwnerHealthCarousel
+// already uses for "no eligible owners") so the two hide-reasons never
+// clobber each other: emptying the search box shouldn't resurrect a
+// carousel that's legitimately empty of data, and vice versa.
+function updateOwnerHealthSearchVisibility(query) {
+  const section = document.getElementById('ownerHealthSection');
+  if (!section) return;
+  const hide = !!(query && query.trim().length > 0);
+  section.classList.toggle('owner-health-search-hidden', hide);
+  if (hide) {
+    clearInterval(ownerHealthTimer);
+  } else {
+    const count = document.querySelectorAll('#ownerHealthTrack .owner-health-slide').length;
+    startOwnerHealthAutoplay(count);
+  }
+}
+
 function renderOwnerHealthCarousel() {
   const section = document.getElementById('ownerHealthSection');
   const track = document.getElementById('ownerHealthTrack');
   const dots = document.getElementById('ownerHealthDots');
   if (!section || !track || !dots) return;
+
+  const searchInp = document.getElementById('searchInput');
+  updateOwnerHealthSearchVisibility(searchInp ? searchInp.value : '');
 
   const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
   if (!eligibleOwners.length) {
@@ -1173,6 +1196,10 @@ function bindEvents() {
 
   // Live filter as user types
   inp.addEventListener('input', () => {
+    // Hide/show the Family Health carousel immediately (not debounced) so it
+    // gets out of the way the instant typing starts, well before the 250ms
+    // search itself runs — search results should have the full screen.
+    updateOwnerHealthSearchVisibility(inp.value);
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(runSearch, 250);
   });
