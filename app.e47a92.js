@@ -1296,6 +1296,7 @@ function runSearch() {
   clearBtn.classList.remove('hidden');
   searchMode = true;
   searchIndex = -1;
+  updateOwnerHealthSearchVisibility(query); // belt-and-suspenders: also enforced here, not just on keystroke
 
   // Filter to only matching medicines (preserve original medicines array order)
   searchResults = medicines.filter(m => medicineMatches(m, query));
