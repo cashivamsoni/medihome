@@ -1645,6 +1645,16 @@ body.bulk-mode .assistant-panel {
   color: var(--red-500);
   margin-left: 2px;
 }
+.hf-required-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-top: -4px;
+}
+.hf-required-hint .req {
+  color: var(--red-500);
+  margin-right: 1px;
+}
 .field-error {
   display: block;
   font-size: 0.72rem;
