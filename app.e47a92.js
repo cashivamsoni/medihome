@@ -730,6 +730,7 @@ function renderAll() {
   if (searchMode) return;
   const base = getFilteredMedicines();
   renderReorderAlert(base);
+  renderOwnerHealthCarousel();
   renderMedicineList(base);
   updateStats();
 }
@@ -796,6 +797,143 @@ function renderReorderAlert(list) {
         </div>
       </div>
     </div>`).join('');
+}
+
+// ── Owner Health Carousel (homepage) ────────────────────────
+// A slow auto-advancing strip of "family health at a glance" cards, one per
+// non-shared owner — reuses the same BMI/score/advice engine as the full
+// Owner Health Profile modal, so the numbers are always consistent between
+// the two. Deliberately reads the AI-personalized cache opportunistically
+// (if the person has already opened that owner's profile before) rather
+// than triggering its own Gemini calls — this strip should never be the
+// thing that fires a burst of API requests just from loading the homepage.
+let ownerHealthSlideIndex = 0;
+let ownerHealthTimer = null;
+const OWNER_HEALTH_INTERVAL = 9000; // 8–10s, per spec
+
+// Due-by hours for each dose slot — a slot only counts as "missed" once
+// its usual window has actually passed, so a 7am page load doesn't flag
+// the evening dose as overdue.
+const DOSE_DUE_HOUR = { morning: 10, afternoon: 15, evening: 21 };
+
+function computeOwnerHealthReminder(key) {
+  const active = healthDiary.filter(e => e.owner === key && !e.cured);
+  if (!active.length) return { text: 'No active health concerns', ok: true };
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const hour = new Date().getHours();
+  const dueSlots = DOSE_TIME_ORDER.filter(t => hour >= DOSE_DUE_HOUR[t]);
+
+  let missed = 0;
+  active.forEach(e => {
+    const takenToday = new Set(getDoseTimesForDay(e, todayStr));
+    dueSlots.forEach(slot => { if (!takenToday.has(slot)) missed++; });
+  });
+
+  if (missed > 0) return { text: `${missed} dose${missed > 1 ? 's' : ''} pending today`, ok: false };
+  if (!dueSlots.length) return { text: `${active.length} ongoing issue${active.length > 1 ? 's' : ''} — check in later today`, ok: true };
+  return { text: 'All doses logged for today ✓', ok: true };
+}
+
+function ownerHealthSlideData(ownerCfg) {
+  const key = ownerCfg.key;
+  const p = ensureOwnerProfile(key);
+  const bmi = computeBMI(p.weight, p.height);
+  const cat = bmiCategory(bmi);
+
+  const inputs = buildInsightsInputs(key);
+  const hash = hashInsightsInputs(inputs);
+  const cached = profileInsightsCache[key];
+  const aiReady = !!(cached && cached.hash === hash && cached.status === 'ready' && cached.data);
+
+  const score = aiReady ? cached.data.score : computeHealthScore(key, bmi);
+  const advice = aiReady ? { do: cached.data.do } : (BMI_ADVICE[cat] || null);
+  const recommendation = advice && advice.do && advice.do.length
+    ? advice.do[0]
+    : 'Add weight & height in the Health Profile for personalized tips.';
+
+  const reminder = computeOwnerHealthReminder(key);
+  const hasImage = !!p.image;
+
+  return { key, ownerCfg, bmi, cat, score, recommendation, reminder, hasImage, image: p.image };
+}
+
+function renderOwnerHealthCarousel() {
+  const section = document.getElementById('ownerHealthSection');
+  const track = document.getElementById('ownerHealthTrack');
+  const dots = document.getElementById('ownerHealthDots');
+  if (!section || !track || !dots) return;
+
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!eligibleOwners.length) {
+    section.classList.add('hidden');
+    clearInterval(ownerHealthTimer);
+    return;
+  }
+  section.classList.remove('hidden');
+
+  const slides = eligibleOwners.map(ownerHealthSlideData);
+  if (ownerHealthSlideIndex >= slides.length) ownerHealthSlideIndex = 0;
+
+  track.innerHTML = slides.map((s, i) => `
+    <div class="owner-health-slide ${i === ownerHealthSlideIndex ? 'active' : ''}" onclick="openOwnerHealthProfile('${s.key}')">
+      <div class="owner-health-info">
+        <div class="owner-health-name">${escHtml(s.ownerCfg.short)} <span class="owner-health-label">Health Snapshot</span></div>
+        <div class="owner-health-block">
+          <div class="owner-health-block-label"><i class="fa-solid fa-bell"></i> Reminder</div>
+          <div class="owner-health-block-text ${s.reminder.ok ? 'owner-health-ok' : 'owner-health-warn'}">${escHtml(s.reminder.text)}</div>
+        </div>
+        <div class="owner-health-block">
+          <div class="owner-health-block-label"><i class="fa-solid fa-hand-holding-heart"></i> Recommendation</div>
+          <div class="owner-health-block-text">${escHtml(s.recommendation)}</div>
+        </div>
+      </div>
+      <div class="owner-health-avatar-col">
+        <div class="owner-health-ring" style="--score-pct:${s.score};--score-color:${scoreColor(s.score)}">
+          <div class="owner-health-ring-inner">
+            ${s.hasImage
+              ? `<img class="owner-health-avatar-img" src="${escHtml(s.image)}" alt="" />`
+              : `<span class="owner-health-avatar-placeholder"><i class="fa-solid fa-user"></i></span>`}
+          </div>
+          <span class="owner-health-score-badge" style="--score-color:${scoreColor(s.score)}">${s.score}</span>
+        </div>
+        <div class="owner-health-vitals">${s.bmi != null ? `BMI ${s.bmi.toFixed(1)} · ${escHtml(s.cat)}` : 'Add vitals'}</div>
+      </div>
+    </div>`).join('');
+
+  dots.innerHTML = slides.length > 1
+    ? slides.map((s, i) => `<button class="owner-health-dot ${i === ownerHealthSlideIndex ? 'active' : ''}" title="${escHtml(s.ownerCfg.short)}" onclick="goToOwnerHealthSlide(${i})"></button>`).join('')
+    : '';
+
+  const prevBtn = document.getElementById('ownerHealthPrev');
+  const nextBtn = document.getElementById('ownerHealthNext');
+  if (prevBtn) prevBtn.style.display = slides.length > 1 ? '' : 'none';
+  if (nextBtn) nextBtn.style.display = slides.length > 1 ? '' : 'none';
+
+  startOwnerHealthAutoplay(slides.length);
+}
+
+function startOwnerHealthAutoplay(count) {
+  clearInterval(ownerHealthTimer);
+  if (count > 1) {
+    ownerHealthTimer = setInterval(nextOwnerHealthSlide, OWNER_HEALTH_INTERVAL);
+  }
+}
+
+function goToOwnerHealthSlide(idx) {
+  const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
+  if (!eligibleOwners.length) return;
+  ownerHealthSlideIndex = ((idx % eligibleOwners.length) + eligibleOwners.length) % eligibleOwners.length;
+  renderOwnerHealthCarousel(); // manual interaction resets the auto-advance timer too
+}
+function nextOwnerHealthSlide() { goToOwnerHealthSlide(ownerHealthSlideIndex + 1); }
+function prevOwnerHealthSlide() { goToOwnerHealthSlide(ownerHealthSlideIndex - 1); }
+
+// Tapping a slide opens that owner's full Health Profile — same modal the
+// homepage's "Owner Health Profile" entry point already uses.
+function openOwnerHealthProfile(key) {
+  currentProfileOwner = key;
+  openOwnerProfile();
 }
 
 function sortMeds(arr) {
