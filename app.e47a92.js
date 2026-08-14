@@ -821,10 +821,11 @@ let ownerHealthSlideIndex = 0;
 let ownerHealthTimer = null;
 const OWNER_HEALTH_INTERVAL = 9000; // 8–10s, per spec
 
-// Due-by hours for each dose slot — a slot only counts as "missed" once
-// its usual window has actually passed, so a 7am page load doesn't flag
-// the evening dose as overdue.
-const DOSE_DUE_HOUR = { morning: 10, afternoon: 15, evening: 21 };
+// Due-by hours for each dose slot — a slot only counts as "missed" once its
+// usual window has actually passed. Usual dose times are ~7am / 12pm / 6pm,
+// with a 1-hour grace period on each before it's flagged as pending, so a
+// 7:05am page load doesn't immediately flag the morning dose as missed.
+const DOSE_DUE_HOUR = { morning: 8, afternoon: 13, evening: 19 };
 
 function computeOwnerHealthReminder(key) {
   const active = healthDiary.filter(e => e.owner === key && !e.cured);
