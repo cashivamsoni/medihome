@@ -2468,24 +2468,26 @@ body.bulk-mode .go-top-btn {
 }
 .health-diary-entry {
   position: relative;
-}
-/* Actions + dose-ticks stack in normal document flow now, not absolutely
-   positioned — that's what caused the squeeze when an entry had no
-   medicines line: with less card height to "absorb" the old bottom:8px
-   absolute offset, the dose row landed right on top of the action buttons
-   instead of comfortably below them. A plain flex column can never
-   collide like that regardless of how tall/short the card ends up. */
-.health-entry-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
+  /* The dose-tick row is absolutely positioned to the card's bottom-right
+     (matches the compact look used before) while the action buttons sit
+     as a normal flex sibling at the top-right. On a short entry — say,
+     just an issue with no medicines/notes — the card's natural height
+     collapses to ~2 lines, which isn't tall enough to fit the actions row
+     up top AND the dose row pinned to the bottom without the two
+     overlapping. This min-height guarantees enough room for both stacked
+     (top padding + actions row + gap + dose row + bottom offset) even
+     when the actual text content is minimal — it only ever adds a little
+     reserved whitespace on short cards; longer entries already exceed it
+     naturally and are unaffected. */
+  min-height: 76px;
 }
 .health-dose-row {
   display: flex;
   align-items: center;
   gap: 5px;
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
 }
 .dose-tick {
   display: flex;
