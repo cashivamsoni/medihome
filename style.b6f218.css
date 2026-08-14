@@ -646,6 +646,7 @@ body.modal-open {
   flex: 1;
   min-width: 0;
   min-height: 132px;
+  touch-action: pan-y; /* let vertical page-scroll pass through untouched; only horizontal drags are claimed for swipe navigation */
 }
 .owner-health-slide {
   position: absolute;
@@ -839,18 +840,49 @@ body.modal-open {
 }
 
 @media (max-width: 640px) {
-  .owner-health-slide {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+  /* Nav arrows step aside for swipe on mobile — reclaims ~70px of width so
+     the avatar/score ring can stay beside the text (matching desktop)
+     instead of being pushed underneath it. Dots remain as the visible,
+     tappable way to navigate; swipe is the primary gesture. */
+  .owner-health-nav {
+    display: none !important;
+  }
+  .owner-health-viewport {
+    gap: 0;
   }
   .owner-health-track {
-    min-height: 240px;
+    min-height: 148px;
+  }
+  .owner-health-slide {
+    gap: 12px;
   }
   .owner-health-avatar-col {
-    flex-direction: row;
-    width: auto;
-    justify-content: center;
+    width: 68px;
+    gap: 4px;
+  }
+  .owner-health-ring {
+    width: 54px;
+    height: 54px;
+  }
+  .owner-health-score-badge {
+    min-width: 18px;
+    height: 18px;
+    font-size: 0.58rem;
+  }
+  .owner-health-vitals {
+    font-size: 0.62rem;
+  }
+  .owner-health-info {
+    gap: 6px;
+  }
+  .owner-health-block {
+    padding: 6px 9px;
+  }
+  .owner-health-block-label {
+    font-size: 0.6rem;
+  }
+  .owner-health-block-text {
+    font-size: 0.73rem;
   }
 }
 
