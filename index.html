@@ -843,6 +843,73 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Profile Photo: Upload/URL picker → square crop with zoom ──── -->
+    <div id="avatarEditOverlay" class="hidden">
+      <div
+        class="dlg-box avatar-edit-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="avatarEditTitle"
+        onclick="event.stopPropagation()"
+      >
+        <div class="modal-header">
+          <h2 class="modal-title" id="avatarEditTitle">Profile Photo</h2>
+          <button
+            class="modal-close"
+            onclick="closeAvatarEditModal()"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body avatar-edit-body">
+          <div id="avPickerStep">
+            <label class="img-drop-zone avatar-edit-dropzone" id="avDropZone" for="avFileInput">
+              <span class="img-drop-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+              <span class="img-drop-text">Click or drop an image to upload</span>
+            </label>
+            <input
+              type="file"
+              id="avFileInput"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="hidden"
+              onchange="_avHandleFile(event)"
+            />
+            <div class="avatar-edit-divider"><span>or</span></div>
+            <div class="avatar-edit-url-row">
+              <input
+                class="form-input"
+                type="url"
+                id="avUrlInput"
+                placeholder="Paste an image URL…"
+              />
+              <button type="button" class="btn-save avatar-edit-load-btn" onclick="_avLoadUrl()">Load</button>
+            </div>
+            <span class="dlg-error hidden" id="avPickerError"></span>
+          </div>
+          <div id="avCropStep" class="hidden">
+            <div class="avatar-crop-stage">
+              <canvas id="avCropCanvas" width="280" height="280"></canvas>
+              <div class="avatar-crop-circle-guide"></div>
+            </div>
+            <div class="avatar-crop-zoom-row">
+              <i class="fa-solid fa-magnifying-glass-minus"></i>
+              <input type="range" id="avZoomSlider" min="0" max="100" value="0" oninput="_avOnZoom(this.value)" />
+              <i class="fa-solid fa-magnifying-glass-plus"></i>
+            </div>
+            <button type="button" class="mgmt-btn avatar-crop-change-btn" onclick="_avBackToPicker()">
+              <i class="fa-solid fa-arrow-left"></i> Choose a different photo
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeAvatarEditModal()">Cancel</button>
+          <button class="btn-save hidden" id="avSaveBtn" onclick="_avSaveCrop()">Save Photo</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Quantity Log Modal ──────────────────────────────── -->
     <div id="quantityLogModal" class="hidden mgmt-modal-overlay">
       <div class="mgmt-modal-box">
