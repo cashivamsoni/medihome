@@ -1547,6 +1547,251 @@ function initScrollFeatures() {
   btn.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
 }
 
+// ── Medicine Timer ──────────────────────────────────────────
+let _timerRunning = false;
+let _timerRemainingMs = 0;
+let _timerEndAt = null;
+let _timerInterval = null;
+let _timerHoldTimeout = null;
+let _timerHoldInterval = null;
+let _timerAlarmActive = false;
+let _timerAlarmInterval = null;
+let _timerAudioCtx = null;
+
+function _timerPad2(n) { return String(n).padStart(2, '0'); }
+
+function toggleTimerPanel() {
+  const panel = document.getElementById('timerPanel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+}
+
+function _timerReadInputs() {
+  const minEl = document.getElementById('timerMinInput');
+  const secEl = document.getElementById('timerSecInput');
+  let min = parseInt(minEl.value, 10); if (isNaN(min)) min = 0;
+  let sec = parseInt(secEl.value, 10); if (isNaN(sec)) sec = 0;
+  min = Math.max(0, Math.min(59, min));
+  sec = Math.max(0, Math.min(59, sec));
+  return { min, sec };
+}
+
+function _timerWriteInputs(min, sec) {
+  document.getElementById('timerMinInput').value = _timerPad2(min);
+  document.getElementById('timerSecInput').value = _timerPad2(sec);
+}
+
+function _timerSetControlsDisabled(disabled) {
+  document.querySelectorAll('.timer-arrow, .timer-preset-chip').forEach(b => b.disabled = disabled);
+  document.getElementById('timerMinInput').disabled = disabled;
+  document.getElementById('timerSecInput').disabled = disabled;
+}
+
+function bumpTimerUnit(unit, delta) {
+  if (_timerRunning) return;
+  const { min, sec } = _timerReadInputs();
+  if (unit === 'min') {
+    let m = (min + delta + 60) % 60;
+    _timerWriteInputs(m, sec);
+  } else {
+    let s = (sec + delta + 60) % 60;
+    _timerWriteInputs(min, s);
+  }
+}
+
+function startTimerHold(unit, delta) {
+  if (_timerRunning) return;
+  stopTimerHold();
+  bumpTimerUnit(unit, delta);
+  _timerHoldTimeout = setTimeout(() => {
+    _timerHoldInterval = setInterval(() => bumpTimerUnit(unit, delta), 90);
+  }, 420);
+}
+function stopTimerHold() {
+  clearTimeout(_timerHoldTimeout);
+  clearInterval(_timerHoldInterval);
+  _timerHoldTimeout = null;
+  _timerHoldInterval = null;
+}
+
+function setTimerPreset(minutesVal) {
+  if (_timerRunning) return;
+  _timerWriteInputs(Math.min(59, minutesVal), 0);
+}
+
+function _timerEnsureAudioCtx() {
+  if (!_timerAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    _timerAudioCtx = new Ctx();
+  }
+  if (_timerAudioCtx.state === 'suspended') _timerAudioCtx.resume();
+  return _timerAudioCtx;
+}
+
+function _timerBeepOnce() {
+  const ctx = _timerEnsureAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [880, 1108].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const start = now + i * 0.18;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.35, start + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + 0.3);
+  });
+}
+
+function toggleTimerStartPause() {
+  if (_timerAlarmActive) return;
+  const icon = document.getElementById('timerStartPauseIcon');
+  const label = document.getElementById('timerStartPauseLabel');
+
+  if (!_timerRunning) {
+    _timerEnsureAudioCtx(); // warm up audio on this user gesture
+    if (_timerRemainingMs <= 0) {
+      const { min, sec } = _timerReadInputs();
+      let totalSec = min * 60 + sec;
+      if (totalSec <= 0) {
+        showToast("Set a time between 00:01 and 59:59", 'error');
+        return;
+      }
+      totalSec = Math.min(totalSec, 3599);
+      _timerRemainingMs = totalSec * 1000;
+    }
+    _timerEndAt = Date.now() + _timerRemainingMs;
+    _timerRunning = true;
+    _timerSetControlsDisabled(true);
+    icon.className = 'fa-solid fa-pause';
+    label.textContent = 'Pause';
+    _timerInterval = setInterval(_timerTick, 250);
+    _timerTick();
+  } else {
+    _timerRunning = false;
+    clearInterval(_timerInterval);
+    _timerRemainingMs = Math.max(0, _timerEndAt - Date.now());
+    _timerSetControlsDisabled(false);
+    icon.className = 'fa-solid fa-play';
+    label.textContent = 'Resume';
+  }
+}
+
+function _timerTick() {
+  if (!_timerRunning) return;
+  const remaining = _timerEndAt - Date.now();
+  if (remaining <= 0) {
+    clearInterval(_timerInterval);
+    _timerRunning = false;
+    _timerRemainingMs = 0;
+    _timerUpdateDisplay(0);
+    _timerTriggerAlarm();
+    return;
+  }
+  _timerUpdateDisplay(remaining);
+}
+
+function _timerUpdateDisplay(ms) {
+  const totalSec = Math.ceil(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  _timerWriteInputs(min, sec);
+
+  const badge = document.getElementById('timerBadge');
+  if (_timerRunning) {
+    badge.textContent = `${_timerPad2(min)}:${_timerPad2(sec)}`;
+    badge.classList.remove('hidden');
+  } else if (!_timerAlarmActive) {
+    badge.classList.add('hidden');
+  }
+}
+
+function _timerTriggerAlarm() {
+  _timerAlarmActive = true;
+  document.getElementById('timerActionsRow').classList.add('hidden');
+  document.getElementById('timerAlarmRow').classList.remove('hidden');
+  document.getElementById('timerPanel').classList.remove('hidden');
+  document.getElementById('timerPanel').classList.add('ringing');
+  document.getElementById('timerBtn').classList.add('ringing');
+  const badge = document.getElementById('timerBadge');
+  badge.textContent = '⏰';
+  badge.classList.remove('hidden');
+
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+
+  _timerBeepOnce();
+  _timerAlarmInterval = setInterval(_timerBeepOnce, 1200);
+}
+
+function stopTimerAlarm() {
+  _timerAlarmActive = false;
+  clearInterval(_timerAlarmInterval);
+  _timerAlarmInterval = null;
+  document.getElementById('timerPanel').classList.remove('ringing');
+  document.getElementById('timerBtn').classList.remove('ringing');
+  document.getElementById('timerAlarmRow').classList.add('hidden');
+  document.getElementById('timerActionsRow').classList.remove('hidden');
+  resetTimer();
+}
+
+function resetTimer() {
+  clearInterval(_timerInterval);
+  _timerRunning = false;
+  _timerRemainingMs = 0;
+  _timerEndAt = null;
+  _timerSetControlsDisabled(false);
+  _timerWriteInputs(0, 0);
+  document.getElementById('timerStartPauseIcon').className = 'fa-solid fa-play';
+  document.getElementById('timerStartPauseLabel').textContent = 'Start';
+  document.getElementById('timerBadge').classList.add('hidden');
+}
+
+function initTimerWidget() {
+  const minInput = document.getElementById('timerMinInput');
+  const secInput = document.getElementById('timerSecInput');
+  if (!minInput || !secInput) return;
+
+  // Arrow buttons: click = single step, press-and-hold = repeat (like phone pickers)
+  document.querySelectorAll('.timer-arrow').forEach(btn => {
+    const unit = btn.dataset.unit, dir = parseInt(btn.dataset.dir, 10);
+    btn.addEventListener('click', () => bumpTimerUnit(unit, dir));
+    btn.addEventListener('mousedown', () => startTimerHold(unit, dir));
+    btn.addEventListener('mouseup', stopTimerHold);
+    btn.addEventListener('mouseleave', stopTimerHold);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); startTimerHold(unit, dir); }, { passive: false });
+    btn.addEventListener('touchend', stopTimerHold);
+  });
+
+  // Scroll wheel over minutes/seconds — scrollable like a phone picker
+  minInput.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    bumpTimerUnit('min', e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+  secInput.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    bumpTimerUnit('sec', e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+
+  // Direct typing — sanitize to digits, clamp 0-59
+  [minInput, secInput].forEach(input => {
+    input.addEventListener('input', () => {
+      let v = input.value.replace(/\D/g, '').slice(0, 2);
+      input.value = v;
+    });
+    input.addEventListener('blur', () => {
+      let v = parseInt(input.value, 10); if (isNaN(v)) v = 0;
+      v = Math.max(0, Math.min(59, v));
+      input.value = _timerPad2(v);
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initTimerWidget);
+
 // ── Modal open/close with body-scroll lock ────────────────
 // Reference-counted so that closing one modal never unlocks the body
 // while another modal (e.g. Add/Edit opened underneath Manage) is still open.
