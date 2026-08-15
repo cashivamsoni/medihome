@@ -5032,7 +5032,8 @@ async function exportOwnerHealthProfilePDF() {
     doc.save(fileName + '.pdf');
   } catch (err) {
     console.error('Export Owner Health Profile PDF failed:', err);
-    showToast('Could not export PDF. Please try again.', 'error');
+    const reason = (err && err.message) ? err.message : 'unknown error';
+    showToast(`Could not export PDF (${reason}). Please try again.`, 'error');
   }
 }
 
