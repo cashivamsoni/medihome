@@ -2818,12 +2818,16 @@ body.bulk-mode .go-top-btn {
 .profile-avatar-edit-badge:hover {
   background: var(--teal-700);
 }
-.profile-avatar-remove-btn {
-  font-size: 0.68rem;
-  padding: 2px 8px;
-}
 
 /* ── Profile Photo modal: picker + square cropper ────────── */
+#avFileInput {
+  display: none;
+}
+#avPickerStep.hidden,
+#avCropStep.hidden,
+#avPickerError.hidden {
+  display: none;
+}
 .avatar-edit-body {
   display: flex;
   flex-direction: column;
@@ -2904,10 +2908,24 @@ body.bulk-mode .go-top-btn {
   flex: 1;
   accent-color: var(--teal-600);
 }
-.avatar-crop-change-btn {
+.avatar-crop-change-btn,
+.avatar-crop-remove-btn {
   align-self: center;
   font-size: 0.76rem;
   padding: 6px 14px;
+}
+.avatar-crop-remove-btn {
+  color: var(--red-600);
+  border-color: var(--red-200, #fecaca);
+}
+.avatar-crop-remove-btn:hover {
+  background: var(--red-50, #fef2f2);
+}
+.avatar-crop-actions-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .profile-name-col {
