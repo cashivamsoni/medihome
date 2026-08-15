@@ -2756,15 +2756,21 @@ body.bulk-mode .go-top-btn {
   width: 84px;
   height: 84px;
 }
-.profile-avatar-drop {
+.profile-avatar-btn {
   width: 84px;
   height: 84px;
   border-radius: 50%;
   padding: 0;
-  min-height: 0;
+  border: none;
   overflow: hidden;
   position: relative;
-  flex-direction: row;
+  display: block;
+  cursor: pointer;
+  background: var(--surface-2);
+  transition: var(--transition);
+}
+.profile-avatar-btn:hover {
+  filter: brightness(0.94);
 }
 .profile-avatar-img {
   width: 100%;
@@ -2773,9 +2779,6 @@ body.bulk-mode .go-top-btn {
   border-radius: 50%;
 }
 .profile-avatar-img.hidden {
-  display: none;
-}
-#profileImageFile {
   display: none;
 }
 .profile-avatar-placeholder {
@@ -2790,6 +2793,10 @@ body.bulk-mode .go-top-btn {
 .profile-avatar-placeholder.hidden {
   display: none;
 }
+/* A small corner badge (pencil), not layered across the face itself — the
+   old camera badge plus a separate "URL" pill sitting right under the chin
+   made the avatar feel cluttered. This is the one, obvious "edit" affordance;
+   both it and the avatar photo itself open the same picker/crop modal. */
 .profile-avatar-edit-badge {
   position: absolute;
   bottom: -2px;
@@ -2802,26 +2809,107 @@ body.bulk-mode .go-top-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   border: 2px solid var(--surface);
-  pointer-events: none;
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition);
 }
-.profile-avatar-actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: center;
+.profile-avatar-edit-badge:hover {
+  background: var(--teal-700);
 }
-.profile-avatar-link-btn {
-  color: var(--teal-700);
-  background: var(--teal-50);
-  border-color: var(--teal-200);
+.profile-avatar-remove-btn {
   font-size: 0.68rem;
   padding: 2px 8px;
 }
-.profile-avatar-link-btn:hover {
-  background: var(--teal-100);
+
+/* ── Profile Photo modal: picker + square cropper ────────── */
+.avatar-edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
+.avatar-edit-dropzone {
+  min-height: 110px;
+}
+.avatar-edit-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.avatar-edit-divider::before,
+.avatar-edit-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.avatar-edit-url-row {
+  display: flex;
+  gap: 8px;
+}
+.avatar-edit-url-row .form-input {
+  flex: 1;
+}
+.avatar-edit-load-btn {
+  flex-shrink: 0;
+  padding: 0 16px;
+}
+.avatar-crop-stage {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--slate-900, #0f172a);
+  touch-action: none; /* the crop canvas owns all drag/pinch gestures here — nothing for the page to scroll */
+}
+#avCropCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+#avCropCanvas:active {
+  cursor: grabbing;
+}
+/* Purely visual — darkens everything outside a circle so the person can see
+   exactly how this square crop will actually look once shown as a round
+   avatar, without the exported image itself being anything but a plain
+   square (simplest + most compatible output format). */
+.avatar-crop-circle-guide {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55);
+}
+.avatar-crop-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.avatar-crop-zoom-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--teal-600);
+}
+.avatar-crop-change-btn {
+  align-self: center;
+  font-size: 0.76rem;
+  padding: 6px 14px;
+}
+
 .profile-name-col {
   flex: 1;
   min-width: 0;
@@ -3127,7 +3215,8 @@ body.bulk-mode .go-top-btn {
   .profile-avatar-col {
     width: 76px;
   }
-  .profile-avatar-drop {
+  .profile-avatar-drop,
+  .profile-avatar-btn {
     width: 72px;
     height: 72px;
   }
@@ -3855,6 +3944,13 @@ body.bulk-mode .medicine-card {
 [data-theme="dark"] .img-drop-zone:hover {
   background: rgba(13, 148, 136, 0.2);
 }
+[data-theme="dark"] .avatar-edit-divider::before,
+[data-theme="dark"] .avatar-edit-divider::after {
+  background: var(--border);
+}
+[data-theme="dark"] .avatar-crop-stage {
+  background: #000;
+}
 [data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
 }
@@ -4193,6 +4289,31 @@ body.compact-view.bulk-mode .medicine-card {
 #healthFormOverlay.hidden {
   display: none;
 }
+/* Opened from within the Owner Health Profile modal (like #healthDiaryModal
+   above), so it needs a higher z-index to stack on top of it rather than
+   appear behind. Otherwise identical fixed-overlay/fade/slide-up pattern. */
+#avatarEditOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  z-index: 1250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+#avatarEditOverlay.active {
+  opacity: 1;
+}
+#avatarEditOverlay.hidden {
+  display: none;
+}
 .dlg-box {
   background: var(--surface);
   border-radius: var(--radius-xl);
@@ -4208,7 +4329,8 @@ body.compact-view.bulk-mode .medicine-card {
   -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 #dlgOverlay.active .dlg-box,
-#healthFormOverlay.active .dlg-box {
+#healthFormOverlay.active .dlg-box,
+#avatarEditOverlay.active .dlg-box {
   transform: translateY(0);
 }
 .dlg-message {
