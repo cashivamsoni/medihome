@@ -2534,7 +2534,6 @@ function renderOwnerProfileContent() {
           </button>
           <button type="button" class="profile-avatar-edit-badge" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}"><i class="fa-solid fa-pencil"></i></button>
         </div>
-        ${hasImage ? `<button type="button" class="img-clear-btn profile-avatar-remove-btn" onclick="clearProfileImage()" title="Remove photo"><i class="fa-solid fa-xmark"></i> Remove</button>` : ''}
       </div>
       <div class="profile-name-col">
         <div class="profile-name-row">
@@ -2931,6 +2930,12 @@ function clearProfileImage() {
   renderOwnerProfileContent();
 }
 
+function _avRemovePhoto() {
+  clearProfileImage();
+  closeAvatarEditModal();
+  showToast('Profile photo removed.', 'success');
+}
+
 // Internal cropper state — one instance reused across opens (image ref is
 // cleared on close so a stale/large image isn't held in memory between uses).
 let _avCrop = {
@@ -2958,7 +2963,7 @@ function openAvatarEditModal() {
   // of the picker — the person can re-crop/re-zoom what's already there,
   // or tap "Choose a different photo" to go back to upload/URL.
   if (p.image) {
-    _avLoadImageSrc(p.image, { isUrl: /^https?:\/\//i.test(p.image), originalSrc: p.image });
+    _avLoadImageSrc(p.image, { isUrl: /^https?:\/\//i.test(p.image), originalSrc: p.image, isExisting: true });
   }
 }
 
@@ -2977,6 +2982,7 @@ function _avResetPickerStep() {
   document.getElementById('avCropStep').classList.add('hidden');
   document.getElementById('avSaveBtn').classList.add('hidden');
   document.getElementById('avPickerError').classList.add('hidden');
+  document.getElementById('avRemoveBtn').classList.add('hidden');
   document.getElementById('avUrlInput').value = '';
   document.getElementById('avFileInput').value = '';
 }
@@ -3021,13 +3027,13 @@ function _avLoadImageSrc(src, opts) {
     if (!img.naturalWidth || !img.naturalHeight) { _avShowPickerError("Couldn't load that image — try a different one."); return; }
     _avCrop.isUrl = opts.isUrl;
     _avCrop.originalSrc = opts.originalSrc || src;
-    _avInitCropper(img);
+    _avInitCropper(img, !!opts.isExisting);
   };
   img.onerror = () => _avShowPickerError(opts.isUrl ? "Couldn't load that URL — check it points directly to an image." : "Couldn't load that image.");
   img.src = src;
 }
 
-function _avInitCropper(img) {
+function _avInitCropper(img, isExisting) {
   _avCrop.img = img;
   const size = AV_CROP_SIZE;
   // cover-fit: whichever dimension is relatively smaller sets the scale
@@ -3042,6 +3048,10 @@ function _avInitCropper(img) {
   document.getElementById('avPickerStep').classList.add('hidden');
   document.getElementById('avCropStep').classList.remove('hidden');
   document.getElementById('avSaveBtn').classList.remove('hidden');
+  // "Remove photo" only makes sense when there's actually a saved photo to
+  // remove — not while just previewing a freshly-picked replacement that
+  // hasn't been saved yet (Cancel already covers backing out of that).
+  document.getElementById('avRemoveBtn').classList.toggle('hidden', !isExisting);
   document.getElementById('avZoomSlider').value = 0;
 
   _avBindCropperEvents();
