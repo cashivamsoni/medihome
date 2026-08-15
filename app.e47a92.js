@@ -3459,6 +3459,10 @@ function parseDoseTimes(input) {
   return DOSE_TIME_ORDER.filter(t => picked.has(t));
 }
 
+function doseTimesToLetters(arr) {
+  return (arr || []).map(t => DOSE_TIME_LETTER[t]).join(', ');
+}
+
 // Which medicines this entry lists, in order — used to give each one its
 // own dose-tick row. An issue-only entry (no medicines typed) has none, and
 // is represented by the '' key throughout (one generic row).
