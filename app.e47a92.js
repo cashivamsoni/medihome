@@ -2510,6 +2510,7 @@ function closeOwnerProfile() {
   setTimeout(reconcileBodyScrollLock, 50);
 }
 bindOverlayClose(document.getElementById('ownerProfileModal'), closeOwnerProfile);
+bindOverlayClose(document.getElementById('avatarEditOverlay'), closeAvatarEditModal);
 
 // Jump from a profile's "Recent Health Updates" straight into the full
 // Health Diary for that same owner — opens on top, profile stays open behind.
@@ -2989,9 +2990,10 @@ function clearProfileImage() {
 }
 
 function _avRemovePhoto() {
+  pushUndo('Removed profile photo');
   clearProfileImage();
   closeAvatarEditModal();
-  showToast('Profile photo removed.', 'success');
+  showUndoToast('Profile photo removed — tap Undo within 6s', 'fa-image');
 }
 
 // Internal cropper state — one instance reused across opens (image ref is
@@ -3205,6 +3207,8 @@ function _avInitDropZone() {
 function _avSaveCrop() {
   const key = currentProfileOwner;
   if (!key || !_avCrop.img) return;
+  const hadPhoto = !!ensureOwnerProfile(key).image;
+  const undoMsg = hadPhoto ? 'Updated profile photo' : 'Added profile photo';
   const canvas = document.createElement('canvas');
   canvas.width = AV_OUTPUT_SIZE;
   canvas.height = AV_OUTPUT_SIZE;
@@ -3228,26 +3232,28 @@ function _avSaveCrop() {
     // out as pixel data. Rather than block the person entirely, fall back
     // to saving the original URL uncropped, exactly like the old flow did.
     if (_avCrop.isUrl && _avCrop.originalSrc) {
+      pushUndo(undoMsg);
       const p = ensureOwnerProfile(key);
       p.image = _avCrop.originalSrc;
       p.updatedAt = Date.now();
       saveData();
       renderOwnerProfileContent();
       closeAvatarEditModal();
-      showToast("This image's source doesn't allow cropping — saved uncropped instead.", 'error');
+      showUndoToast("This image's source doesn't allow cropping — saved uncropped instead. Tap Undo within 6s", 'fa-image');
       return;
     }
     showToast('Something went wrong saving that photo.', 'error');
     return;
   }
 
+  pushUndo(undoMsg);
   const p = ensureOwnerProfile(key);
   p.image = dataUrl;
   p.updatedAt = Date.now();
   saveData();
   renderOwnerProfileContent();
   closeAvatarEditModal();
-  showToast('Profile photo updated.', 'success');
+  showUndoToast(`${undoMsg} — tap Undo within 6s`, 'fa-image');
 }
 
 // ── Quantity Log ─────────────────────────────────────────────
@@ -4145,7 +4151,8 @@ function pushUndo(msg) {
       forms: customForms,
       owners: customOwners,
       types: customTypes,
-      healthDiary
+      healthDiary,
+      ownerProfiles
     }))
   };
 }
@@ -4210,6 +4217,7 @@ function commitUndo() {
   customOwners     = s.owners;
   customTypes      = s.types || customTypes;
   healthDiary      = s.healthDiary || healthDiary;
+  ownerProfiles    = s.ownerProfiles || ownerProfiles;
   _undoStack = null;
   clearTimeout(_undoTimer);
   clearInterval(_undoCountdownInterval);
@@ -4220,6 +4228,9 @@ function commitUndo() {
   renderAll();
   const healthModal = document.getElementById('healthDiaryModal');
   if (healthModal && !healthModal.classList.contains('hidden')) renderHealthDiaryList();
+  const profileModal = document.getElementById('ownerProfileModal');
+  if (profileModal && !profileModal.classList.contains('hidden')) renderOwnerProfileContent();
+  renderOwnerHealthCarousel();
   showToast('Undone ✓', 'success');
 }
 
