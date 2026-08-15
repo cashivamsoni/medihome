@@ -4712,26 +4712,33 @@ function _pdfScoreRGB(score) {
 
 // Loads a profile photo (data URL or remote URL) into a square JPEG data
 // URL sized for the PDF. Resolves null — draws a "No Photo" placeholder
-// instead — if there's no photo, or a remote URL without permissive CORS
-// headers taints the canvas and can't be read back out.
+// instead — if there's no photo, the image fails to decode, a remote URL
+// without permissive CORS headers taints the canvas and can't be read back
+// out, or it just never finishes loading (some remote hosts silently hang
+// instead of firing onerror) within a few seconds.
 function _pdfLoadSquareImage(src) {
   return new Promise(resolve => {
     if (!src) { resolve(null); return; }
+    let done = false;
+    const finish = (val) => { if (!done) { done = true; resolve(val); } };
+    const timeout = setTimeout(() => finish(null), 6000);
     const img = new Image();
     if (/^https?:\/\//i.test(src)) img.crossOrigin = 'anonymous';
     img.onload = () => {
+      clearTimeout(timeout);
       try {
         const size = Math.min(img.naturalWidth, img.naturalHeight);
+        if (!size) { finish(null); return; }
         const canvas = document.createElement('canvas');
         canvas.width = size; canvas.height = size;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, (img.naturalWidth - size) / 2, (img.naturalHeight - size) / 2, size, size, 0, 0, size, size);
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
+        finish(canvas.toDataURL('image/jpeg', 0.9));
       } catch (err) {
-        resolve(null);
+        finish(null);
       }
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => { clearTimeout(timeout); finish(null); };
     img.src = src;
   });
 }
@@ -4810,12 +4817,22 @@ async function exportOwnerHealthProfilePDF() {
     // ── Photo + name + vitals ──
     const photoSize = 30;
     const photoX = contentX, photoY = y;
+    let photoEmbedded = false;
     if (photoDataUrl) {
-      doc.addImage(photoDataUrl, 'JPEG', photoX, photoY, photoSize, photoSize, undefined, 'FAST');
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.3);
-      doc.rect(photoX, photoY, photoSize, photoSize);
-    } else {
+      try {
+        doc.addImage(photoDataUrl, 'JPEG', photoX, photoY, photoSize, photoSize, undefined, 'FAST');
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
+        doc.rect(photoX, photoY, photoSize, photoSize);
+        photoEmbedded = true;
+      } catch (err) {
+        // Embedding failed for some reason specific to this image (bad
+        // encoding, unsupported color profile, etc.) — fall through to the
+        // placeholder below rather than losing the whole report over it.
+        console.error('Embedding profile photo in PDF failed:', err);
+      }
+    }
+    if (!photoEmbedded) {
       doc.setDrawColor(160);
       doc.setLineWidth(0.3);
       doc.rect(photoX, photoY, photoSize, photoSize);
