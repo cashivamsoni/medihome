@@ -889,6 +889,14 @@
             <span class="dlg-error hidden" id="avPickerError"></span>
           </div>
           <div id="avCropStep" class="hidden">
+            <div class="avatar-crop-actions-row">
+              <button type="button" class="mgmt-btn avatar-crop-change-btn" onclick="_avBackToPicker()">
+                <i class="fa-solid fa-arrow-left"></i> Choose a different photo
+              </button>
+              <button type="button" class="mgmt-btn avatar-crop-remove-btn hidden" id="avRemoveBtn" onclick="_avRemovePhoto()">
+                <i class="fa-solid fa-trash"></i> Remove photo
+              </button>
+            </div>
             <div class="avatar-crop-stage">
               <canvas id="avCropCanvas" width="280" height="280"></canvas>
               <div class="avatar-crop-circle-guide"></div>
@@ -897,14 +905,6 @@
               <i class="fa-solid fa-magnifying-glass-minus"></i>
               <input type="range" id="avZoomSlider" min="0" max="100" value="0" oninput="_avOnZoom(this.value)" />
               <i class="fa-solid fa-magnifying-glass-plus"></i>
-            </div>
-            <div class="avatar-crop-actions-row">
-              <button type="button" class="mgmt-btn avatar-crop-change-btn" onclick="_avBackToPicker()">
-                <i class="fa-solid fa-arrow-left"></i> Choose a different photo
-              </button>
-              <button type="button" class="mgmt-btn avatar-crop-remove-btn hidden" id="avRemoveBtn" onclick="_avRemovePhoto()">
-                <i class="fa-solid fa-trash"></i> Remove photo
-              </button>
             </div>
           </div>
         </div>
