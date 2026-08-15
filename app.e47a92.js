@@ -4994,6 +4994,7 @@ async function exportOwnerHealthProfilePDF() {
       function drawHealthHdr(rowY) {
         doc.setFont(FONT, 'bold'); doc.setFontSize(fs);
         doc.setFillColor(232, 232, 232);
+        doc.setDrawColor(0);
         doc.rect(tcols.date, rowY, dateW, rowH, 'FD');
         doc.rect(tcols.issue, rowY, issueW, rowH, 'FD');
         doc.rect(tcols.meds, rowY, medsW, rowH, 'FD');
@@ -5062,6 +5063,7 @@ async function exportOwnerHealthProfilePDF() {
       function drawMedHdr(rowY) {
         doc.setFont(FONT, 'bold'); doc.setFontSize(fs);
         doc.setFillColor(232, 232, 232);
+        doc.setDrawColor(0);
         doc.rect(mcols.med, rowY, medNameW, rowH, 'FD');
         doc.rect(mcols.times, rowY, timesW, rowH, 'FD');
         doc.rect(mcols.last, rowY, lastW, rowH, 'FD');
