@@ -4782,12 +4782,42 @@ async function exportOwnerHealthProfilePDF() {
     const advice = aiReady ? { do: cached.data.do, avoid: cached.data.avoid, yoga: cached.data.yoga } : (BMI_ADVICE[cat] || null);
     const scoreNote = aiReady && cached.data.note ? cached.data.note : scoreLabel(score);
 
-    const recentAll = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    }).slice(0, 8);
-    const activeEntries = recentAll.filter(e => !e.cured).slice(0, 6);
-    const recentMeds = summarizeRecentMedicines(key);
+    // Last 30 days, active AND cured — the point of a report is to show the
+    // month's history, not just what's still ongoing.
+    const cutoffStr = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const monthEntries = healthDiary.filter(e => e.owner === key && (e.lastActiveDate || e.date) >= cutoffStr)
+      .slice()
+      .sort((a, b) => {
+        const da = a.lastActiveDate || a.date, db = b.lastActiveDate || b.date;
+        if (da !== db) return da < db ? 1 : -1;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+
+    // Medicine tally over the same 30-day window (name -> {count, lastDate}).
+    const medStats = {};
+    monthEntries.forEach(e => {
+      getEntryMedicineList(e).forEach(med => {
+        const s = medStats[med] || (medStats[med] = { count: 0, lastDate: '' });
+        s.count++;
+        const d = e.lastActiveDate || e.date;
+        if (d > s.lastDate) s.lastDate = d;
+      });
+    });
+    const monthMeds = Object.entries(medStats).sort((a, b) => {
+      if (a[1].lastDate !== b[1].lastDate) return a[1].lastDate < b[1].lastDate ? 1 : -1;
+      return b[1].count - a[1].count;
+    }).map(([name, s]) => [name, s.count, s.lastDate]);
+
+    // Both tables share one font/row-height tier, picked from how much has
+    // to fit — keeps a busy month on one page instead of always using the
+    // roomy default size. (Pagination still kicks in as a safety net below
+    // if an unusually packed month doesn't fit even at the smallest tier.)
+    const totalRows = monthEntries.length + monthMeds.length;
+    let tblFs, tblRowH;
+    if (totalRows <= 10)      { tblFs = 8.5; tblRowH = 6.2; }
+    else if (totalRows <= 18) { tblFs = 7.5; tblRowH = 5.4; }
+    else if (totalRows <= 26) { tblFs = 7;   tblRowH = 4.8; }
+    else                      { tblFs = 6.5; tblRowH = 4.3; }
 
     const photoDataUrl = await _pdfLoadSquareImage(p.image);
 
@@ -4932,24 +4962,25 @@ async function exportOwnerHealthProfilePDF() {
       y += 6;
     }
 
-    // ── Recent Health Updates table ──
+    // ── Recent Health Updates table (last 30 days, active + cured) ──
     doc.setFont(FONT, 'bold');
     doc.setFontSize(12);
-    doc.text('Recent Health Updates', contentX, y);
+    doc.setTextColor(0);
+    doc.text('Health Updates - Last 30 Days', contentX, y);
     y += 5;
 
-    if (!activeEntries.length) {
+    if (!monthEntries.length) {
       doc.setFont(FONT, 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(100);
-      doc.text('No active health concerns right now.', contentX, y);
+      doc.text('No health diary entries in the last 30 days.', contentX, y);
       doc.setTextColor(0);
       y += 7;
     } else {
-      const dateW = 24, issueW = contentW * 0.34;
+      const dateW = 22, issueW = contentW * 0.34;
       const medsW = contentW - dateW - issueW;
       const tcols = { date: contentX, issue: contentX + dateW, meds: contentX + dateW + issueW };
-      const rowH = 6.5, fs = 8.5;
+      const rowH = tblRowH, fs = tblFs;
 
       function drawHealthHdr(rowY) {
         doc.setFont(FONT, 'bold'); doc.setFontSize(fs);
@@ -4965,9 +4996,9 @@ async function exportOwnerHealthProfilePDF() {
       drawHealthHdr(y);
       y += rowH;
 
-      activeEntries.forEach(e => {
+      monthEntries.forEach(e => {
         doc.setFont(FONT, 'normal'); doc.setFontSize(fs);
-        const issueText = stripEmoji(e.issue) + ((e.checkInCount || 1) > 1 ? ` (Day ${e.checkInCount})` : '');
+        const issueText = stripEmoji(e.issue) + (e.cured ? ' (Cured)' : ((e.checkInCount || 1) > 1 ? ` (Day ${e.checkInCount})` : ''));
         const medsText = stripEmoji(e.medicines || '-') + (doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : '');
         const dateLines = doc.splitTextToSize(formatHealthDate(e.date), dateW - 3);
         const issueLines = doc.splitTextToSize(issueText, issueW - 3);
@@ -4975,7 +5006,7 @@ async function exportOwnerHealthProfilePDF() {
         const lineCount = Math.max(dateLines.length, issueLines.length, medsLines.length, 1);
         const linePitch = fs * 0.352778 * 1.15;
         const blockHeight = lineCount * linePitch;
-        const thisRowH = Math.max(rowH, blockHeight + 3);
+        const thisRowH = Math.max(rowH, blockHeight + 2.5);
 
         if (y + thisRowH > pageH - MARGIN - PAD) {
           doc.addPage();
@@ -4993,43 +5024,70 @@ async function exportOwnerHealthProfilePDF() {
         doc.text(medsLines, tcols.meds + 1.5, baseY);
         y += thisRowH;
       });
-      y += 7;
+      y += 6;
     }
 
-    // ── Medicines Taken Recently, as chips ──
-    if (y > pageH - MARGIN - PAD - 22) { doc.addPage(); y = contentX + 3; }
+    // ── Medicines Taken table (last 30 days) ──
+    if (y > pageH - MARGIN - PAD - 20) { doc.addPage(); y = contentX + 3; }
     doc.setDrawColor(210);
     doc.line(contentX, y, contentX + contentW, y);
     y += 6;
     doc.setFont(FONT, 'bold');
     doc.setFontSize(12);
-    doc.text('Medicines Taken Recently', contentX, y);
-    y += 6;
+    doc.setTextColor(0);
+    doc.text('Medicines Taken - Last 30 Days', contentX, y);
+    y += 5;
 
-    if (!recentMeds.length) {
+    if (!monthMeds.length) {
       doc.setFont(FONT, 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(100);
       doc.text('No medicines logged in the Health Diary yet.', contentX, y);
       doc.setTextColor(0);
     } else {
-      doc.setFont(FONT, 'normal');
-      doc.setFontSize(9);
-      let chipX = contentX, chipY = y;
-      const chipH = 6.5;
-      recentMeds.forEach(([name, count]) => {
-        const label = `${stripEmoji(name)} x${count}`;
-        const tw = doc.getTextWidth(label) + 6;
-        if (chipX + tw > contentX + contentW) { chipX = contentX; chipY += chipH + 2.5; }
-        if (chipY + chipH > pageH - MARGIN - PAD) { doc.addPage(); chipY = contentX + 3; chipX = contentX; }
-        doc.setFillColor(230, 245, 240);
-        doc.setDrawColor(180, 210, 200);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(chipX, chipY, tw, chipH, 2, 2, 'FD');
-        doc.setTextColor(20, 90, 70);
-        doc.text(label, chipX + tw / 2, chipY + chipH / 2 + 1.3, { align: 'center' });
-        doc.setTextColor(0);
-        chipX += tw + 3;
+      const medNameW = contentW * 0.55, timesW = contentW * 0.2;
+      const lastW = contentW - medNameW - timesW;
+      const mcols = { med: contentX, times: contentX + medNameW, last: contentX + medNameW + timesW };
+      const rowH = tblRowH, fs = tblFs;
+
+      function drawMedHdr(rowY) {
+        doc.setFont(FONT, 'bold'); doc.setFontSize(fs);
+        doc.setFillColor(232, 232, 232);
+        doc.rect(mcols.med, rowY, medNameW, rowH, 'FD');
+        doc.rect(mcols.times, rowY, timesW, rowH, 'FD');
+        doc.rect(mcols.last, rowY, lastW, rowH, 'FD');
+        const ty = rowY + rowH / 2 + fs * 0.15;
+        doc.text('Medicine', mcols.med + medNameW / 2, ty, { align: 'center' });
+        doc.text('Times Taken', mcols.times + timesW / 2, ty, { align: 'center' });
+        doc.text('Last Taken', mcols.last + lastW / 2, ty, { align: 'center' });
+      }
+      drawMedHdr(y);
+      y += rowH;
+
+      monthMeds.forEach(([name, count, lastDate]) => {
+        doc.setFont(FONT, 'normal'); doc.setFontSize(fs);
+        const nameLines = doc.splitTextToSize(stripEmoji(name), medNameW - 3);
+        const lineCount = Math.max(nameLines.length, 1);
+        const linePitch = fs * 0.352778 * 1.15;
+        const blockHeight = lineCount * linePitch;
+        const thisRowH = Math.max(rowH, blockHeight + 2.5);
+
+        if (y + thisRowH > pageH - MARGIN - PAD) {
+          doc.addPage();
+          y = contentX + 3;
+          drawMedHdr(y);
+          y += rowH;
+        }
+        doc.setDrawColor(0);
+        doc.rect(mcols.med, y, medNameW, thisRowH);
+        doc.rect(mcols.times, y, timesW, thisRowH);
+        doc.rect(mcols.last, y, lastW, thisRowH);
+        const baseY = y + (thisRowH - blockHeight) / 2 + fs * 0.352778 * 0.75;
+        const midY = y + thisRowH / 2 + fs * 0.15;
+        doc.text(nameLines, mcols.med + 1.5, baseY);
+        doc.text(String(count), mcols.times + timesW / 2, midY, { align: 'center' });
+        doc.text(formatHealthDate(lastDate), mcols.last + lastW / 2, midY, { align: 'center' });
+        y += thisRowH;
       });
     }
 
