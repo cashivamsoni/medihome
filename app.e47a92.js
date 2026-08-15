@@ -4793,14 +4793,23 @@ async function exportOwnerHealthProfilePDF() {
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
-    // Medicine tally over the same 30-day window (name -> {count, lastDate}).
+    // Medicine tally over the same 30-day window — counts real dose ticks
+    // (M/A/E), not just "1 per entry", so a medicine taken 3x/day for a
+    // week shows as ~21, not 1. Only days within the window count, and only
+    // while the problem was actually being tracked (a cured entry's ticks
+    // naturally stop the day it's marked cured, since no more get added).
     const medStats = {};
     monthEntries.forEach(e => {
-      getEntryMedicineList(e).forEach(med => {
-        const s = medStats[med] || (medStats[med] = { count: 0, lastDate: '' });
-        s.count++;
-        const d = e.lastActiveDate || e.date;
-        if (d > s.lastDate) s.lastDate = d;
+      const meds = getEntryMedicineList(e);
+      allDoseDays(e).filter(d => d >= cutoffStr).forEach(d => {
+        const dayMeds = getAllDoseTimesForDay(e, d);
+        meds.forEach(med => {
+          const times = dayMeds[med] || [];
+          if (!times.length) return;
+          const s = medStats[med] || (medStats[med] = { count: 0, lastDate: '' });
+          s.count += times.length;
+          if (d > s.lastDate) s.lastDate = d;
+        });
       });
     });
     const monthMeds = Object.entries(medStats).sort((a, b) => {
