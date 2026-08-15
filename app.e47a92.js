@@ -4701,6 +4701,324 @@ function exportHealthDiaryPDF() {
   }
 }
 
+// ── Owner Health Profile PDF ─────────────────────────────────
+// Score color as RGB (jsPDF wants numeric triplets, not the CSS vars
+// scoreColor() returns elsewhere) — same 70/40 thresholds as everywhere else.
+function _pdfScoreRGB(score) {
+  if (score >= 70) return [22, 163, 74];   // green
+  if (score >= 40) return [217, 119, 6];   // amber
+  return [220, 38, 38];                    // red
+}
+
+// Loads a profile photo (data URL or remote URL) into a square JPEG data
+// URL sized for the PDF. Resolves null — draws a "No Photo" placeholder
+// instead — if there's no photo, or a remote URL without permissive CORS
+// headers taints the canvas and can't be read back out.
+function _pdfLoadSquareImage(src) {
+  return new Promise(resolve => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    if (/^https?:\/\//i.test(src)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const size = Math.min(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, (img.naturalWidth - size) / 2, (img.naturalHeight - size) / 2, size, size, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      } catch (err) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function exportOwnerHealthProfilePDF() {
+  try {
+    if (!currentProfileOwner) { showToast('Select an owner first.', 'error'); return; }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast('The PDF tool did not load — check your connection and try again.', 'error');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const key = currentProfileOwner;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateSlash   = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeColon   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeForName = timeColon.replace(/:/g, '-');
+    const ownerCfg = customOwners.find(o => o.key === key);
+    const ownerLabel = stripEmoji(ownerCfg ? ownerCfg.short : key);
+    const fileName = `MediHome Health Profile - ${ownerLabel} ${dateSlash} ${timeForName}`;
+
+    const p = ensureOwnerProfile(key);
+    const bmi = computeBMI(p.weight, p.height);
+    const cat = bmiCategory(bmi);
+    const age = calculateAge(p.dob);
+
+    // Prefer the AI-refined score/advice if it's already ready in cache for
+    // this owner (same one the profile modal & carousel show) — otherwise
+    // fall back to the local heuristic rather than triggering a fresh
+    // Gemini call just to build a PDF.
+    const inputs = buildInsightsInputs(key);
+    const hash = hashInsightsInputs(inputs);
+    const cached = profileInsightsCache[key];
+    const aiReady = !!(cached && cached.hash === hash && cached.status === 'ready' && cached.data);
+    const score = aiReady ? cached.data.score : computeHealthScore(key, bmi);
+    const advice = aiReady ? { do: cached.data.do, avoid: cached.data.avoid, yoga: cached.data.yoga } : (BMI_ADVICE[cat] || null);
+    const scoreNote = aiReady && cached.data.note ? cached.data.note : scoreLabel(score);
+
+    const recentAll = healthDiary.filter(e => e.owner === key).slice().sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    }).slice(0, 8);
+    const activeEntries = recentAll.filter(e => !e.cured).slice(0, 6);
+    const recentMeds = summarizeRecentMedicines(key);
+
+    const photoDataUrl = await _pdfLoadSquareImage(p.image);
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = 210, pageH = 297;
+    const MARGIN = 3, PAD = 4;
+    const contentX = MARGIN + PAD;
+    const contentW = pageW - 2 * contentX;
+    const FONT = 'times';
+
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+
+    let y = contentX + 3;
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(18);
+    const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
+    doc.text(branchName ? `MediHome - Owner Health Profile (${branchName})` : 'MediHome - Owner Health Profile', pageW / 2, y, { align: 'center' });
+    y += 7;
+
+    doc.setFont(FONT, 'normal');
+    doc.setFontSize(9);
+    doc.text(`Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`, pageW / 2, y, { align: 'center' });
+    y += 6;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.2);
+    doc.line(contentX, y, contentX + contentW, y);
+    y += 7;
+
+    // ── Photo + name + vitals ──
+    const photoSize = 30;
+    const photoX = contentX, photoY = y;
+    if (photoDataUrl) {
+      doc.addImage(photoDataUrl, 'JPEG', photoX, photoY, photoSize, photoSize, undefined, 'FAST');
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.3);
+      doc.rect(photoX, photoY, photoSize, photoSize);
+    } else {
+      doc.setDrawColor(160);
+      doc.setLineWidth(0.3);
+      doc.rect(photoX, photoY, photoSize, photoSize);
+      doc.setFont(FONT, 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text('No Photo', photoX + photoSize / 2, photoY + photoSize / 2, { align: 'center' });
+      doc.setTextColor(0);
+    }
+
+    const infoX = photoX + photoSize + 6;
+    const infoW = contentW - photoSize - 6;
+    let infoY = photoY + 6;
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text(ownerLabel, infoX, infoY);
+    infoY += 6.5;
+
+    doc.setFont(FONT, 'normal');
+    doc.setFontSize(10);
+    const metaBits = [];
+    if (age != null) metaBits.push(`${age} yrs`);
+    if (p.gender) metaBits.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+    if (p.weight) metaBits.push(`${p.weight} kg`);
+    if (p.height) metaBits.push(`${p.height} cm`);
+    if (bmi != null) metaBits.push(`BMI ${bmi.toFixed(1)} (${cat})`);
+    doc.text(metaBits.length ? metaBits.join('   |   ') : 'No vitals recorded yet', infoX, infoY, { maxWidth: infoW });
+    infoY += 8;
+
+    // Health score badge — small filled circle with the number, next to a note
+    const scoreRGB = _pdfScoreRGB(score);
+    doc.setFillColor(scoreRGB[0], scoreRGB[1], scoreRGB[2]);
+    doc.circle(infoX + 5.5, infoY + 3.5, 5.5, 'F');
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text(String(score), infoX + 5.5, infoY + 4.8, { align: 'center' });
+    doc.setTextColor(0);
+    doc.setFont(FONT, 'normal');
+    doc.setFontSize(8.5);
+    doc.text(stripEmoji(scoreNote), infoX + 14, infoY + 4.5, { maxWidth: infoW - 14 });
+    infoY += 12;
+
+    y = Math.max(photoY + photoSize, infoY) + 5;
+    doc.setDrawColor(210);
+    doc.setLineWidth(0.15);
+    doc.line(contentX, y, contentX + contentW, y);
+    y += 6;
+
+    // ── Recommendations (Do / Avoid / Yoga), three columns ──
+    if (advice) {
+      doc.setFont(FONT, 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text('Recommendations', contentX, y);
+      y += 5;
+
+      const gap = 5;
+      const colW = (contentW - gap * 2) / 3;
+      const cols = [
+        { title: 'Do', items: advice.do || [] },
+        { title: 'Avoid', items: advice.avoid || [] },
+        { title: 'Yoga / Exercise', items: advice.yoga || [] }
+      ];
+      const colStartY = y;
+      let maxColHeight = 0;
+      cols.forEach((col, i) => {
+        const colX = contentX + i * (colW + gap);
+        let cy = colStartY;
+        doc.setFont(FONT, 'bold');
+        doc.setFontSize(9.5);
+        doc.text(stripEmoji(col.title), colX, cy);
+        cy += 4.2;
+        doc.setFont(FONT, 'normal');
+        doc.setFontSize(8.5);
+        col.items.forEach(item => {
+          const lines = doc.splitTextToSize('- ' + stripEmoji(item), colW);
+          doc.text(lines, colX, cy);
+          cy += lines.length * 3.6;
+        });
+        maxColHeight = Math.max(maxColHeight, cy - colStartY);
+      });
+      y = colStartY + maxColHeight + 4;
+      doc.setFont(FONT, 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(120);
+      doc.text('General wellness suggestions, not medical advice - consult a doctor for anything specific or concerning.', contentX, y);
+      doc.setTextColor(0);
+      y += 7;
+      doc.setDrawColor(210);
+      doc.line(contentX, y, contentX + contentW, y);
+      y += 6;
+    }
+
+    // ── Recent Health Updates table ──
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(12);
+    doc.text('Recent Health Updates', contentX, y);
+    y += 5;
+
+    if (!activeEntries.length) {
+      doc.setFont(FONT, 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(100);
+      doc.text('No active health concerns right now.', contentX, y);
+      doc.setTextColor(0);
+      y += 7;
+    } else {
+      const dateW = 24, issueW = contentW * 0.34;
+      const medsW = contentW - dateW - issueW;
+      const tcols = { date: contentX, issue: contentX + dateW, meds: contentX + dateW + issueW };
+      const rowH = 6.5, fs = 8.5;
+
+      function drawHealthHdr(rowY) {
+        doc.setFont(FONT, 'bold'); doc.setFontSize(fs);
+        doc.setFillColor(232, 232, 232);
+        doc.rect(tcols.date, rowY, dateW, rowH, 'FD');
+        doc.rect(tcols.issue, rowY, issueW, rowH, 'FD');
+        doc.rect(tcols.meds, rowY, medsW, rowH, 'FD');
+        const ty = rowY + rowH / 2 + fs * 0.15;
+        doc.text('Date', tcols.date + dateW / 2, ty, { align: 'center' });
+        doc.text('Issue / Update', tcols.issue + issueW / 2, ty, { align: 'center' });
+        doc.text('Medicines', tcols.meds + medsW / 2, ty, { align: 'center' });
+      }
+      drawHealthHdr(y);
+      y += rowH;
+
+      activeEntries.forEach(e => {
+        doc.setFont(FONT, 'normal'); doc.setFontSize(fs);
+        const issueText = stripEmoji(e.issue) + ((e.checkInCount || 1) > 1 ? ` (Day ${e.checkInCount})` : '');
+        const medsText = stripEmoji(e.medicines || '-') + (doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : '');
+        const dateLines = doc.splitTextToSize(formatHealthDate(e.date), dateW - 3);
+        const issueLines = doc.splitTextToSize(issueText, issueW - 3);
+        const medsLines = doc.splitTextToSize(medsText, medsW - 3);
+        const lineCount = Math.max(dateLines.length, issueLines.length, medsLines.length, 1);
+        const linePitch = fs * 0.352778 * 1.15;
+        const blockHeight = lineCount * linePitch;
+        const thisRowH = Math.max(rowH, blockHeight + 3);
+
+        if (y + thisRowH > pageH - MARGIN - PAD) {
+          doc.addPage();
+          y = contentX + 3;
+          drawHealthHdr(y);
+          y += rowH;
+        }
+        doc.setDrawColor(0);
+        doc.rect(tcols.date, y, dateW, thisRowH);
+        doc.rect(tcols.issue, y, issueW, thisRowH);
+        doc.rect(tcols.meds, y, medsW, thisRowH);
+        const baseY = y + (thisRowH - blockHeight) / 2 + fs * 0.352778 * 0.75;
+        doc.text(dateLines, tcols.date + 1.5, baseY);
+        doc.text(issueLines, tcols.issue + 1.5, baseY);
+        doc.text(medsLines, tcols.meds + 1.5, baseY);
+        y += thisRowH;
+      });
+      y += 7;
+    }
+
+    // ── Medicines Taken Recently, as chips ──
+    if (y > pageH - MARGIN - PAD - 22) { doc.addPage(); y = contentX + 3; }
+    doc.setDrawColor(210);
+    doc.line(contentX, y, contentX + contentW, y);
+    y += 6;
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(12);
+    doc.text('Medicines Taken Recently', contentX, y);
+    y += 6;
+
+    if (!recentMeds.length) {
+      doc.setFont(FONT, 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(100);
+      doc.text('No medicines logged in the Health Diary yet.', contentX, y);
+      doc.setTextColor(0);
+    } else {
+      doc.setFont(FONT, 'normal');
+      doc.setFontSize(9);
+      let chipX = contentX, chipY = y;
+      const chipH = 6.5;
+      recentMeds.forEach(([name, count]) => {
+        const label = `${stripEmoji(name)} x${count}`;
+        const tw = doc.getTextWidth(label) + 6;
+        if (chipX + tw > contentX + contentW) { chipX = contentX; chipY += chipH + 2.5; }
+        if (chipY + chipH > pageH - MARGIN - PAD) { doc.addPage(); chipY = contentX + 3; chipX = contentX; }
+        doc.setFillColor(230, 245, 240);
+        doc.setDrawColor(180, 210, 200);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(chipX, chipY, tw, chipH, 2, 2, 'FD');
+        doc.setTextColor(20, 90, 70);
+        doc.text(label, chipX + tw / 2, chipY + chipH / 2 + 1.3, { align: 'center' });
+        doc.setTextColor(0);
+        chipX += tw + 3;
+      });
+    }
+
+    doc.save(fileName + '.pdf');
+  } catch (err) {
+    console.error('Export Owner Health Profile PDF failed:', err);
+    showToast('Could not export PDF. Please try again.', 'error');
+  }
+}
+
 
 // Share button logic
 const shareBtn = document.getElementById("shareBtn");
