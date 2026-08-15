@@ -2523,26 +2523,18 @@ function renderOwnerProfileContent() {
   const ownerCfg = customOwners.find(o => o.key === key);
   const p = ensureOwnerProfile(key);
   const hasImage = !!p.image;
-  const isUrlImage = hasImage && /^https?:\/\//i.test(p.image);
 
   container.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar-col">
         <div class="profile-avatar-wrap">
-          <label class="img-drop-zone profile-avatar-drop" id="profileImgDropZone" for="profileImageFile" title="Click or drop to change photo">
+          <button type="button" class="profile-avatar-btn" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}">
             <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
             <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
-          </label>
-          <span class="profile-avatar-edit-badge"><i class="fa-solid fa-camera"></i></span>
+          </button>
+          <button type="button" class="profile-avatar-edit-badge" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}"><i class="fa-solid fa-pencil"></i></button>
         </div>
-        <input type="file" id="profileImageFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="handleProfileImageFile(event)" />
-        <div class="profile-avatar-actions">
-          <button type="button" class="img-clear-btn profile-avatar-link-btn" onclick="toggleProfileImgUrlBox()"><i class="fa-solid fa-link"></i> URL</button>
-          ${hasImage ? `<button type="button" class="img-clear-btn" onclick="clearProfileImage()" title="Remove photo"><i class="fa-solid fa-xmark"></i></button>` : ''}
-        </div>
-        <div class="img-panel hidden" id="profileImgUrlBox">
-          <input class="form-input" type="url" id="profileImageUrl" placeholder="https://example.com/photo.jpg" value="${isUrlImage ? escHtml(p.image) : ''}" oninput="handleProfileImageUrl()" />
-        </div>
+        ${hasImage ? `<button type="button" class="img-clear-btn profile-avatar-remove-btn" onclick="clearProfileImage()" title="Remove photo"><i class="fa-solid fa-xmark"></i> Remove</button>` : ''}
       </div>
       <div class="profile-name-col">
         <div class="profile-name-row">
@@ -2581,7 +2573,6 @@ function renderOwnerProfileContent() {
     <div id="profileMetricsContainer"></div>
   `;
 
-  initProfileImageDropZone();
   updateProfileMetricsDisplay();
 }
 
@@ -2925,44 +2916,11 @@ async function editProfileOwnerName() {
   showUndoToast(`"${updated}" saved — tap Undo within 6s`, 'fa-pen');
 }
 
-// ── Profile picture upload (mirrors the Add/Edit Medicine image pattern) ──
-function toggleProfileImgUrlBox() {
-  const box = document.getElementById('profileImgUrlBox');
-  if (box) box.classList.toggle('hidden');
-}
-function handleProfileImageFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (file.size > 1.2 * 1024 * 1024) { showToast('Image too large (max 1 MB).', 'error'); return; }
-  const key = currentProfileOwner;
-  if (!key) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const p = ensureOwnerProfile(key);
-    p.image = e.target.result;
-    p.updatedAt = Date.now();
-    saveData();
-    renderOwnerProfileContent();
-  };
-  reader.readAsDataURL(file);
-}
-function handleProfileImageUrl() {
-  const key = currentProfileOwner;
-  if (!key) return;
-  const urlEl = document.getElementById('profileImageUrl');
-  const url = urlEl ? urlEl.value.trim() : '';
-  const p = ensureOwnerProfile(key);
-  p.image = url || null;
-  p.updatedAt = Date.now();
-  const img = document.getElementById('profileAvatarImg');
-  const placeholder = document.getElementById('profileAvatarPlaceholder');
-  if (img) {
-    if (url) { img.setAttribute('src', url); img.classList.remove('hidden'); if (placeholder) placeholder.classList.add('hidden'); }
-    else { img.removeAttribute('src'); img.classList.add('hidden'); if (placeholder) placeholder.classList.remove('hidden'); }
-  }
-  clearTimeout(_profileSaveTimer);
-  _profileSaveTimer = setTimeout(saveData, 600);
-}
+// ── Profile picture: pick (upload/URL) → square crop with zoom ──────────
+// clearProfileImage() is the only piece of the old flow kept as-is — the
+// rest (direct file input, inline URL box, drag-drop straight onto the
+// avatar) is replaced by the openAvatarEditModal() flow below, which adds
+// cropping to both fresh uploads and re-editing an already-saved photo.
 function clearProfileImage() {
   const key = currentProfileOwner;
   if (!key) return;
@@ -2972,18 +2930,256 @@ function clearProfileImage() {
   saveData();
   renderOwnerProfileContent();
 }
-function initProfileImageDropZone() {
-  const zone = document.getElementById('profileImgDropZone');
-  if (!zone) return;
+
+// Internal cropper state — one instance reused across opens (image ref is
+// cleared on close so a stale/large image isn't held in memory between uses).
+let _avCrop = {
+  img: null, scale: 1, minScale: 1, maxScale: 1,
+  offsetX: 0, offsetY: 0, isUrl: false, originalSrc: null,
+  dragging: false, lastX: 0, lastY: 0, bound: false
+};
+const AV_CROP_SIZE = 280;   // on-screen crop viewport, in CSS px (canvas is drawn 1:1 at this size)
+const AV_OUTPUT_SIZE = 480; // exported square photo resolution
+
+function openAvatarEditModal() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const overlay = document.getElementById('avatarEditOverlay');
+  if (!overlay) return;
+  const p = ensureOwnerProfile(key);
+
+  _avResetPickerStep();
+  overlay.classList.remove('hidden');
+  setTimeout(() => overlay.classList.add('active'), 10);
+  lockBodyScroll();
+  _avInitDropZone();
+
+  // Editing an already-saved photo jumps straight into the cropper instead
+  // of the picker — the person can re-crop/re-zoom what's already there,
+  // or tap "Choose a different photo" to go back to upload/URL.
+  if (p.image) {
+    _avLoadImageSrc(p.image, { isUrl: /^https?:\/\//i.test(p.image), originalSrc: p.image });
+  }
+}
+
+function closeAvatarEditModal() {
+  const overlay = document.getElementById('avatarEditOverlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+  overlay.classList.remove('active');
+  setTimeout(() => overlay.classList.add('hidden'), 250);
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
+  _avCrop.img = null; // don't hold onto a possibly-large image between opens
+}
+
+function _avResetPickerStep() {
+  document.getElementById('avPickerStep').classList.remove('hidden');
+  document.getElementById('avCropStep').classList.add('hidden');
+  document.getElementById('avSaveBtn').classList.add('hidden');
+  document.getElementById('avPickerError').classList.add('hidden');
+  document.getElementById('avUrlInput').value = '';
+  document.getElementById('avFileInput').value = '';
+}
+
+function _avBackToPicker() {
+  _avResetPickerStep();
+  _avCrop.img = null;
+}
+
+function _avShowPickerError(msg) {
+  const err = document.getElementById('avPickerError');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+}
+
+function _avHandleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) { _avShowPickerError('Image too large (max 8 MB).'); return; }
+  const reader = new FileReader();
+  reader.onload = e => _avLoadImageSrc(e.target.result, { isUrl: false });
+  reader.onerror = () => _avShowPickerError("Couldn't read that file — try a different image.");
+  reader.readAsDataURL(file);
+}
+
+function _avLoadUrl() {
+  const url = document.getElementById('avUrlInput').value.trim();
+  if (!url) { _avShowPickerError('Paste an image URL first.'); return; }
+  _avLoadImageSrc(url, { isUrl: true, originalSrc: url });
+}
+
+// Loads any source (data URL or remote URL) into an Image, then hands off
+// to the cropper once it's actually decoded and its natural size is known.
+// Remote URLs get a CORS attempt so they *can* be cropped — most images
+// without permissive CORS headers will still load and display fine, they
+// just can't be read back out of a canvas; that's handled as a graceful
+// fallback at save time rather than blocked here.
+function _avLoadImageSrc(src, opts) {
+  const img = new Image();
+  if (opts.isUrl) img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    if (!img.naturalWidth || !img.naturalHeight) { _avShowPickerError("Couldn't load that image — try a different one."); return; }
+    _avCrop.isUrl = opts.isUrl;
+    _avCrop.originalSrc = opts.originalSrc || src;
+    _avInitCropper(img);
+  };
+  img.onerror = () => _avShowPickerError(opts.isUrl ? "Couldn't load that URL — check it points directly to an image." : "Couldn't load that image.");
+  img.src = src;
+}
+
+function _avInitCropper(img) {
+  _avCrop.img = img;
+  const size = AV_CROP_SIZE;
+  // cover-fit: whichever dimension is relatively smaller sets the scale
+  // needed so the image fully fills the square viewport with no gaps.
+  const minScale = size / Math.min(img.naturalWidth, img.naturalHeight);
+  _avCrop.minScale = minScale;
+  _avCrop.maxScale = minScale * 4;
+  _avCrop.scale = minScale;
+  _avCrop.offsetX = (size - img.naturalWidth * minScale) / 2;
+  _avCrop.offsetY = (size - img.naturalHeight * minScale) / 2;
+
+  document.getElementById('avPickerStep').classList.add('hidden');
+  document.getElementById('avCropStep').classList.remove('hidden');
+  document.getElementById('avSaveBtn').classList.remove('hidden');
+  document.getElementById('avZoomSlider').value = 0;
+
+  _avBindCropperEvents();
+  _avDraw();
+}
+
+function _avClampOffsets() {
+  const { img, scale } = _avCrop;
+  const size = AV_CROP_SIZE;
+  const minX = Math.min(0, size - img.naturalWidth * scale);
+  const minY = Math.min(0, size - img.naturalHeight * scale);
+  _avCrop.offsetX = Math.min(0, Math.max(minX, _avCrop.offsetX));
+  _avCrop.offsetY = Math.min(0, Math.max(minY, _avCrop.offsetY));
+}
+
+function _avDraw() {
+  const canvas = document.getElementById('avCropCanvas');
+  if (!canvas || !_avCrop.img) return;
+  const ctx = canvas.getContext('2d');
+  const size = AV_CROP_SIZE;
+  ctx.clearRect(0, 0, size, size);
+  ctx.drawImage(
+    _avCrop.img,
+    _avCrop.offsetX, _avCrop.offsetY,
+    _avCrop.img.naturalWidth * _avCrop.scale, _avCrop.img.naturalHeight * _avCrop.scale
+  );
+}
+
+// Zoom slider (0–100) maps linearly onto [minScale, maxScale], keeping
+// whatever point is currently centered in the viewport visually anchored
+// rather than jumping toward a corner as the scale changes.
+function _avOnZoom(val) {
+  if (!_avCrop.img) return;
+  const size = AV_CROP_SIZE;
+  const centerImgX = (size / 2 - _avCrop.offsetX) / _avCrop.scale;
+  const centerImgY = (size / 2 - _avCrop.offsetY) / _avCrop.scale;
+  _avCrop.scale = _avCrop.minScale + (_avCrop.maxScale - _avCrop.minScale) * (val / 100);
+  _avCrop.offsetX = size / 2 - centerImgX * _avCrop.scale;
+  _avCrop.offsetY = size / 2 - centerImgY * _avCrop.scale;
+  _avClampOffsets();
+  _avDraw();
+}
+
+// Bound once per modal-open cycle via a "bound" flag on the state object —
+// the canvas element itself is static markup (never recreated), so without
+// the flag every open would stack another set of duplicate listeners.
+function _avBindCropperEvents() {
+  if (_avCrop.bound) return;
+  _avCrop.bound = true;
+  const canvas = document.getElementById('avCropCanvas');
+
+  const start = (x, y) => { _avCrop.dragging = true; _avCrop.lastX = x; _avCrop.lastY = y; };
+  const move = (x, y) => {
+    if (!_avCrop.dragging || !_avCrop.img) return;
+    _avCrop.offsetX += x - _avCrop.lastX;
+    _avCrop.offsetY += y - _avCrop.lastY;
+    _avCrop.lastX = x; _avCrop.lastY = y;
+    _avClampOffsets();
+    _avDraw();
+  };
+  const end = () => { _avCrop.dragging = false; };
+
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); start(e.clientX, e.clientY); });
+  canvas.addEventListener('pointermove', e => move(e.clientX, e.clientY));
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointerleave', end);
+
+  // Scroll-wheel zoom, nudging the same slider so both input paths stay in sync.
+  canvas.addEventListener('wheel', e => {
+    if (!_avCrop.img) return;
+    e.preventDefault();
+    const slider = document.getElementById('avZoomSlider');
+    const next = Math.min(100, Math.max(0, Number(slider.value) - Math.sign(e.deltaY) * 4));
+    slider.value = next;
+    _avOnZoom(next);
+  }, { passive: false });
+}
+
+function _avInitDropZone() {
+  const zone = document.getElementById('avDropZone');
+  if (!zone || zone.dataset.bound) return;
+  zone.dataset.bound = '1';
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
   zone.addEventListener('drop', e => {
     e.preventDefault(); zone.classList.remove('drag-over');
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      handleProfileImageFile({ target: { files: [file] } });
-    }
+    if (file && file.type.startsWith('image/')) _avHandleFile({ target: { files: [file] } });
   });
+}
+
+function _avSaveCrop() {
+  const key = currentProfileOwner;
+  if (!key || !_avCrop.img) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = AV_OUTPUT_SIZE;
+  canvas.height = AV_OUTPUT_SIZE;
+  const ctx = canvas.getContext('2d');
+  const factor = AV_OUTPUT_SIZE / AV_CROP_SIZE;
+  ctx.drawImage(
+    _avCrop.img,
+    _avCrop.offsetX * factor, _avCrop.offsetY * factor,
+    _avCrop.img.naturalWidth * _avCrop.scale * factor, _avCrop.img.naturalHeight * _avCrop.scale * factor
+  );
+
+  let dataUrl;
+  try {
+    dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+    // If it's still large (rare — only very high-res source images), retry
+    // once at lower quality rather than silently bloating localStorage.
+    if (dataUrl.length > 1_400_000) dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  } catch (err) {
+    // A remote URL without permissive CORS headers taints the canvas —
+    // it displayed and could be panned/zoomed fine, but can't be read back
+    // out as pixel data. Rather than block the person entirely, fall back
+    // to saving the original URL uncropped, exactly like the old flow did.
+    if (_avCrop.isUrl && _avCrop.originalSrc) {
+      const p = ensureOwnerProfile(key);
+      p.image = _avCrop.originalSrc;
+      p.updatedAt = Date.now();
+      saveData();
+      renderOwnerProfileContent();
+      closeAvatarEditModal();
+      showToast("This image's source doesn't allow cropping — saved uncropped instead.", 'error');
+      return;
+    }
+    showToast('Something went wrong saving that photo.', 'error');
+    return;
+  }
+
+  const p = ensureOwnerProfile(key);
+  p.image = dataUrl;
+  p.updatedAt = Date.now();
+  saveData();
+  renderOwnerProfileContent();
+  closeAvatarEditModal();
+  showToast('Profile photo updated.', 'success');
 }
 
 // ── Quantity Log ─────────────────────────────────────────────
