@@ -157,22 +157,48 @@ document.addEventListener('keydown', (e) => {
 
 // ── Health Diary Entry Form (replaces the 4 chained prompt() calls) ───────
 let _hfResolve = null;
-let _hfSelectedDoses = new Set();
+// Dose ticks are tracked per medicine now (medName -> Set of 'morning'/etc),
+// not one shared Set for the whole entry — so "took it in the morning" means
+// a specific medicine was taken then, not that everything on the entry was.
+let _hfDosesByMed = {};
+
+// Reads the medicines currently typed into the form (comma/semicolon
+// separated) so the dose-tick rows can be rebuilt live as the person types.
+// An entry with no medicines yet (issue-only, e.g. "Rest and hydration")
+// still gets one generic row, keyed by ''.
+function _hfCurrentMedList() {
+  const val = document.getElementById('hfMeds').value;
+  return val.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+}
 
 function _renderHfDoseTicks() {
   const wrap = document.getElementById('hfDoseRow');
-  wrap.innerHTML = DOSE_TIME_ORDER.map(t => `
-    <button type="button" class="dose-tick ${_hfSelectedDoses.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="_hfToggleDose('${t}')">
-      <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
-    </button>`).join('');
+  const rows = _hfCurrentMedList();
+  const meds = rows.length ? rows : [''];
+  // Carry forward ticks for medicines still present; drop any for medicines
+  // that were edited/removed from the field; seed empty Sets for new ones.
+  const next = {};
+  meds.forEach(m => { next[m] = _hfDosesByMed[m] || new Set(); });
+  _hfDosesByMed = next;
+
+  wrap.innerHTML = meds.map(med => `
+    <div class="hf-dose-med-row">
+      ${med ? `<span class="hf-dose-med-label">${escHtml(med)}</span>` : ''}
+      <span class="hf-dose-med-ticks">${DOSE_TIME_ORDER.map(t => `
+        <button type="button" class="dose-tick ${_hfDosesByMed[med].has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${med ? ` — ${med}` : ''}" onclick="_hfToggleDose(decodeURIComponent('${encodeURIComponent(med)}'),'${t}')">
+          <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+        </button>`).join('')}</span>
+    </div>`).join('');
 }
-function _hfToggleDose(t) {
-  if (_hfSelectedDoses.has(t)) _hfSelectedDoses.delete(t); else _hfSelectedDoses.add(t);
+function _hfToggleDose(med, t) {
+  if (!_hfDosesByMed[med]) _hfDosesByMed[med] = new Set();
+  if (_hfDosesByMed[med].has(t)) _hfDosesByMed[med].delete(t); else _hfDosesByMed[med].add(t);
   _renderHfDoseTicks();
 }
 
-// opts: {title, date, issue, meds, notes, doseLabel, doseLetters}
-// Resolves to {date, issue, meds, notes, doseLetters} or null if cancelled.
+// opts: {title, date, issue, meds, notes, doseLabel, dosesByMed}
+// dosesByMed: { medName: ['morning', ...] } — pre-fills ticks per medicine.
+// Resolves to {date, issue, meds, notes, dosesByMed} or null if cancelled.
 function openHealthEntryForm(opts = {}) {
   return new Promise(resolve => {
     _hfResolve = resolve;
@@ -185,7 +211,10 @@ function openHealthEntryForm(opts = {}) {
     document.getElementById('hfMedsSuggest').innerHTML = '';
     _hfMedicinePool = null; // rebuilt on next keystroke, picking up anything added since the form last opened
     document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
-    _hfSelectedDoses = new Set(parseDoseTimes(opts.doseLetters || ''));
+    _hfDosesByMed = {};
+    if (opts.dosesByMed) {
+      Object.keys(opts.dosesByMed).forEach(med => { _hfDosesByMed[med] = new Set(opts.dosesByMed[med]); });
+    }
     _renderHfDoseTicks();
     document.getElementById('healthFormError').classList.add('hidden');
     const ov = document.getElementById('healthFormOverlay');
@@ -234,6 +263,7 @@ function _hfPositionSuggestBox() {
 }
 
 function _hfMedsInput() {
+  _renderHfDoseTicks();
   const input = document.getElementById('hfMeds');
   const box = document.getElementById('hfMedsSuggest');
   const currentSegment = input.value.split(',').pop().trim();
@@ -318,7 +348,10 @@ function _healthFormResolve(save) {
     issue: issueVal || 'General / Preventive',
     meds: document.getElementById('hfMeds').value.trim(),
     notes: document.getElementById('hfNotes').value.trim(),
-    doseLetters: doseTimesToLetters(DOSE_TIME_ORDER.filter(t => _hfSelectedDoses.has(t)))
+    dosesByMed: Object.keys(_hfDosesByMed).reduce((out, med) => {
+      out[med] = DOSE_TIME_ORDER.filter(t => _hfDosesByMed[med].has(t));
+      return out;
+    }, {})
   } : null;
   _closeHealthFormOverlay();
   resolve(result);
@@ -837,8 +870,12 @@ function computeOwnerHealthReminder(key) {
 
   let missed = 0;
   active.forEach(e => {
-    const takenToday = new Set(getDoseTimesForDay(e, todayStr));
-    dueSlots.forEach(slot => { if (!takenToday.has(slot)) missed++; });
+    const meds = getEntryMedicineList(e);
+    const rows = meds.length ? meds : [''];
+    rows.forEach(med => {
+      const takenToday = new Set(getDoseTimesForDay(e, todayStr, med));
+      dueSlots.forEach(slot => { if (!takenToday.has(slot)) missed++; });
+    });
   });
 
   if (missed > 0) return { text: `${missed} dose${missed > 1 ? 's' : ''} pending today`, ok: false };
@@ -856,6 +893,13 @@ function ownerHealthSlideData(ownerCfg) {
   const hash = hashInsightsInputs(inputs);
   const cached = profileInsightsCache[key];
   const aiReady = !!(cached && cached.hash === hash && cached.status === 'ready' && cached.data);
+  const aiLoading = !!(cached && cached.hash === hash && cached.status === 'loading');
+  // Unlike before, the carousel now actively keeps the AI-refined score fresh
+  // (same call the Owner Health Profile modal makes) instead of only reading
+  // whatever happened to already be cached. ensureCarouselInsights() is a
+  // no-op once ready/loading for the current inputs, so this doesn't refetch
+  // on every render — only when the owner's inputs actually change.
+  if (!aiReady && !aiLoading) ensureCarouselInsights(key);
 
   const score = aiReady ? cached.data.score : computeHealthScore(key, bmi);
   const advice = aiReady ? { do: cached.data.do } : (BMI_ADVICE[cat] || null);
@@ -866,7 +910,7 @@ function ownerHealthSlideData(ownerCfg) {
   const reminder = computeOwnerHealthReminder(key);
   const hasImage = !!p.image;
 
-  return { key, ownerCfg, bmi, cat, score, recommendation, reminder, hasImage, image: p.image };
+  return { key, ownerCfg, bmi, cat, score, aiReady, aiLoading, recommendation, reminder, hasImage, image: p.image };
 }
 
 // Hidden the moment the person types anything (≥1 character) into search —
@@ -929,7 +973,7 @@ function renderOwnerHealthCarousel() {
               ? `<img class="owner-health-avatar-img" src="${escHtml(s.image)}" alt="" />`
               : `<span class="owner-health-avatar-placeholder"><i class="fa-solid fa-user"></i></span>`}
           </div>
-          <span class="owner-health-score-badge" style="--score-color:${scoreColor(s.score)}">${s.score}</span>
+          <span class="owner-health-score-badge" style="--score-color:${scoreColor(s.score)}" title="${s.aiReady ? 'Personalized from Health Diary' : s.aiLoading ? 'Refining…' : 'General guidance'}">${s.score}${s.aiReady ? ' <i class="fa-solid fa-wand-magic-sparkles owner-health-ai-icon"></i>' : s.aiLoading ? ' <i class="fa-solid fa-spinner fa-spin owner-health-ai-icon"></i>' : ''}</span>
         </div>
         <div class="owner-health-vitals">${s.bmi != null ? `BMI ${s.bmi.toFixed(1)} · ${escHtml(s.cat)}` : 'Add vitals'}</div>
       </div>
@@ -2704,8 +2748,13 @@ function scheduleProfileInsightsFetch(key) {
   _insightsFetchTimer = setTimeout(() => fetchProfileInsights(key), 900);
 }
 
-async function fetchProfileInsights(key) {
-  if (!key || key !== currentProfileOwner) return; // owner tab may have changed since scheduling
+async function fetchProfileInsights(key, opts) {
+  opts = opts || {};
+  // Modal-triggered fetches (scheduleProfileInsightsFetch) bail out if the
+  // person switched owner tabs before the debounce fired — there's no
+  // "current tab" for a carousel-triggered fetch to go stale against, so
+  // fromCarousel calls skip that check.
+  if (!key || (!opts.fromCarousel && key !== currentProfileOwner)) return;
   const inputs = buildInsightsInputs(key);
   if (!inputs.weight || !inputs.height) return; // not enough to reason about yet — the local BMI hint already covers this
   const hash = hashInsightsInputs(inputs);
@@ -2714,6 +2763,7 @@ async function fetchProfileInsights(key) {
 
   profileInsightsCache[key] = { hash, data: null, status: 'loading' };
   if (key === currentProfileOwner) updateProfileMetricsDisplay();
+  if (opts.fromCarousel) renderOwnerHealthCarousel();
 
   try {
     const resp = await fetch('/api/profile-insights', {
@@ -2731,6 +2781,14 @@ async function fetchProfileInsights(key) {
     profileInsightsCache[key] = { hash, data: null, status: 'error' };
   }
   if (key === currentProfileOwner) updateProfileMetricsDisplay();
+  if (opts.fromCarousel) renderOwnerHealthCarousel();
+}
+
+// Kicks off (or silently no-ops on) the same Gemini-backed refinement the
+// Owner Health Profile modal uses, so the homepage carousel's score matches
+// exactly instead of trailing behind on the local BMI-only heuristic.
+function ensureCarouselInsights(key) {
+  fetchProfileInsights(key, { fromCarousel: true });
 }
 
 // ── BMI / score / advice engine ─────────────────────────────
@@ -3395,66 +3453,142 @@ function parseDoseTimes(input) {
   return DOSE_TIME_ORDER.filter(t => picked.has(t));
 }
 
-function doseTimesToLetters(arr) {
-  return (arr || []).map(t => DOSE_TIME_LETTER[t]).join(', ');
+// Which medicines this entry lists, in order — used to give each one its
+// own dose-tick row. An issue-only entry (no medicines typed) has none, and
+// is represented by the '' key throughout (one generic row).
+function getEntryMedicineList(entry) {
+  return (entry.medicines || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
 }
 
-// Doses are tracked per calendar day (doseLog: { 'YYYY-MM-DD': ['morning',...] }),
-// so an ongoing entry gets a fresh, empty set of M/A/E ticks each time it's
-// checked in for a new day — rather than one flat list shared across every day.
-// Legacy entries (from before this) only ever had a single flat `doseTimes`
-// array for their one date; these helpers fall back to that transparently.
-function getDoseTimesForDay(entry, dateStr) {
-  if (entry.doseLog && typeof entry.doseLog === 'object') {
-    return entry.doseLog[dateStr] || [];
-  }
-  return (dateStr === entry.date) ? (entry.doseTimes || []) : [];
+// Doses are tracked per calendar day AND per medicine:
+// doseLog: { 'YYYY-MM-DD': { [medicineName]: ['morning',...] } }
+// so an ongoing entry gets a fresh, empty set of M/A/E ticks per medicine
+// each time it's checked in for a new day, and different medicines on the
+// same entry no longer share one tick.
+// Legacy data falls back transparently: entries from before per-medicine
+// tracking existed have doseLog[date] as a flat array (applies to every
+// medicine on the entry equally), and entries from before doseLog existed
+// at all only have a single flat `doseTimes` array for their one date.
+function getDoseTimesForDay(entry, dateStr, medName) {
+  const med = medName || '';
+  const dayLog = entry.doseLog && typeof entry.doseLog === 'object' ? entry.doseLog[dateStr] : undefined;
+  if (Array.isArray(dayLog)) return dayLog; // legacy flat log for this day
+  if (dayLog && typeof dayLog === 'object') return dayLog[med] || [];
+  if (!entry.doseLog && dateStr === entry.date) return entry.doseTimes || []; // pre-doseLog legacy
+  return [];
 }
-function setDoseTimesForDay(entry, dateStr, times) {
+// Every medicine's doses for one day, normalized to { medName: [...] } —
+// used where all medicines on an entry need to be summarized together
+// (reminders, merge tool, PDF/AI summaries) rather than one at a time.
+function getAllDoseTimesForDay(entry, dateStr) {
+  const meds = getEntryMedicineList(entry);
+  const rows = meds.length ? meds : [''];
+  const dayLog = entry.doseLog && typeof entry.doseLog === 'object' ? entry.doseLog[dateStr] : undefined;
+  if (Array.isArray(dayLog)) {
+    const out = {};
+    rows.forEach(m => { out[m] = dayLog; });
+    return out;
+  }
+  if (dayLog && typeof dayLog === 'object') return dayLog;
+  if (!entry.doseLog && dateStr === entry.date && entry.doseTimes && entry.doseTimes.length) {
+    const out = {};
+    rows.forEach(m => { out[m] = entry.doseTimes; });
+    return out;
+  }
+  return {};
+}
+function setDoseTimesForDay(entry, dateStr, medName, times) {
+  const med = medName || '';
   if (!entry.doseLog || typeof entry.doseLog !== 'object') {
     entry.doseLog = {};
     if (entry.doseTimes && entry.doseTimes.length) entry.doseLog[entry.date] = entry.doseTimes;
     delete entry.doseTimes;
   }
-  if (times && times.length) entry.doseLog[dateStr] = times;
-  else delete entry.doseLog[dateStr];
+  let dayLog = entry.doseLog[dateStr];
+  if (Array.isArray(dayLog)) {
+    // First per-medicine edit on a day that still has the old flat log —
+    // carry those ticks forward onto every medicine so nothing already
+    // logged silently disappears.
+    const migrated = {};
+    const meds = getEntryMedicineList(entry);
+    (meds.length ? meds : ['']).forEach(m => { migrated[m] = dayLog.slice(); });
+    dayLog = migrated;
+  }
+  dayLog = (dayLog && typeof dayLog === 'object') ? dayLog : {};
+  if (times && times.length) dayLog[med] = times; else delete dayLog[med];
+  const hasAny = Object.keys(dayLog).some(k => dayLog[k] && dayLog[k].length);
+  if (hasAny) entry.doseLog[dateStr] = dayLog; else delete entry.doseLog[dateStr];
 }
 // Every day this entry has dose data for, most recent first.
 function allDoseDays(entry) {
   if (entry.doseLog && typeof entry.doseLog === 'object') {
-    return Object.keys(entry.doseLog).filter(d => entry.doseLog[d] && entry.doseLog[d].length).sort().reverse();
+    return Object.keys(entry.doseLog).filter(d => {
+      const v = entry.doseLog[d];
+      if (Array.isArray(v)) return v.length > 0;
+      if (v && typeof v === 'object') return Object.values(v).some(arr => arr && arr.length);
+      return false;
+    }).sort().reverse();
   }
   return (entry.doseTimes && entry.doseTimes.length) ? [entry.date] : [];
 }
+// One day's ticks as text, broken out per medicine when there's more than
+// one ("Paracetamol: M, E; Vitamin C: M") or just the plain letters for a
+// single medicine / issue-only entry ("M, E").
+function doseTimesToLettersForDay(entry, dateStr) {
+  const dayMeds = getAllDoseTimesForDay(entry, dateStr);
+  const meds = Object.keys(dayMeds).filter(m => dayMeds[m] && dayMeds[m].length);
+  if (!meds.length) return '';
+  if (meds.length === 1) return doseTimesToLetters(dayMeds[meds[0]]);
+  return meds.map(m => `${m || 'General'}: ${doseTimesToLetters(dayMeds[m])}`).join('; ');
+}
 // Compact text summary across all logged days — a single day just shows its
-// letters ("M, E"), a multi-day entry breaks it out per date so history isn't
+// letters, a multi-day entry breaks it out per date so history isn't
 // silently collapsed into one ambiguous list.
 function doseSummaryText(entry) {
   const days = allDoseDays(entry);
   if (!days.length) return '';
-  if (days.length === 1) return doseTimesToLetters(getDoseTimesForDay(entry, days[0]));
-  return days.map(d => `${formatHealthDate(d)}: ${doseTimesToLetters(getDoseTimesForDay(entry, d))}`).join('; ');
+  if (days.length === 1) return doseTimesToLettersForDay(entry, days[0]);
+  return days.map(d => `${formatHealthDate(d)}: ${doseTimesToLettersForDay(entry, d)}`).join('; ');
 }
 
 function renderDoseTicks(entry) {
   const activeDay = entry.lastActiveDate || entry.date;
-  const doseTimes = getDoseTimesForDay(entry, activeDay);
-  const set = new Set(doseTimes);
-  const ticks = DOSE_TIME_ORDER.map(t => `
-    <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${activeDay !== entry.date ? ` (${formatHealthDate(activeDay)})` : ''}" onclick="event.stopPropagation(); toggleDoseTime('${entry.id}','${t}','${activeDay}')">
-      <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
-    </button>
-  `).join('');
-  return `<span class="health-dose-row">${ticks}</span>`;
+  const meds = getEntryMedicineList(entry);
+  const rows = meds.length ? meds : [''];
+
+  const buildTicks = (med) => {
+    const set = new Set(getDoseTimesForDay(entry, activeDay, med));
+    return DOSE_TIME_ORDER.map(t => `
+      <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${med ? ` — ${escHtml(med)}` : ''}${activeDay !== entry.date ? ` (${formatHealthDate(activeDay)})` : ''}" onclick="event.stopPropagation(); toggleDoseTime('${entry.id}','${t}','${activeDay}', decodeURIComponent('${encodeURIComponent(med)}'))">
+        <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+      </button>`).join('');
+  };
+
+  if (rows.length <= 1) {
+    // Common case, unchanged compact layout: one row pinned to the card's
+    // bottom-right corner.
+    return `<span class="health-dose-row">${buildTicks(rows[0])}</span>`;
+  }
+  // Multiple medicines on one entry — each gets its own labeled row so a
+  // tick means "this medicine, this slot", not every medicine on the entry
+  // at once. Flows in normal layout below the card's content rather than
+  // the single-row's absolute-positioned corner spot, since several stacked
+  // rows would otherwise overlap the text above them.
+  return `<div class="health-dose-meds">${rows.map(med => `
+    <div class="health-dose-med-row">
+      <span class="health-dose-med-label">${escHtml(med)}</span>
+      <span class="health-dose-row">${buildTicks(med)}</span>
+    </div>`).join('')}</div>`;
 }
 
-function toggleDoseTime(id, time, dateStr) {
+function toggleDoseTime(id, time, dateStr, medName) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry) return;
   const day = dateStr || entry.lastActiveDate || entry.date;
-  const current = new Set(getDoseTimesForDay(entry, day));
+  const med = medName || '';
+  const current = new Set(getDoseTimesForDay(entry, day, med));
   if (current.has(time)) current.delete(time); else current.add(time);
-  setDoseTimesForDay(entry, day, DOSE_TIME_ORDER.filter(t => current.has(t)));
+  setDoseTimesForDay(entry, day, med, DOSE_TIME_ORDER.filter(t => current.has(t)));
   saveData();
   renderHealthDiaryList();
 }
@@ -3599,12 +3733,17 @@ async function mergeDuplicateHealthEntries() {
     sorted.forEach(e => getCheckInDates(e).forEach(d => dateSet.add(d)));
     const mergedDates = Array.from(dateSet).sort();
 
-    // Merge each entry's dose history onto its own specific date.
+    // Merge each entry's dose history onto its own specific date, per medicine.
     const mergedDoseLog = {};
     sorted.forEach(e => {
       getCheckInDates(e).forEach(d => {
-        const doses = getDoseTimesForDay(e, d);
-        if (doses.length) mergedDoseLog[d] = doses;
+        const dayMeds = getAllDoseTimesForDay(e, d);
+        Object.keys(dayMeds).forEach(med => {
+          const times = dayMeds[med];
+          if (!times || !times.length) return;
+          if (!mergedDoseLog[d]) mergedDoseLog[d] = {};
+          mergedDoseLog[d][med] = times;
+        });
       });
     });
 
@@ -3639,21 +3778,24 @@ async function promptAddHealthEntry() {
   if (!result) return;
 
   const entryDate = result.date || today;
-  const initialDoses = parseDoseTimes(result.doseLetters);
-  healthDiary.push({
+  const entry = {
     id: 'h' + Date.now(),
     owner: currentHealthOwner,
     date: entryDate,
     issue: result.issue,
     medicines: result.meds,
     notes: result.notes || '',
-    doseLog: initialDoses.length ? { [entryDate]: initialDoses } : {},
+    doseLog: {},
     cured: false,
     lastActiveDate: entryDate, // bumped by "check in" instead of creating a new entry each day
     checkInDates: [entryDate],
     checkInCount: 1,
     createdAt: Date.now()
+  };
+  Object.keys(result.dosesByMed || {}).forEach(med => {
+    setDoseTimesForDay(entry, entryDate, med, result.dosesByMed[med]);
   });
+  healthDiary.push(entry);
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry added.', 'success');
@@ -3664,6 +3806,11 @@ async function editHealthEntry(id) {
   if (!entry) return;
 
   const activeDay = entry.lastActiveDate || entry.date;
+  const meds = getEntryMedicineList(entry);
+  const rows = meds.length ? meds : [''];
+  const dosesByMed = {};
+  rows.forEach(med => { dosesByMed[med] = getDoseTimesForDay(entry, activeDay, med); });
+
   const result = await openHealthEntryForm({
     title: 'Edit Health Diary Entry',
     date: entry.date,
@@ -3671,7 +3818,7 @@ async function editHealthEntry(id) {
     meds: entry.medicines || '',
     notes: entry.notes || '',
     doseLabel: `Doses taken on ${formatHealthDate(activeDay)}`,
-    doseLetters: doseTimesToLetters(getDoseTimesForDay(entry, activeDay))
+    dosesByMed
   });
   if (!result) return;
 
@@ -3679,7 +3826,13 @@ async function editHealthEntry(id) {
   entry.issue = result.issue;
   entry.medicines = result.meds;
   entry.notes = result.notes || '';
-  setDoseTimesForDay(entry, activeDay, parseDoseTimes(result.doseLetters));
+  // Replace this day's ticks wholesale with what the form now says — handles
+  // a medicine being renamed/removed cleanly instead of leaving an orphaned
+  // entry behind in doseLog under its old name.
+  if (entry.doseLog) delete entry.doseLog[activeDay];
+  Object.keys(result.dosesByMed || {}).forEach(med => {
+    setDoseTimesForDay(entry, activeDay, med, result.dosesByMed[med]);
+  });
   saveData();
   renderHealthDiaryList();
   showToast('Health diary entry updated.', 'success');
