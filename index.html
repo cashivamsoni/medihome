@@ -1131,6 +1131,65 @@
       <i class="fa-solid fa-arrow-up"></i>
     </button>
 
+    <!-- ── Medicine Timer (left side, stacked above Go To Top) ──── -->
+<button
+  id="timerBtn"
+  class="timer-btn"
+  onclick="toggleTimerPanel()"
+  aria-label="Medicine Timer"
+  title="Medicine Timer"
+>
+  <i class="fa-solid fa-stopwatch"></i>
+  <span id="timerBadge" class="timer-badge hidden">00:00</span>
+</button>
+
+<div id="timerPanel" class="timer-panel hidden">
+  <div class="timer-header">
+    <span><i class="fa-solid fa-stopwatch"></i> Medicine Timer</span>
+    <button class="modal-close" onclick="toggleTimerPanel()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="timer-body">
+    <div class="timer-display" id="timerDisplay">
+      <div class="timer-unit">
+        <button type="button" class="timer-arrow" data-unit="min" data-dir="1" aria-label="Increase minutes"><i class="fa-solid fa-chevron-up"></i></button>
+        <input type="text" id="timerMinInput" class="timer-input" value="00" inputmode="numeric" maxlength="2" aria-label="Minutes" />
+        <button type="button" class="timer-arrow" data-unit="min" data-dir="-1" aria-label="Decrease minutes"><i class="fa-solid fa-chevron-down"></i></button>
+      </div>
+      <span class="timer-colon">:</span>
+      <div class="timer-unit">
+        <button type="button" class="timer-arrow" data-unit="sec" data-dir="1" aria-label="Increase seconds"><i class="fa-solid fa-chevron-up"></i></button>
+        <input type="text" id="timerSecInput" class="timer-input" value="00" inputmode="numeric" maxlength="2" aria-label="Seconds" />
+        <button type="button" class="timer-arrow" data-unit="sec" data-dir="-1" aria-label="Decrease seconds"><i class="fa-solid fa-chevron-down"></i></button>
+      </div>
+    </div>
+
+    <div class="timer-presets">
+      <button type="button" class="timer-preset-chip" onclick="setTimerPreset(1)">1m</button>
+      <button type="button" class="timer-preset-chip" onclick="setTimerPreset(5)">5m</button>
+      <button type="button" class="timer-preset-chip" onclick="setTimerPreset(10)">10m</button>
+      <button type="button" class="timer-preset-chip" onclick="setTimerPreset(15)">15m</button>
+      <button type="button" class="timer-preset-chip" onclick="setTimerPreset(30)">30m</button>
+    </div>
+
+    <div class="timer-actions" id="timerActionsRow">
+      <button type="button" class="timer-action-btn timer-reset-btn" id="timerResetBtn" onclick="resetTimer()">
+        <i class="fa-solid fa-rotate-left"></i> Reset
+      </button>
+      <button type="button" class="timer-action-btn timer-startpause-btn" id="timerStartPauseBtn" onclick="toggleTimerStartPause()">
+        <i class="fa-solid fa-play" id="timerStartPauseIcon"></i> <span id="timerStartPauseLabel">Start</span>
+      </button>
+    </div>
+
+    <div class="timer-alarm-row hidden" id="timerAlarmRow">
+      <span><i class="fa-solid fa-bell"></i> Time's up!</span>
+      <button type="button" class="timer-stop-btn" onclick="stopTimerAlarm()">Stop</button>
+    </div>
+  </div>
+</div>
+    
     <!-- ── AI Assistant ──────────────────────────────────── -->
     <div id="assistantHint" class="assistant-hint hidden"></div>
     <button
