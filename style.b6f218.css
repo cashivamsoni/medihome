@@ -777,6 +777,10 @@ body.modal-open {
   align-items: center;
   justify-content: center;
   border: 2px solid var(--surface);
+  gap: 2px;
+}
+.owner-health-ai-icon {
+  font-size: 0.55rem;
 }
 .owner-health-vitals {
   text-align: center;
@@ -2520,6 +2524,32 @@ body.bulk-mode .go-top-btn {
   position: absolute;
   right: 12px;
   bottom: 8px;
+}
+/* Multiple medicines on one entry: not absolutely positioned like the
+   single-row case above (several stacked rows would overlap the card's
+   text), instead flows normally below the existing content. */
+.health-dose-meds {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+.health-dose-med-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.health-dose-med-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.health-dose-meds .health-dose-row {
+  position: static; /* override the absolute positioning inherited above */
 }
 .dose-tick {
   display: flex;
@@ -4452,7 +4482,8 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .dlg-dose-row {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
 }
 .dlg-dose-row .dose-tick {
   width: 34px;
@@ -4462,6 +4493,22 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .dlg-dose-row .dose-tick-active {
   opacity: 1;
+}
+.hf-dose-med-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hf-dose-med-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 90px;
+}
+.hf-dose-med-ticks {
+  display: flex;
+  gap: 8px;
 }
 [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
