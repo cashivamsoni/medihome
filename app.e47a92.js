@@ -879,7 +879,17 @@ function computeOwnerHealthReminder(key) {
   });
 
   if (missed > 0) return { text: `${missed} dose${missed > 1 ? 's' : ''} pending today`, ok: false };
-  if (!dueSlots.length) return { text: `${active.length} ongoing issue${active.length > 1 ? 's' : ''} — check in later today`, ok: true };
+  if (!dueSlots.length) {
+    // A "General / Preventive" entry has no real problem behind it (e.g. a
+    // daily vitamin) — calling it an "ongoing issue" reads as alarming and
+    // wrong. Only entries with an actual named issue earn that wording;
+    // general/preventive-only owners get a plain dose-taking reminder.
+    const hasRealIssue = active.some(e => (e.issue || '').trim().toLowerCase() !== 'general / preventive');
+    if (!hasRealIssue) {
+      return { text: active.length > 1 ? 'Take your doses for general/preventive purpose' : 'Take your dose for general/preventive purpose', ok: true };
+    }
+    return { text: `${active.length} ongoing issue${active.length > 1 ? 's' : ''} — check in later today`, ok: true };
+  }
   return { text: 'All doses logged for today ✓', ok: true };
 }
 
