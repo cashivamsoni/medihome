@@ -2309,7 +2309,7 @@ body.bulk-mode .timer-panel {
   .timer-panel {
     left: 12px;
     bottom: 150px;
-    width: calc(100vw - 24px);
+    width: min(260px, calc(100vw - 24px));
     max-width: none;
     max-height: min(360px, calc(100vh - 150px - var(--header-h, 64px) - var(--stats-h, 50px) - 16px));
   }
