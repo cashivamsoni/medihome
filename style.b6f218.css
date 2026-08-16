@@ -2094,6 +2094,9 @@ body.bulk-mode .go-top-btn {
 body.bulk-mode .timer-btn {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
 }
+.timer-btn.panel-open {
+  display: none;
+}
 .timer-btn.ringing {
   background: var(--red-500);
   animation: timer-btn-pulse 1s ease-in-out infinite;
