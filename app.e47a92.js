@@ -1783,10 +1783,9 @@ function initTimerWidget() {
   const secInput = document.getElementById('timerSecInput');
   if (!minInput || !secInput) return;
 
-  // Arrow buttons: click = single step, press-and-hold = repeat (like phone pickers)
+  // Arrow buttons: mousedown/touchstart = single step, press-and-hold = repeat (like phone pickers)
   document.querySelectorAll('.timer-arrow').forEach(btn => {
     const unit = btn.dataset.unit, dir = parseInt(btn.dataset.dir, 10);
-    btn.addEventListener('click', () => bumpTimerUnit(unit, dir));
     btn.addEventListener('mousedown', () => startTimerHold(unit, dir));
     btn.addEventListener('mouseup', stopTimerHold);
     btn.addEventListener('mouseleave', stopTimerHold);
