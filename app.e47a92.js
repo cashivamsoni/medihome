@@ -1563,8 +1563,35 @@ function _timerPad2(n) { return String(n).padStart(2, '0'); }
 function toggleTimerPanel() {
   const panel = document.getElementById('timerPanel');
   if (!panel) return;
-  panel.classList.toggle('hidden');
+  if (panel.classList.contains('hidden')) {
+    _openTimerPanel();
+  } else {
+    _closeTimerPanel();
+  }
 }
+function _openTimerPanel() {
+  const panel = document.getElementById('timerPanel');
+  const btn = document.getElementById('timerBtn');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  if (btn) btn.classList.add('panel-open');
+}
+function _closeTimerPanel() {
+  const panel = document.getElementById('timerPanel');
+  const btn = document.getElementById('timerBtn');
+  if (!panel) return;
+  panel.classList.add('hidden');
+  if (btn) btn.classList.remove('panel-open');
+}
+// Click anywhere outside the panel/button closes it — the countdown itself
+// keeps running untouched since it's driven by _timerEndAt, not panel state.
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('timerPanel');
+  const btn = document.getElementById('timerBtn');
+  if (!panel || panel.classList.contains('hidden')) return;
+  if (panel.contains(e.target) || (btn && btn.contains(e.target))) return;
+  _closeTimerPanel();
+});
 
 function _timerReadInputs() {
   const minEl = document.getElementById('timerMinInput');
@@ -1715,7 +1742,7 @@ function _timerTriggerAlarm() {
   _timerAlarmActive = true;
   document.getElementById('timerActionsRow').classList.add('hidden');
   document.getElementById('timerAlarmRow').classList.remove('hidden');
-  document.getElementById('timerPanel').classList.remove('hidden');
+  _openTimerPanel();
   document.getElementById('timerPanel').classList.add('ringing');
   document.getElementById('timerBtn').classList.add('ringing');
   const badge = document.getElementById('timerBadge');
