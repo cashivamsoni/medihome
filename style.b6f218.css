@@ -2130,6 +2130,7 @@ body.bulk-mode .timer-btn {
   left: 20px;
   width: 280px;
   max-width: calc(100vw - 40px);
+  max-height: min(420px, calc(100vh - 150px - var(--header-h, 64px) - var(--stats-h, 50px) - 16px));
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
@@ -2138,6 +2139,7 @@ body.bulk-mode .timer-btn {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
   transition: bottom 0.25s ease;
 }
 .timer-panel.hidden { display: none; }
@@ -2169,6 +2171,7 @@ body.bulk-mode .timer-panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
 }
 
 .timer-display {
@@ -2308,6 +2311,44 @@ body.bulk-mode .timer-panel {
     bottom: 150px;
     width: calc(100vw - 24px);
     max-width: none;
+    max-height: min(360px, calc(100vh - 150px - var(--header-h, 64px) - var(--stats-h, 50px) - 16px));
+  }
+  .timer-header {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+  .timer-body {
+    padding: 12px 12px;
+    gap: 10px;
+  }
+  .timer-input {
+    width: 50px;
+    font-size: 1.35rem;
+    padding: 3px 0;
+  }
+  .timer-colon {
+    font-size: 1.35rem;
+    margin-top: -14px;
+  }
+  .timer-arrow {
+    width: 28px;
+    height: 20px;
+    font-size: 0.68rem;
+  }
+  .timer-presets {
+    gap: 5px;
+  }
+  .timer-preset-chip {
+    padding: 4px 8px;
+    font-size: 0.66rem;
+  }
+  .timer-action-btn {
+    padding: 7px 0;
+    font-size: 0.76rem;
+  }
+  .timer-alarm-row {
+    padding: 8px 10px;
+    font-size: 0.78rem;
   }
 }
 
