@@ -1997,6 +1997,18 @@ body.bulk-mode .assistant-panel {
   display: flex;
   align-items: center;
   gap: 10px;
+  max-width: calc(100vw - 32px);
+}
+@media (max-width: 480px) {
+  .toast {
+    /* A long message keeps its intrinsic (nowrap) width, which can exceed
+       the viewport while the toast stays centred via left:50% — pushing
+       both edges off-screen. Wrapping + a capped width keeps the whole
+       message visible and centred instead. */
+    white-space: normal;
+    text-align: center;
+    max-width: calc(100vw - 24px);
+  }
 }
 .toast i {
   font-size: 0.8rem;
@@ -2776,6 +2788,19 @@ body.bulk-mode .timer-panel {
   display: flex;
   align-items: center;
   gap: 5px;
+  /* Flex items default to min-width:auto, which lets long unbroken text
+     (a long medicine name) overflow the row instead of wrapping — the
+     overflow then sits underneath/behind the next entry card below it,
+     looking like the name is "hidden". min-width:0 lets it shrink so the
+     text span (below) can actually wrap within the card. */
+  min-width: 0;
+}
+.health-entry-meds i {
+  flex-shrink: 0;
+}
+.health-entry-meds-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .health-entry-notes {
   font-size: 0.78rem;
@@ -2785,6 +2810,11 @@ body.bulk-mode .timer-panel {
   align-items: flex-start;
   gap: 5px;
   line-height: 1.4;
+  min-width: 0;
+}
+.health-entry-notes-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .health-entry-notes i {
   margin-top: 2px;
@@ -4068,6 +4098,20 @@ body.bulk-mode .medicine-card {
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
   white-space: nowrap;
+  max-width: calc(100vw - 32px);
+}
+@media (max-width: 480px) {
+  .undo-toast {
+    /* Same fix as .toast: keep long undo messages fully on-screen and
+       centred instead of overflowing past the viewport edges. The Undo
+       button (.undo-btn) stays on its own line/flex-shrink:0 below. */
+    white-space: normal;
+    max-width: calc(100vw - 24px);
+  }
+  .undo-toast span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 .undo-toast.show {
   opacity: 1;
