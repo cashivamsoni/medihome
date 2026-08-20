@@ -210,6 +210,8 @@ function openHealthEntryForm(opts = {}) {
     document.getElementById('hfMedsSuggest').classList.add('hidden');
     document.getElementById('hfMedsSuggest').innerHTML = '';
     _hfMedicinePool = null; // rebuilt on next keystroke, picking up anything added since the form last opened
+    _hfSuggestMatches = [];
+    _hfSuggestActiveIndex = -1;
     document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
     _hfDosesByMed = {};
     if (opts.dosesByMed) {
@@ -243,6 +245,7 @@ function _closeHealthFormOverlay() {
 // remedies that were never added as inventory items.
 let _hfMedicinePool = null;
 let _hfSuggestMatches = [];
+let _hfSuggestActiveIndex = -1; // -1 = nothing highlighted yet
 
 function _hfBuildMedicinePool() {
   const pool = new Set();
@@ -282,11 +285,43 @@ function _hfMedsInput() {
 
   if (!matches.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
   _hfSuggestMatches = matches;
-  box.innerHTML = matches.map((name, i) =>
-    `<button type="button" class="hf-suggest-item" onmousedown="event.preventDefault(); _hfPickSuggestion(${i})">${escHtml(name)}</button>`
-  ).join('');
+  _hfSuggestActiveIndex = -1;
+  _hfRenderSuggestBox();
   _hfPositionSuggestBox();
   box.classList.remove('hidden');
+}
+
+function _hfRenderSuggestBox() {
+  const box = document.getElementById('hfMedsSuggest');
+  box.innerHTML = _hfSuggestMatches.map((name, i) =>
+    `<button type="button" id="hfSuggestItem${i}" class="hf-suggest-item ${i === _hfSuggestActiveIndex ? 'hf-suggest-active' : ''}" onmousedown="event.preventDefault(); _hfPickSuggestion(${i})">${escHtml(name)}</button>`
+  ).join('');
+}
+
+// Arrow keys move the highlight, Tab/Enter pick the highlighted (or first,
+// if none highlighted yet) suggestion, Escape closes the dropdown — mirrors
+// standard combobox keyboard behaviour.
+function _hfMedsKeydown(event) {
+  const box = document.getElementById('hfMedsSuggest');
+  if (!box || box.classList.contains('hidden') || !_hfSuggestMatches.length) return;
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _hfSuggestActiveIndex = (_hfSuggestActiveIndex + 1) % _hfSuggestMatches.length;
+    _hfRenderSuggestBox();
+    document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _hfSuggestActiveIndex = _hfSuggestActiveIndex <= 0 ? _hfSuggestMatches.length - 1 : _hfSuggestActiveIndex - 1;
+    _hfRenderSuggestBox();
+    document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'Tab' || event.key === 'Enter') {
+    const pick = _hfSuggestActiveIndex >= 0 ? _hfSuggestActiveIndex : 0;
+    event.preventDefault();
+    _hfPickSuggestion(pick);
+  } else if (event.key === 'Escape') {
+    box.classList.add('hidden');
+  }
 }
 
 function _hfPickSuggestion(i) {
@@ -300,6 +335,13 @@ function _hfPickSuggestion(i) {
   input.focus();
   const len = input.value.length;
   input.setSelectionRange(len, len);
+  // Setting .value programmatically doesn't fire an 'input' event, so the
+  // "Doses taken" row (normally rebuilt live via oninput="_hfMedsInput()")
+  // was left showing whatever partial text was typed before the dropdown
+  // was picked — the full name only appeared after something else (like a
+  // dose tick) happened to trigger a re-render. Call it directly here so
+  // the full medicine name shows immediately.
+  _renderHfDoseTicks();
 }
 
 document.addEventListener('click', (e) => {
@@ -3701,8 +3743,8 @@ function renderHealthDiaryList() {
           <span class="health-entry-issue">${escHtml(e.issue)}</span>
           ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
         </span>
-        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i> ${escHtml(e.medicines)}</span>` : ''}
-        ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i> ${escHtml(e.notes)}</span>` : ''}
+        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i><span class="health-entry-meds-text">${escHtml(e.medicines)}</span></span>` : ''}
+        ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i><span class="health-entry-notes-text">${escHtml(e.notes)}</span></span>` : ''}
       </span>
       ${!healthSelectMode ? `<div class="mgmt-actions">
         ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
