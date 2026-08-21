@@ -2795,7 +2795,10 @@ body.bulk-mode .timer-panel {
   font-size: 0.78rem;
   color: var(--text-secondary);
   display: flex;
-  align-items: center;
+  /* flex-start (not center) so the pills icon anchors to the name's first
+     line instead of re-centering itself whenever the name wraps to 2-3
+     lines. */
+  align-items: flex-start;
   gap: 5px;
   /* Flex items default to min-width:auto, which lets long unbroken text
      (a long medicine name) overflow the row instead of wrapping — the
@@ -2812,10 +2815,34 @@ body.bulk-mode .timer-panel {
 }
 .health-entry-meds i {
   flex-shrink: 0;
+  /* Nudge down from the icon's own line-box top so it lines up with the
+     text's cap-height instead of sitting slightly high. */
+  margin-top: 2px;
 }
 .health-entry-meds-text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+/* Wraps the name together with its dose ticks (single-medicine entries
+   only) as one flex row: the ticks are a fixed-size, non-shrinking sibling
+   so the name is the only thing that shrinks/wraps to make room for them —
+   no separate row, no leftover blank strip below a short name. */
+.health-entry-meds-line {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.health-entry-meds-line .health-entry-meds-text {
+  flex: 1 1 auto;
+}
+.health-dose-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
 }
 .health-entry-notes {
   font-size: 0.78rem;
