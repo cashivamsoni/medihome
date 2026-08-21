@@ -2849,7 +2849,10 @@ body.bulk-mode .timer-panel {
      ticks naturally land right after — no fixed/min height needed. */
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  /* Tightened from 8px — even though 8px measures as the correct, small
+     value in CSS pixels, it was still reading as noticeably loose empty
+     space in practice, especially under a short single-line entry. */
+  gap: 2px;
 }
 .health-entry-top {
   display: flex;
