@@ -298,9 +298,11 @@ function _hfRenderSuggestBox() {
   ).join('');
 }
 
-// Arrow keys move the highlight, Tab/Enter pick the highlighted (or first,
-// if none highlighted yet) suggestion, Escape closes the dropdown — mirrors
-// standard combobox keyboard behaviour.
+// Arrow keys (and Tab) move the highlight through the suggestions; Enter
+// confirms the highlighted (or first, if none highlighted yet) pick;
+// Escape closes the dropdown. Tab intentionally does NOT pick on its own —
+// only Enter commits — so repeated Tabs let you cycle through every match
+// before choosing one, instead of always locking in the first result.
 function _hfMedsKeydown(event) {
   const box = document.getElementById('hfMedsSuggest');
   if (!box || box.classList.contains('hidden') || !_hfSuggestMatches.length) return;
@@ -315,7 +317,17 @@ function _hfMedsKeydown(event) {
     _hfSuggestActiveIndex = _hfSuggestActiveIndex <= 0 ? _hfSuggestMatches.length - 1 : _hfSuggestActiveIndex - 1;
     _hfRenderSuggestBox();
     document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
-  } else if (event.key === 'Tab' || event.key === 'Enter') {
+  } else if (event.key === 'Tab') {
+    // Tab moves the highlight to the next suggestion (like Down) instead
+    // of picking one — so repeatedly pressing Tab cycles through all the
+    // matches to preview each, rather than immediately committing to the
+    // first match and leaving no way to reach the second or third.
+    // Enter is what actually confirms the highlighted pick.
+    event.preventDefault();
+    _hfSuggestActiveIndex = (_hfSuggestActiveIndex + 1) % _hfSuggestMatches.length;
+    _hfRenderSuggestBox();
+    document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'Enter') {
     const pick = _hfSuggestActiveIndex >= 0 ? _hfSuggestActiveIndex : 0;
     event.preventDefault();
     _hfPickSuggestion(pick);
@@ -3733,25 +3745,27 @@ function renderHealthDiaryList() {
     const checkedInToday = (e.lastActiveDate || e.date) === todayStr;
     return `
     <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
-      ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
-      <span class="health-entry-body">
-        <span class="health-entry-date">
-          <i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}
-          ${!e.cured && daysTracked > 1 ? `<span class="health-entry-day-count">· Day ${daysTracked}</span>` : ''}
+      <div class="health-entry-top">
+        ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
+        <span class="health-entry-body">
+          <span class="health-entry-date">
+            <i class="fa-solid fa-calendar-day"></i> ${escHtml(formatHealthDate(e.date))}
+            ${!e.cured && daysTracked > 1 ? `<span class="health-entry-day-count">· Day ${daysTracked}</span>` : ''}
+          </span>
+          <span class="health-entry-issue-row">
+            <span class="health-entry-issue">${escHtml(e.issue)}</span>
+            ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
+          </span>
+          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i><span class="health-entry-meds-text">${escHtml(e.medicines)}</span></span>` : ''}
+          ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i><span class="health-entry-notes-text">${escHtml(e.notes)}</span></span>` : ''}
         </span>
-        <span class="health-entry-issue-row">
-          <span class="health-entry-issue">${escHtml(e.issue)}</span>
-          ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
-        </span>
-        ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i><span class="health-entry-meds-text">${escHtml(e.medicines)}</span></span>` : ''}
-        ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i><span class="health-entry-notes-text">${escHtml(e.notes)}</span></span>` : ''}
-      </span>
-      ${!healthSelectMode ? `<div class="mgmt-actions">
-        ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
-        <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
-        <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-        <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-      </div>` : ''}
+        ${!healthSelectMode ? `<div class="mgmt-actions">
+          ${!e.cured ? `<button class="mgmt-btn ${checkedInToday ? 'mgmt-btn-checkin-done' : ''}" onclick="checkInHealthEntry('${e.id}')" title="${checkedInToday ? "Checked in today — tap to undo" : 'Still happening today — check in instead of a new entry'}"><i class="fa-solid ${checkedInToday ? 'fa-calendar-check' : 'fa-calendar-plus'}"></i></button>` : ''}
+          <button class="mgmt-btn ${e.cured ? 'mgmt-btn-cured-active' : ''}" onclick="toggleHealthEntryCured('${e.id}')" title="${e.cured ? 'Mark as still active' : 'Mark as cured'}"><i class="fa-solid ${e.cured ? 'fa-rotate-left' : 'fa-check'}"></i></button>
+          <button class="mgmt-btn" onclick="editHealthEntry('${e.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>` : ''}
+      </div>
       ${renderDoseTicks(e)}
     </div>
   `;
