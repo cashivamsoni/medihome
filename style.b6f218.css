@@ -2004,9 +2004,18 @@ body.bulk-mode .assistant-panel {
     /* A long message keeps its intrinsic (nowrap) width, which can exceed
        the viewport while the toast stays centred via left:50% — pushing
        both edges off-screen. Wrapping + a capped width keeps the whole
-       message visible and centred instead. */
+       message visible and centred instead.
+       Just adding white-space:normal here isn't enough on its own, though:
+       once a flex row is allowed to wrap, an auto width no longer reliably
+       shrink-to-fits around the text — short/medium messages that would
+       easily fit on one line were measured against the wider available
+       viewport space and stretched (then wrapped) to fill it, giving them
+       a lopsided two-line shape for no reason. width:max-content pins the
+       box back to hugging its actual content, and max-width remains the
+       only thing that kicks in — and only for genuinely long messages. */
     white-space: normal;
     text-align: center;
+    width: max-content;
     max-width: calc(100vw - 24px);
   }
 }
@@ -2821,42 +2830,59 @@ body.bulk-mode .timer-panel {
   flex-shrink: 0;
 }
 .health-diary-entry {
-  position: relative;
-  /* The dose-tick row is absolutely positioned to the card's bottom-right
-     (matches the compact look used before) while the action buttons sit
-     as a normal flex sibling at the top-right. On a short entry — say,
-     just an issue with no medicines/notes — the card's natural height
-     collapses to ~2 lines, which isn't tall enough to fit the actions row
-     up top AND the dose row pinned to the bottom without the two
-     overlapping. This min-height guarantees enough room for both stacked
-     (top padding + actions row + gap + dose row + bottom offset) even
-     when the actual text content is minimal — it only ever adds a little
-     reserved whitespace on short cards; longer entries already exceed it
-     naturally and are unaffected. */
-  min-height: 76px;
+  /* Was a flex ROW (inherited from .mgmt-item) with the dose ticks pinned
+     via position:absolute to the bottom-right corner. That worked only as
+     long as content stayed short: absolutely-positioned elements don't
+     reserve space, so once a long medicine name wrapped to 2-3 lines the
+     card's auto height (driven only by the in-flow content) stopped
+     leaving room for the ticks, and they ended up overlapping/covering
+     the last line of text instead of sitting below it.
+     Restructured as a column instead: the top row (details + action
+     buttons) and the dose-ticks row are both normal in-flow children, so
+     the card always grows/shrinks to fit whatever's inside it, and the
+     ticks naturally land right after — no fixed/min height needed. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.health-entry-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
 }
 .health-dose-row {
   display: flex;
   align-items: center;
   gap: 5px;
-  position: absolute;
-  right: 12px;
-  bottom: 8px;
+  /* Right-aligned as a normal in-flow row now (see .health-diary-entry
+     comment) instead of position:absolute, so it always sits directly
+     below the card's content — whatever that content's height ends up
+     being — rather than floating at a fixed corner offset. */
+  align-self: flex-end;
 }
-/* Multiple medicines on one entry: not absolutely positioned like the
-   single-row case above (several stacked rows would overlap the card's
-   text), instead flows normally below the existing content. */
+/* Multiple medicines on one entry: each gets its own labeled row, in
+   normal flow, right-aligned — same in-flow approach as the single-row
+   case above, just stacked. */
 .health-dose-meds {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  margin-top: 10px;
+  align-self: flex-end;
 }
 .health-dose-med-row {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.health-dose-med-row .health-dose-row {
+  /* Inside a med-label row .health-dose-row is a flex sibling of the
+     label, not the outermost right-aligned block — reset the align-self
+     used for the single-medicine case above so it just centers normally
+     alongside the label instead of sinking to the row's bottom edge. */
+  align-self: auto;
 }
 .health-dose-med-label {
   font-size: 0.68rem;
@@ -2865,9 +2891,6 @@ body.bulk-mode .timer-panel {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.health-dose-meds .health-dose-row {
-  position: static; /* override the absolute positioning inherited above */
 }
 .dose-tick {
   display: flex;
@@ -4103,9 +4126,12 @@ body.bulk-mode .medicine-card {
 @media (max-width: 480px) {
   .undo-toast {
     /* Same fix as .toast: keep long undo messages fully on-screen and
-       centred instead of overflowing past the viewport edges. The Undo
-       button (.undo-btn) stays on its own line/flex-shrink:0 below. */
+       centred instead of overflowing past the viewport edges, without
+       forcing short/medium messages to wrap unnecessarily (see the
+       .toast comment for why width:max-content is needed here too). The
+       Undo button (.undo-btn) stays on its own line via flex-shrink:0. */
     white-space: normal;
+    width: max-content;
     max-width: calc(100vw - 24px);
   }
   .undo-toast span {
