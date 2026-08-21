@@ -2889,6 +2889,25 @@ body.bulk-mode .timer-panel {
   gap: 8px;
   width: 100%;
 }
+
+.health-entry-top-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: start;
+}
+.health-entry-top-actions .health-entry-body {
+  display: contents;
+}
+.health-entry-top-actions .mgmt-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+.health-entry-top-actions .health-entry-meds {
+  grid-column: 1 / -1;
+}
+
 .health-dose-row {
   display: flex;
   align-items: center;
