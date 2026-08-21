@@ -3753,7 +3753,7 @@ function renderHealthDiaryList() {
     const singleMed = medsList.length === 1;
     return `
     <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
-      <div class="health-entry-top">
+            <div class="health-entry-top ${!healthSelectMode ? 'health-entry-top-actions' : ''}">
         ${healthSelectMode ? `<input type="checkbox" class="qty-log-check" ${healthSelected.has(e.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleHealthEntrySelect('${e.id}')" />` : ''}
         <span class="health-entry-body">
           <span class="health-entry-date">
