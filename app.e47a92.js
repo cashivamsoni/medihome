@@ -3743,6 +3743,14 @@ function renderHealthDiaryList() {
   container.innerHTML = entries.map(e => {
     const daysTracked = e.checkInCount || 1;
     const checkedInToday = (e.lastActiveDate || e.date) === todayStr;
+    // Exactly one medicine is the common case — weave its dose ticks into
+    // the same line as the name (see .health-entry-meds-line) instead of a
+    // separate row below, so there's no leftover blank strip once the name
+    // is short/unwrapped. 0 medicines (nothing to weave into) and 2+
+    // medicines (need their own labeled rows) keep the old below-the-fold
+    // renderDoseTicks() block.
+    const medsList = getEntryMedicineList(e);
+    const singleMed = medsList.length === 1;
     return `
     <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
       <div class="health-entry-top">
@@ -3756,7 +3764,10 @@ function renderHealthDiaryList() {
             <span class="health-entry-issue">${escHtml(e.issue)}</span>
             ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
           </span>
-          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i><span class="health-entry-meds-text">${escHtml(e.medicines)}</span></span>` : ''}
+          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i>${singleMed
+            ? `<span class="health-entry-meds-line"><span class="health-entry-meds-text">${escHtml(e.medicines)}</span>${renderDoseTicksInline(e, medsList[0])}</span>`
+            : `<span class="health-entry-meds-text">${escHtml(e.medicines)}</span>`
+          }</span>` : ''}
           ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i><span class="health-entry-notes-text">${escHtml(e.notes)}</span></span>` : ''}
         </span>
         ${!healthSelectMode ? `<div class="mgmt-actions">
@@ -3766,7 +3777,7 @@ function renderHealthDiaryList() {
           <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>` : ''}
       </div>
-      ${renderDoseTicks(e)}
+      ${!singleMed ? renderDoseTicks(e) : ''}
     </div>
   `;
   }).join('');
@@ -3898,23 +3909,26 @@ function doseSummaryText(entry) {
   return days.map(d => `${formatHealthDate(d)}: ${doseTimesToLettersForDay(entry, d)}`).join('; ');
 }
 
+// Shared by the below-the-fold row (renderDoseTicks) and the inline,
+// woven-into-the-medicine-line version (renderDoseTicksInline) so both
+// stay in sync.
+function buildDoseTicksHtml(entry, med, activeDay) {
+  const set = new Set(getDoseTimesForDay(entry, activeDay, med));
+  return DOSE_TIME_ORDER.map(t => `
+    <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${med ? ` — ${escHtml(med)}` : ''}${activeDay !== entry.date ? ` (${formatHealthDate(activeDay)})` : ''}" onclick="event.stopPropagation(); toggleDoseTime('${entry.id}','${t}','${activeDay}', decodeURIComponent('${encodeURIComponent(med)}'))">
+      <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+    </button>`).join('');
+}
+
 function renderDoseTicks(entry) {
   const activeDay = entry.lastActiveDate || entry.date;
   const meds = getEntryMedicineList(entry);
   const rows = meds.length ? meds : [''];
 
-  const buildTicks = (med) => {
-    const set = new Set(getDoseTimesForDay(entry, activeDay, med));
-    return DOSE_TIME_ORDER.map(t => `
-      <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${med ? ` — ${escHtml(med)}` : ''}${activeDay !== entry.date ? ` (${formatHealthDate(activeDay)})` : ''}" onclick="event.stopPropagation(); toggleDoseTime('${entry.id}','${t}','${activeDay}', decodeURIComponent('${encodeURIComponent(med)}'))">
-        <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
-      </button>`).join('');
-  };
-
   if (rows.length <= 1) {
-    // Common case, unchanged compact layout: one row pinned to the card's
-    // bottom-right corner.
-    return `<span class="health-dose-row">${buildTicks(rows[0])}</span>`;
+    // No medicine text to weave the ticks into (issue-only entry) — keep
+    // them as their own row, right-aligned at the bottom of the card.
+    return `<span class="health-dose-row">${buildDoseTicksHtml(entry, rows[0], activeDay)}</span>`;
   }
   // Multiple medicines on one entry — each gets its own labeled row so a
   // tick means "this medicine, this slot", not every medicine on the entry
@@ -3924,8 +3938,18 @@ function renderDoseTicks(entry) {
   return `<div class="health-dose-meds">${rows.map(med => `
     <div class="health-dose-med-row">
       <span class="health-dose-med-label">${escHtml(med)}</span>
-      <span class="health-dose-row">${buildTicks(med)}</span>
+      <span class="health-dose-row">${buildDoseTicksHtml(entry, med, activeDay)}</span>
     </div>`).join('')}</div>`;
+}
+
+// Single-medicine entries: the ticks live on the same line as the name
+// (inside .health-entry-meds-line) so the name wraps around them instead
+// of leaving blank space above a separate row. flex-shrink:0 + the parent
+// line's flex-end alignment keep them pinned to the bottom-right corner of
+// that line no matter how many lines the name wraps onto.
+function renderDoseTicksInline(entry, med) {
+  const activeDay = entry.lastActiveDate || entry.date;
+  return `<span class="health-dose-row-inline">${buildDoseTicksHtml(entry, med, activeDay)}</span>`;
 }
 
 function toggleDoseTime(id, time, dateStr, medName) {
