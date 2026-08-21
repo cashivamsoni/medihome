@@ -3727,8 +3727,10 @@ function renderHealthDiaryList() {
       (e.date || '').includes(query)
     );
   }
-  // Newest first; entries on the same date keep their most-recently-added first
+  // Uncured entries first, cured entries after. Within each group: newest
+  // first, with same-date entries keeping their most-recently-added first.
   entries = entries.slice().sort((a, b) => {
+    if (!!a.cured !== !!b.cured) return a.cured ? 1 : -1;
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
