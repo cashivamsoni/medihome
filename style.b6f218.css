@@ -2724,6 +2724,7 @@ body.bulk-mode .timer-panel {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 .health-entry-date {
   font-size: 0.72rem;
