@@ -104,7 +104,10 @@ export default async function handler(req, res) {
     '(yoga asanas, breathing exercises, or light physical activity). Tailor them to ' +
     'the actual STILL-ACTIVE issues in the diary below when there are any (skip ones ' +
     'marked resolved/cured — no need to keep recommending for something already fixed) ' +
-    '— not generic filler — and to the BMI category otherwise.\n\n' +
+    '— not generic filler — and to the BMI category otherwise. ' +
+    'This household is strictly pure vegetarian and does not eat eggs, meat, fish, or ' +
+    'any other non-vegetarian food, and also avoids onion and garlic — never suggest ' +
+    'any of these in "do" or elsewhere, and only ever suggest food that fits this diet.\n\n' +
     'Scoring guidance — use real judgment, not a fixed formula:\n' +
     '- Start from how close the BMI is to the healthy 18.5–24.9 range (closer to ' +
     'the middle, ~21.7, is better).\n' +
