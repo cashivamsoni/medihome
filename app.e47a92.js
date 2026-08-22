@@ -3147,7 +3147,7 @@ function bmiCategoryClass(cat) {
 }
 const BMI_ADVICE = {
   Underweight: {
-    do: ['Eat calorie-dense, nutritious meals more frequently', 'Add protein-rich foods like milk, paneer, nuts & eggs', 'Light strength-focused exercise to build muscle'],
+    do: ['Eat calorie-dense, nutritious meals more frequently', 'Add protein-rich foods like milk, paneer & nuts', 'Light strength-focused exercise to build muscle'],
     avoid: ['Skipping meals', 'Excess tea/coffee right before meals (reduces appetite)'],
     yoga: ['Vajrasana after meals', 'Bhujangasana (Cobra Pose)', 'Simple Pranayama to improve appetite']
   },
