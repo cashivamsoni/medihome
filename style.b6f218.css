@@ -2830,7 +2830,7 @@ body.bulk-mode .timer-panel {
    no separate row, no leftover blank strip below a short name. */
 .health-entry-meds-line {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;   /* ← was flex-end */
   flex-wrap: nowrap;
   gap: 6px;
   flex: 1;
