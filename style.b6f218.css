@@ -102,6 +102,15 @@ body {
   min-height: 100vh;
   line-height: 1.6;
 }
+/* <button> ignores the body font-family by default (browsers give it the
+   OS's UI font instead) unless told to inherit. This one rule covers every
+   button in the app at once — stat chips, owner chips, owner tab buttons
+   in modals, etc. — so none of them need this set individually. Elements
+   that intentionally use DM Serif (.logo-title etc.) are never buttons, so
+   this doesn't touch them. */
+button {
+  font-family: inherit;
+}
 body.modal-open {
   overflow: hidden;
 }
