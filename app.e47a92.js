@@ -796,6 +796,119 @@ function saveAllBranches() {
   });
 }
 
+// ── Manual Backup: Export / Import full database as JSON ──────
+// Export downloads everything currently in the cloud (all branches, all
+// owners' medicines, health diary, owner profiles, quantity log) as a single
+// .json file. Import reads that file back and overwrites the cloud data,
+// then lets the existing realtime listener (loadData → onValue) pick it up
+// and re-render the app automatically — no page reload needed.
+
+function exportBackupJSON() {
+  try {
+    // Sync the branch currently on screen into `branches` first, so the
+    // export reflects anything not yet auto-saved (mirrors saveData()'s
+    // sync step, but stays local — this never writes to the cloud).
+    if (activeBranchId && branches[activeBranchId]) {
+      branches[activeBranchId].medicines     = medicines;
+      branches[activeBranchId].categories    = customCategories;
+      branches[activeBranchId].forms         = customForms;
+      branches[activeBranchId].owners        = customOwners;
+      branches[activeBranchId].types         = customTypes;
+      branches[activeBranchId].healthDiary   = healthDiary;
+      branches[activeBranchId].ownerProfiles = ownerProfiles;
+      branches[activeBranchId].quantityLog   = quantityLog;
+    }
+
+    const payload = {
+      __medihomeBackup: true,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: { branches, branchOrder, defaultBranchId }
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medihome-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    showToast('Backup downloaded ✓', 'success');
+  } catch (err) {
+    console.error('Export backup failed:', err);
+    showToast('Could not export backup. Please try again.', 'error');
+  }
+}
+
+function triggerBackupImport() {
+  const input = document.getElementById('backupImportFile');
+  if (input) { input.value = ''; input.click(); }
+}
+
+async function handleBackupImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ''; // allow re-selecting the same file again later
+
+  if (!file) return;
+
+  if (!/\.json$/i.test(file.name)) {
+    showToast('Please choose a .json backup file.', 'error');
+    return;
+  }
+
+  let parsed;
+  try {
+    const text = await file.text();
+    parsed = JSON.parse(text);
+  } catch (err) {
+    console.error('Backup parse failed:', err);
+    showToast('That file is not valid JSON.', 'error');
+    return;
+  }
+
+  // Accept either a full wrapper produced by Export Backup above
+  // ({ __medihomeBackup: true, data: {...} }), or a raw payload copied
+  // straight out of the Firebase console (e.g. { branches, branchOrder,
+  // defaultBranchId }, or an older pre-branches / plain-array shape).
+  const restored = (parsed && parsed.__medihomeBackup && parsed.data) ? parsed.data : parsed;
+
+  const looksLikeBranches = !!(restored && restored.branches && typeof restored.branches === 'object' && Object.keys(restored.branches).length > 0);
+  const looksPreBranches  = !!(restored && Array.isArray(restored.medicines));
+  const looksLegacyArray  = Array.isArray(restored);
+
+  if (!looksLikeBranches && !looksPreBranches && !looksLegacyArray) {
+    showToast("This file doesn't look like a MediHome backup.", 'error');
+    return;
+  }
+
+  const ok = await customConfirm(
+    'This will REPLACE all current data in the cloud with the contents of this backup file. This cannot be undone. Continue?',
+    { title: 'Restore Backup', okLabel: 'Restore', danger: true }
+  );
+  if (!ok) return;
+
+  try {
+    // Write it exactly as-is — loadData()'s existing migration logic
+    // (branches / pre-branches / legacy-array / empty) already normalizes
+    // every one of these shapes the moment the realtime listener re-fires,
+    // so nothing needs to be reshaped by hand here.
+    await window._fbSet(restored);
+    showToast('Backup restored ✓', 'success');
+  } catch (err) {
+    console.error('Restore backup failed:', err);
+    showToast('Could not restore backup — check connection.', 'error');
+  }
+}
+
 async function resetToDefault() {
   if (await customConfirm('Empty the entire medicine database? All medicines will be deleted. This cannot be undone.', { title: 'Empty Database', danger: true })) {
     medicines = [];
