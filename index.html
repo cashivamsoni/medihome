@@ -198,6 +198,25 @@
               <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
             </button>
             <button
+              class="menu-action-btn"
+              onclick="closeAppMenu(); exportBackupJSON();"
+            >
+              <i class="fa-solid fa-file-export"></i> Export Backup (JSON)
+            </button>
+            <button
+              class="menu-action-btn"
+              onclick="closeAppMenu(); triggerBackupImport();"
+            >
+              <i class="fa-solid fa-file-import"></i> Import Backup (JSON)
+            </button>
+            <input
+              type="file"
+              id="backupImportFile"
+              accept="application/json,.json"
+              style="display: none"
+              onchange="handleBackupImportFile(event)"
+            />
+            <button
               class="menu-action-btn menu-action-danger"
               id="menuLogoutBtn"
               onclick="closeAppMenu(); confirmLogout();"
