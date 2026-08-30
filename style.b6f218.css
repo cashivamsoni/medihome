@@ -2823,7 +2823,8 @@ body.bulk-mode .timer-panel {
      2-3 line medicine name. */
   line-height: 1.4;
 }
-.health-entry-meds i {
+.health-entry-meds i,
+.health-entry-med-name i {
   flex-shrink: 0;
   /* Nudge down from the icon's own line-box top so it lines up with the
      text's cap-height instead of sitting slightly high. */
@@ -2853,6 +2854,33 @@ body.bulk-mode .timer-panel {
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+}
+/* One or more medicines on an entry — each medicine gets its own full-width
+   row: a pill icon + name on the left, its M/A/E ticks pinned to the right.
+   Replaces the old split between a single inline line and a stacked
+   bottom-right block, so 1 medicine and 5 medicines read the same way. */
+.health-entry-meds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+.health-entry-med-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  width: 100%;
+}
+.health-entry-med-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .health-entry-notes {
   font-size: 0.78rem;
@@ -2913,7 +2941,8 @@ body.bulk-mode .timer-panel {
   grid-column: 2;
   grid-row: 1;
 }
-.health-entry-top-actions .health-entry-meds {
+.health-entry-top-actions .health-entry-meds,
+.health-entry-top-actions .health-entry-meds-list {
   grid-column: 1 / -1;
 }
 
@@ -3032,7 +3061,8 @@ body.bulk-mode .timer-panel {
   background: rgba(22, 163, 74, 0.18);
 }
 [data-theme="dark"] .qty-log-selected .health-entry-issue,
-[data-theme="dark"] .qty-log-selected .health-entry-meds {
+[data-theme="dark"] .qty-log-selected .health-entry-meds,
+[data-theme="dark"] .qty-log-selected .health-entry-med-row {
   color: var(--text-primary);
 }
 .qty-log-check {
@@ -3045,6 +3075,7 @@ body.bulk-mode .timer-panel {
 
 .health-entry-date i,
 .health-entry-meds i,
+.health-entry-med-name i,
 .health-entry-notes i {
   font-size: 0.7rem;
 }
@@ -4938,6 +4969,107 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .hf-meds-group {
   position: relative;
+}
+.hf-med-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hf-med-input-row .form-input {
+  flex: 1;
+}
+.hf-med-add-btn {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--teal-500);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+.hf-med-add-btn:hover {
+  background: var(--teal-600);
+}
+.hf-meds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hf-meds-list:not(:empty) {
+  margin-top: 10px;
+}
+.hf-med-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.hf-med-chip-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.hf-med-chip-name i {
+  color: var(--teal-500);
+  flex-shrink: 0;
+  font-size: 0.78rem;
+}
+.hf-med-chip-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.hf-med-chip-ticks {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.hf-med-chip-ticks .dose-tick {
+  width: 28px;
+  height: 28px;
+  font-size: 0.72rem;
+  opacity: 0.65;
+}
+.hf-med-chip-ticks .dose-tick-active {
+  opacity: 1;
+}
+.hf-med-chip-remove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: var(--transition);
+}
+.hf-med-chip-remove:hover {
+  background: var(--red-50);
+  color: var(--red-500);
+}
+[data-theme="dark"] .hf-med-chip-remove:hover {
+  background: rgba(244, 63, 94, 0.14);
+}
+#hfGenericDoseGroup.hidden {
+  display: none;
 }
 .hf-suggest-list {
   position: fixed;
