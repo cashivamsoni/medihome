@@ -1085,22 +1085,34 @@
             />
           </div>
           <div class="form-group hf-meds-group">
-            <label class="form-label" for="hfMeds">Medicines taken</label>
-            <input
-              class="form-input"
-              type="text"
-              id="hfMeds"
-              placeholder="e.g. Paracetamol 500mg"
-              autocomplete="off"
-              oninput="_hfMedsInput()"
-              onfocus="_hfMedsInput()"
-              onkeydown="_hfMedsKeydown(event)"
-            />
+            <label class="form-label" for="hfMedInput">Medicines taken</label>
+            <div class="hf-med-input-row">
+              <input
+                class="form-input"
+                type="text"
+                id="hfMedInput"
+                placeholder="e.g. Paracetamol 500mg"
+                autocomplete="off"
+                oninput="_hfMedsInput()"
+                onfocus="_hfMedsInput()"
+                onkeydown="_hfMedsKeydown(event)"
+              />
+              <button
+                type="button"
+                class="hf-med-add-btn"
+                onclick="_hfAddMedicineFromInput()"
+                title="Add medicine"
+                aria-label="Add medicine"
+              >
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div class="hf-meds-list" id="hfMedsList"></div>
           </div>
           <p class="hf-required-hint">
             <span class="req">*</span> Fill in at least one of the two fields above — e.g. logging a general wellness medicine (like a hair/nail supplement) without a specific health issue is fine.
           </p>
-          <div class="form-group">
+          <div class="form-group" id="hfGenericDoseGroup">
             <label class="form-label" id="hfDoseLabel">Doses taken</label>
             <div class="dlg-dose-row" id="hfDoseRow"></div>
           </div>
