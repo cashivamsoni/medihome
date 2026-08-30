@@ -157,43 +157,84 @@ document.addEventListener('keydown', (e) => {
 
 // ── Health Diary Entry Form (replaces the 4 chained prompt() calls) ───────
 let _hfResolve = null;
-// Dose ticks are tracked per medicine now (medName -> Set of 'morning'/etc),
-// not one shared Set for the whole entry — so "took it in the morning" means
-// a specific medicine was taken then, not that everything on the entry was.
+// Medicines on the form are now an ordered add/remove list (chips), each
+// with its own M/A/E dose ticks — not a single comma-separated text field.
+// Dose ticks are tracked per medicine (medName -> Set of 'morning'/etc), not
+// one shared Set for the whole entry — so "took it in the morning" means a
+// specific medicine was taken then, not that everything on the entry was.
+let _hfMedList = [];   // ordered medicine names currently on this entry
 let _hfDosesByMed = {};
-
-// Reads the medicines currently typed into the form (comma/semicolon
-// separated) so the dose-tick rows can be rebuilt live as the person types.
 // An entry with no medicines yet (issue-only, e.g. "Rest and hydration")
-// still gets one generic row, keyed by ''.
-function _hfCurrentMedList() {
-  const val = document.getElementById('hfMeds').value;
-  return val.split(/[,;]/).map(s => s.trim()).filter(Boolean);
-}
+// falls back to one generic dose row, keyed by ''.
 
-function _renderHfDoseTicks() {
-  const wrap = document.getElementById('hfDoseRow');
-  const rows = _hfCurrentMedList();
-  const meds = rows.length ? rows : [''];
-  // Carry forward ticks for medicines still present; drop any for medicines
-  // that were edited/removed from the field; seed empty Sets for new ones.
-  const next = {};
-  meds.forEach(m => { next[m] = _hfDosesByMed[m] || new Set(); });
-  _hfDosesByMed = next;
+function _hfRenderMedsList() {
+  const listEl = document.getElementById('hfMedsList');
+  const genericGroup = document.getElementById('hfGenericDoseGroup');
 
-  wrap.innerHTML = meds.map(med => `
-    <div class="hf-dose-med-row">
-      ${med ? `<span class="hf-dose-med-label">${escHtml(med)}</span>` : ''}
-      <span class="hf-dose-med-ticks">${DOSE_TIME_ORDER.map(t => `
-        <button type="button" class="dose-tick ${_hfDosesByMed[med].has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}${med ? ` — ${med}` : ''}" onclick="_hfToggleDose(decodeURIComponent('${encodeURIComponent(med)}'),'${t}')">
+  if (!_hfMedList.length) {
+    // No medicines added — show the plain generic "Doses taken" row instead
+    // of an empty list, same as before this feature existed.
+    listEl.innerHTML = '';
+    genericGroup.classList.remove('hidden');
+    if (!_hfDosesByMed['']) _hfDosesByMed[''] = new Set();
+    document.getElementById('hfDoseRow').innerHTML = DOSE_TIME_ORDER.map(t => `
+      <button type="button" class="dose-tick ${_hfDosesByMed[''].has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="_hfToggleDose('','${t}')">
+        <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
+      </button>`).join('');
+    return;
+  }
+
+  genericGroup.classList.add('hidden');
+  listEl.innerHTML = _hfMedList.map(med => {
+    const set = _hfDosesByMed[med] || new Set();
+    return `
+    <div class="hf-med-chip">
+      <span class="hf-med-chip-name"><i class="fa-solid fa-pills"></i><span class="hf-med-chip-text">${escHtml(med)}</span></span>
+      <span class="hf-med-chip-ticks">${DOSE_TIME_ORDER.map(t => `
+        <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)} — ${escHtml(med)}" onclick="_hfToggleDose(decodeURIComponent('${encodeURIComponent(med)}'),'${t}')">
           <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
         </button>`).join('')}</span>
-    </div>`).join('');
+      <button type="button" class="hf-med-chip-remove" title="Remove ${escHtml(med)}" aria-label="Remove ${escHtml(med)}" onclick="_hfRemoveMedicine(decodeURIComponent('${encodeURIComponent(med)}'))">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>`;
+  }).join('');
 }
+
 function _hfToggleDose(med, t) {
   if (!_hfDosesByMed[med]) _hfDosesByMed[med] = new Set();
   if (_hfDosesByMed[med].has(t)) _hfDosesByMed[med].delete(t); else _hfDosesByMed[med].add(t);
-  _renderHfDoseTicks();
+  _hfRenderMedsList();
+}
+
+// Adds a medicine chip (case-insensitive de-duped against what's already on
+// the entry). Returns true if it was added, false if it was blank/duplicate.
+function _hfAddMedicine(rawName) {
+  const name = (rawName || '').trim();
+  if (!name) return false;
+  if (_hfMedList.some(m => m.toLowerCase() === name.toLowerCase())) {
+    showToast(`"${name}" is already on this entry.`, 'info');
+    return false;
+  }
+  _hfMedList.push(name);
+  if (!_hfDosesByMed[name]) _hfDosesByMed[name] = new Set();
+  _hfRenderMedsList();
+  return true;
+}
+function _hfRemoveMedicine(name) {
+  _hfMedList = _hfMedList.filter(m => m !== name);
+  delete _hfDosesByMed[name];
+  _hfRenderMedsList();
+}
+function _hfAddMedicineFromInput() {
+  const input = document.getElementById('hfMedInput');
+  if (_hfAddMedicine(input.value)) {
+    input.value = '';
+    const box = document.getElementById('hfMedsSuggest');
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    input.focus();
+  }
 }
 
 // opts: {title, date, issue, meds, notes, doseLabel, dosesByMed}
@@ -205,7 +246,7 @@ function openHealthEntryForm(opts = {}) {
     document.getElementById('healthFormTitle').textContent = opts.title || 'Add Health Diary Entry';
     document.getElementById('hfDate').value = opts.date || '';
     document.getElementById('hfIssue').value = opts.issue || '';
-    document.getElementById('hfMeds').value = opts.meds || '';
+    document.getElementById('hfMedInput').value = '';
     document.getElementById('hfNotes').value = opts.notes || '';
     document.getElementById('hfMedsSuggest').classList.add('hidden');
     document.getElementById('hfMedsSuggest').innerHTML = '';
@@ -213,11 +254,12 @@ function openHealthEntryForm(opts = {}) {
     _hfSuggestMatches = [];
     _hfSuggestActiveIndex = -1;
     document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
+    _hfMedList = (opts.meds || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
     _hfDosesByMed = {};
     if (opts.dosesByMed) {
       Object.keys(opts.dosesByMed).forEach(med => { _hfDosesByMed[med] = new Set(opts.dosesByMed[med]); });
     }
-    _renderHfDoseTicks();
+    _hfRenderMedsList();
     document.getElementById('healthFormError').classList.add('hidden');
     const ov = document.getElementById('healthFormOverlay');
     ov.classList.remove('hidden');
@@ -257,7 +299,7 @@ function _hfBuildMedicinePool() {
 }
 
 function _hfPositionSuggestBox() {
-  const input = document.getElementById('hfMeds');
+  const input = document.getElementById('hfMedInput');
   const box = document.getElementById('hfMedsSuggest');
   const r = input.getBoundingClientRect();
   box.style.left = r.left + 'px';
@@ -266,16 +308,16 @@ function _hfPositionSuggestBox() {
 }
 
 function _hfMedsInput() {
-  _renderHfDoseTicks();
-  const input = document.getElementById('hfMeds');
+  const input = document.getElementById('hfMedInput');
   const box = document.getElementById('hfMedsSuggest');
-  const currentSegment = input.value.split(',').pop().trim();
-  if (!currentSegment) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const val = input.value.trim();
+  if (!val) { box.classList.add('hidden'); box.innerHTML = ''; return; }
 
   if (!_hfMedicinePool) _hfMedicinePool = _hfBuildMedicinePool();
-  const lower = currentSegment.toLowerCase();
+  const lower = val.toLowerCase();
   const matches = _hfMedicinePool
-    .filter(name => name.toLowerCase().includes(lower))
+    // Skip medicines already added as a chip — no point suggesting a duplicate.
+    .filter(name => name.toLowerCase().includes(lower) && !_hfMedList.some(m => m.toLowerCase() === name.toLowerCase()))
     .sort((a, b) => {
       const aStarts = a.toLowerCase().startsWith(lower) ? 0 : 1;
       const bStarts = b.toLowerCase().startsWith(lower) ? 0 : 1;
@@ -299,25 +341,28 @@ function _hfRenderSuggestBox() {
 }
 
 // Arrow keys (and Tab) move the highlight through the suggestions; Enter
-// confirms the highlighted (or first, if none highlighted yet) pick;
-// Escape closes the dropdown. Tab intentionally does NOT pick on its own —
-// only Enter commits — so repeated Tabs let you cycle through every match
-// before choosing one, instead of always locking in the first result.
+// confirms the highlighted pick (or, with no dropdown open, adds whatever
+// was typed as a new chip — free-form entries like home remedies still
+// work); Escape closes the dropdown. Tab intentionally does NOT pick on its
+// own — only Enter commits — so repeated Tabs let you cycle through every
+// match before choosing one, instead of always locking in the first result.
+// A comma or semicolon is also a quick "commit this medicine" shortcut, for
+// anyone used to the old comma-separated typing habit.
 function _hfMedsKeydown(event) {
   const box = document.getElementById('hfMedsSuggest');
-  if (!box || box.classList.contains('hidden') || !_hfSuggestMatches.length) return;
+  const hasSuggestions = !!(box && !box.classList.contains('hidden') && _hfSuggestMatches.length);
 
-  if (event.key === 'ArrowDown') {
+  if (event.key === 'ArrowDown' && hasSuggestions) {
     event.preventDefault();
     _hfSuggestActiveIndex = (_hfSuggestActiveIndex + 1) % _hfSuggestMatches.length;
     _hfRenderSuggestBox();
     document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
-  } else if (event.key === 'ArrowUp') {
+  } else if (event.key === 'ArrowUp' && hasSuggestions) {
     event.preventDefault();
     _hfSuggestActiveIndex = _hfSuggestActiveIndex <= 0 ? _hfSuggestMatches.length - 1 : _hfSuggestActiveIndex - 1;
     _hfRenderSuggestBox();
     document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
-  } else if (event.key === 'Tab') {
+  } else if (event.key === 'Tab' && hasSuggestions) {
     // Tab moves the highlight to the next suggestion (like Down) instead
     // of picking one — so repeatedly pressing Tab cycles through all the
     // matches to preview each, rather than immediately committing to the
@@ -328,37 +373,34 @@ function _hfMedsKeydown(event) {
     _hfRenderSuggestBox();
     document.getElementById(`hfSuggestItem${_hfSuggestActiveIndex}`)?.scrollIntoView({ block: 'nearest' });
   } else if (event.key === 'Enter') {
-    const pick = _hfSuggestActiveIndex >= 0 ? _hfSuggestActiveIndex : 0;
     event.preventDefault();
-    _hfPickSuggestion(pick);
+    if (hasSuggestions) {
+      const pick = _hfSuggestActiveIndex >= 0 ? _hfSuggestActiveIndex : 0;
+      _hfPickSuggestion(pick);
+    } else {
+      _hfAddMedicineFromInput();
+    }
   } else if (event.key === 'Escape') {
-    box.classList.add('hidden');
+    if (hasSuggestions) box.classList.add('hidden');
+  } else if (event.key === ',' || event.key === ';') {
+    event.preventDefault();
+    _hfAddMedicineFromInput();
   }
 }
 
 function _hfPickSuggestion(i) {
   const name = _hfSuggestMatches[i];
   if (!name) return;
-  const input = document.getElementById('hfMeds');
-  const idx = input.value.lastIndexOf(',');
-  const prefix = idx === -1 ? '' : input.value.slice(0, idx + 1) + ' ';
-  input.value = prefix + name;
+  _hfAddMedicine(name);
+  const input = document.getElementById('hfMedInput');
+  input.value = '';
   document.getElementById('hfMedsSuggest').classList.add('hidden');
   input.focus();
-  const len = input.value.length;
-  input.setSelectionRange(len, len);
-  // Setting .value programmatically doesn't fire an 'input' event, so the
-  // "Doses taken" row (normally rebuilt live via oninput="_hfMedsInput()")
-  // was left showing whatever partial text was typed before the dropdown
-  // was picked — the full name only appeared after something else (like a
-  // dose tick) happened to trigger a re-render. Call it directly here so
-  // the full medicine name shows immediately.
-  _renderHfDoseTicks();
 }
 
 document.addEventListener('click', (e) => {
   const box = document.getElementById('hfMedsSuggest');
-  const input = document.getElementById('hfMeds');
+  const input = document.getElementById('hfMedInput');
   if (box && !box.classList.contains('hidden') && e.target !== input && !box.contains(e.target)) {
     box.classList.add('hidden');
   }
@@ -378,8 +420,13 @@ window.addEventListener('resize', () => {
 function _healthFormResolve(save) {
   if (!_hfResolve) return;
   if (save) {
+    // Anything still typed in the medicine box but not yet added as a chip
+    // shouldn't be silently lost on Save — commit it now, same as pressing
+    // Enter or a comma would have.
+    const pendingMed = document.getElementById('hfMedInput').value.trim();
+    if (pendingMed) _hfAddMedicine(pendingMed);
     const issue = document.getElementById('hfIssue').value.trim();
-    const meds = document.getElementById('hfMeds').value.trim();
+    const meds = _hfMedList.join(', ');
     if (!issue && !meds) {
       const err = document.getElementById('healthFormError');
       err.textContent = 'Please fill in either a health update or a medicine taken.';
@@ -397,13 +444,15 @@ function _healthFormResolve(save) {
   // label. Falling back to "General / Preventive" keeps all of that working
   // without forcing the person to invent a fake "issue" just to save.
   const issueVal = document.getElementById('hfIssue').value.trim();
+  const medRows = _hfMedList.length ? _hfMedList : [''];
   const result = save ? {
     date: document.getElementById('hfDate').value,
     issue: issueVal || 'General / Preventive',
-    meds: document.getElementById('hfMeds').value.trim(),
+    meds: _hfMedList.join(', '),
     notes: document.getElementById('hfNotes').value.trim(),
-    dosesByMed: Object.keys(_hfDosesByMed).reduce((out, med) => {
-      out[med] = DOSE_TIME_ORDER.filter(t => _hfDosesByMed[med].has(t));
+    dosesByMed: medRows.reduce((out, med) => {
+      const set = _hfDosesByMed[med] || new Set();
+      out[med] = DOSE_TIME_ORDER.filter(t => set.has(t));
       return out;
     }, {})
   } : null;
@@ -3858,14 +3907,12 @@ function renderHealthDiaryList() {
   container.innerHTML = entries.map(e => {
     const daysTracked = e.checkInCount || 1;
     const checkedInToday = (e.lastActiveDate || e.date) === todayStr;
-    // Exactly one medicine is the common case — weave its dose ticks into
-    // the same line as the name (see .health-entry-meds-line) instead of a
-    // separate row below, so there's no leftover blank strip once the name
-    // is short/unwrapped. 0 medicines (nothing to weave into) and 2+
-    // medicines (need their own labeled rows) keep the old below-the-fold
-    // renderDoseTicks() block.
+    // Every medicine on the entry gets its own full-width row — pill icon +
+    // name on the left, that medicine's M/A/E ticks pinned to the right —
+    // so 1 medicine and several medicines read the same way. An issue-only
+    // entry (no medicines at all) has nothing to weave ticks into and keeps
+    // the old generic below-the-fold renderDoseTicks() row instead.
     const medsList = getEntryMedicineList(e);
-    const singleMed = medsList.length === 1;
     return `
     <div class="mgmt-item health-entry health-diary-entry ${healthSelectMode ? 'qty-log-selectable' : ''} ${healthSelected.has(e.id) ? 'qty-log-selected' : ''} ${e.cured ? 'health-entry-cured' : ''}" ${healthSelectMode ? `onclick="toggleHealthEntrySelect('${e.id}')"` : ''}>
             <div class="health-entry-top ${!healthSelectMode ? 'health-entry-top-actions' : ''}">
@@ -3879,10 +3926,11 @@ function renderHealthDiaryList() {
             <span class="health-entry-issue">${escHtml(e.issue)}</span>
             ${e.cured ? `<span class="health-entry-cured-badge"><i class="fa-solid fa-circle-check"></i> Cured${daysTracked > 1 ? ` · ${daysTracked}d` : ''}</span>` : ''}
           </span>
-          ${e.medicines ? `<span class="health-entry-meds"><i class="fa-solid fa-pills"></i>${singleMed
-            ? `<span class="health-entry-meds-line"><span class="health-entry-meds-text">${escHtml(e.medicines)}</span>${renderDoseTicksInline(e, medsList[0])}</span>`
-            : `<span class="health-entry-meds-text">${escHtml(e.medicines)}</span>`
-          }</span>` : ''}
+          ${medsList.length ? `<span class="health-entry-meds-list">${medsList.map(med => `
+            <span class="health-entry-med-row">
+              <span class="health-entry-med-name"><i class="fa-solid fa-pills"></i><span class="health-entry-meds-text">${escHtml(med)}</span></span>
+              ${renderDoseTicksInline(e, med)}
+            </span>`).join('')}</span>` : ''}
           ${e.notes ? `<span class="health-entry-notes"><i class="fa-solid fa-note-sticky"></i><span class="health-entry-notes-text">${escHtml(e.notes)}</span></span>` : ''}
         </span>
         ${!healthSelectMode ? `<div class="mgmt-actions">
@@ -3892,7 +3940,7 @@ function renderHealthDiaryList() {
           <button class="mgmt-btn" onclick="deleteHealthEntry('${e.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>` : ''}
       </div>
-      ${!singleMed ? renderDoseTicks(e) : ''}
+      ${!medsList.length ? renderDoseTicks(e) : ''}
     </div>
   `;
   }).join('');
