@@ -5006,12 +5006,31 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .hf-med-chip {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 8px 10px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
+}
+.hf-med-chip.hf-med-chip-dragging {
+  opacity: 0.45;
+}
+.hf-med-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 20px;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  font-size: 0.78rem;
+}
+.hf-med-drag-handle:active {
+  cursor: grabbing;
 }
 .hf-med-chip-name {
   display: flex;
@@ -5022,15 +5041,38 @@ body.compact-view.bulk-mode .medicine-card {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
+  cursor: pointer;
 }
-.hf-med-chip-name i {
+.hf-med-chip-name i.fa-pills {
   color: var(--teal-500);
   flex-shrink: 0;
   font-size: 0.78rem;
 }
+.hf-med-chip-edit-icon {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+.hf-med-chip-name:hover .hf-med-chip-edit-icon {
+  opacity: 1;
+}
 .hf-med-chip-text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.hf-med-chip-edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1.5px solid var(--teal-500);
+  border-radius: 6px;
+  padding: 4px 8px;
 }
 .hf-med-chip-ticks {
   display: flex;
@@ -5045,6 +5087,34 @@ body.compact-view.bulk-mode .medicine-card {
 }
 .hf-med-chip-ticks .dose-tick-active {
   opacity: 1;
+}
+.hf-med-chip-reorder-mobile {
+  display: none;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.hf-med-chip-arrow {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.hf-med-chip-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.hf-med-chip-arrow:not(:disabled):hover {
+  background: var(--teal-500);
+  color: #fff;
+  border-color: var(--teal-500);
 }
 .hf-med-chip-remove {
   flex-shrink: 0;
@@ -5067,6 +5137,22 @@ body.compact-view.bulk-mode .medicine-card {
 }
 [data-theme="dark"] .hf-med-chip-remove:hover {
   background: rgba(244, 63, 94, 0.14);
+}
+@media (max-width: 640px) {
+  /* Native drag-and-drop doesn't translate well to touch, so mobile swaps
+     the drag handle for explicit up/down buttons instead. The medicine
+     name also claims the full first line so the tick/arrow/remove cluster
+     gets its own row rather than everything being squeezed onto one. */
+  .hf-med-drag-handle {
+    display: none;
+  }
+  .hf-med-chip-reorder-mobile {
+    display: flex;
+  }
+  .hf-med-chip-name,
+  .hf-med-chip-edit-input {
+    flex-basis: 100%;
+  }
 }
 #hfGenericDoseGroup.hidden {
   display: none;
