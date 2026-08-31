@@ -604,6 +604,8 @@ let branchOrder = [];         // display order of branch IDs
 let activeBranchId = null;    // branch currently loaded into medicines/customX
 let defaultBranchId = null;   // branch that auto-loads on every refresh
 let _branchInitialized = false; // true once the first real page load has run
+let _welcomePopupShownThisSession = false; // shows once per real page load, not on every background sync
+let _welcomeAttentionItems = [];
 
 // Units that are countable → auto low-stock
 const COUNTABLE_UNITS = [
@@ -881,6 +883,7 @@ function loadActiveBranchIntoState() {
   renderAll();
   updateStats();
   updateMenuBranchLabel();
+  maybeShowWelcomePopup();
 
   // Keep the Health Diary modal in sync with the authoritative data too,
   // if it happens to be open.
@@ -1190,6 +1193,104 @@ function renderReorderAlert(list) {
         </div>
       </div>
     </div>`).join('');
+}
+
+// ── Welcome / Attention Needed popup ─────────────────────────
+// A quick-glance notification of anything that needs acting on right now —
+// expired medicines (dispose), 0-stock/low-stock medicines (reorder), and
+// medicines expiring within 6 months (reorder ahead of time) — surfaced once
+// per real page load instead of relying on someone to notice the persistent
+// "Reorder Needed" section or scroll through the full list.
+function buildAttentionList() {
+  const items = [];
+  const seen = new Set();
+  const add = (m, reason) => { if (seen.has(m.id)) return; seen.add(m.id); items.push({ m, reason }); };
+  // Priority order — each medicine appears once, tagged with its single
+  // most urgent reason: expired (dispose now) > out of stock (can't take
+  // it at all) > low stock (reorder soon) > expiring soon (reorder ahead).
+  medicines.forEach(m => { if (isExpiredMed(m.expiryDate)) add(m, 'expired'); });
+  medicines.forEach(m => { if (m.quantity === 0) add(m, 'finished'); });
+  medicines.forEach(m => { if (effectiveLowStock(m) && m.quantity > 0) add(m, 'low'); });
+  medicines.forEach(m => { if (isExpiringSoonMed(m.expiryDate) && !isExpiredMed(m.expiryDate)) add(m, 'expiring'); });
+  return items;
+}
+
+const ATTENTION_REASON_CONFIG = {
+  expired:  { label: 'Expired — dispose', icon: 'fa-ban',                cls: 'attn-expired' },
+  finished: { label: 'Out of stock',      icon: 'fa-box',                cls: 'attn-critical' },
+  low:      { label: 'Running low',       icon: 'fa-triangle-exclamation', cls: 'attn-low' },
+  expiring: { label: 'Expiring soon',     icon: 'fa-hourglass-half',     cls: 'attn-expiring' }
+};
+const WELCOME_POPUP_PREVIEW_MAX = 5;
+
+function maybeShowWelcomePopup() {
+  if (_welcomePopupShownThisSession) return;
+  _welcomePopupShownThisSession = true;
+  const items = buildAttentionList();
+  if (!items.length) return; // nothing wrong — don't interrupt with an empty/all-clear popup
+  _welcomeAttentionItems = items;
+  renderWelcomePopup(items);
+  // A brief delay so the popup arrives like a notification landing a beat
+  // after the homepage has settled, rather than flashing in instantly
+  // before the person has even seen the page.
+  setTimeout(() => {
+    const overlay = document.getElementById('welcomePopupOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  }, 500);
+}
+
+function renderWelcomePopup(items) {
+  const preview = items.slice(0, WELCOME_POPUP_PREVIEW_MAX);
+  const remaining = items.length - preview.length;
+
+  const expiredCount  = items.filter(x => x.reason === 'expired').length;
+  const reorderCount  = items.filter(x => x.reason === 'finished' || x.reason === 'low').length;
+  const expiringCount = items.filter(x => x.reason === 'expiring').length;
+  const subParts = [];
+  if (expiredCount)  subParts.push(`${expiredCount} to dispose`);
+  if (reorderCount)  subParts.push(`${reorderCount} to reorder`);
+  if (expiringCount) subParts.push(`${expiringCount} expiring soon`);
+  document.getElementById('welcomePopupSub').textContent = subParts.join(' · ');
+
+  document.getElementById('welcomePopupList').innerHTML = preview.map(({ m, reason }) => {
+    const cfg = ATTENTION_REASON_CONFIG[reason];
+    const detail = (reason === 'expired' || reason === 'expiring')
+      ? formatExpiry(m.expiryDate)
+      : (m.quantity === 0 ? 'Finished' : `${m.quantity} ${m.quantityUnit} left`);
+    return `
+    <div class="welcome-popup-item" onclick="dismissWelcomePopup(); scrollToMedicine('${m.id}');">
+      <span class="welcome-popup-item-icon">${getFormIcon(m.form)}</span>
+      <span class="welcome-popup-item-info">
+        <span class="welcome-popup-item-name">${escHtml(m.name)}</span>
+        <span class="welcome-popup-item-meta">${escHtml(ownerLabel(m.owner))} · ${escHtml(detail)}</span>
+      </span>
+      <span class="welcome-popup-item-badge ${cfg.cls}"><i class="fa-solid ${cfg.icon}"></i> ${cfg.label}</span>
+    </div>`;
+  }).join('') + (remaining > 0 ? `<div class="welcome-popup-more">+ ${remaining} more need attention</div>` : '');
+}
+
+function dismissWelcomePopup() {
+  const overlay = document.getElementById('welcomePopupOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  setTimeout(() => overlay.classList.add('hidden'), 250); // matches the CSS transition duration
+}
+
+// Jumps to whichever filter chip best matches what's in the popup — expired
+// takes priority (most urgent), then low/finished stock, then expiring —
+// and scrolls the filter bar into view so the full matching list is visible.
+function viewAllAttentionItems() {
+  const items = _welcomeAttentionItems || [];
+  dismissWelcomePopup();
+  let filterType = 'low';
+  if (items.some(x => x.reason === 'expired')) filterType = 'expired';
+  else if (items.some(x => x.reason === 'finished' || x.reason === 'low')) filterType = 'low';
+  else filterType = 'expiring';
+  const btn = document.querySelector(`.stat-chip[data-filter="${filterType}"]`);
+  setFilter(filterType, btn);
+  document.querySelector('.stats-bar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── Owner Health Carousel (homepage) ────────────────────────
