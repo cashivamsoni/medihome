@@ -166,6 +166,17 @@ let _hfMedList = [];   // ordered medicine names currently on this entry
 let _hfDosesByMed = {};
 // An entry with no medicines yet (issue-only, e.g. "Rest and hydration")
 // falls back to one generic dose row, keyed by ''.
+let _hfEditingIndex = null; // index of the chip whose name is being renamed inline, or null
+let _hfDragIndex = null;    // index of the chip currently being drag-reordered, or null
+
+// Native HTML5 drag only starts from the grip handle (draggable is toggled
+// on mousedown/mouseup) so dragging a chip doesn't compete with tapping its
+// buttons. If the mouse is released anywhere other than the handle's own
+// mouseup (e.g. the drag ends outside the list), this cleans up the stray
+// draggable attribute so the chip doesn't stay accidentally draggable.
+document.addEventListener('mouseup', () => {
+  document.querySelectorAll('.hf-med-chip[draggable="true"]').forEach(el => el.removeAttribute('draggable'));
+});
 
 function _hfRenderMedsList() {
   const listEl = document.getElementById('hfMedsList');
@@ -185,15 +196,34 @@ function _hfRenderMedsList() {
   }
 
   genericGroup.classList.add('hidden');
-  listEl.innerHTML = _hfMedList.map(med => {
+  const lastIndex = _hfMedList.length - 1;
+  listEl.innerHTML = _hfMedList.map((med, i) => {
     const set = _hfDosesByMed[med] || new Set();
+    const nameHtml = _hfEditingIndex === i
+      ? `<input type="text" class="hf-med-chip-edit-input" id="hfMedEditInput${i}" value="${escHtml(med)}"
+           onkeydown="_hfRenameKeydown(event, ${i})" onblur="_hfCommitEditMedicine(${i}, this.value)" />`
+      : `<span class="hf-med-chip-name" onclick="_hfStartEditMedicine(${i})" title="Tap to rename">
+           <i class="fa-solid fa-pills"></i><span class="hf-med-chip-text">${escHtml(med)}</span>
+           <i class="fa-solid fa-pen hf-med-chip-edit-icon"></i>
+         </span>`;
     return `
-    <div class="hf-med-chip">
-      <span class="hf-med-chip-name"><i class="fa-solid fa-pills"></i><span class="hf-med-chip-text">${escHtml(med)}</span></span>
+    <div class="hf-med-chip" data-index="${i}"
+      ondragover="_hfChipDragOver(event)"
+      ondrop="_hfChipDrop(event, ${i})"
+      ondragstart="_hfChipDragStart(event, ${i})"
+      ondragend="_hfChipDragEnd(event)">
+      <span class="hf-med-drag-handle" title="Drag to reorder" onmousedown="_hfArmDrag(${i})">
+        <i class="fa-solid fa-grip-vertical"></i>
+      </span>
+      ${nameHtml}
       <span class="hf-med-chip-ticks">${DOSE_TIME_ORDER.map(t => `
         <button type="button" class="dose-tick ${set.has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)} — ${escHtml(med)}" onclick="_hfToggleDose(decodeURIComponent('${encodeURIComponent(med)}'),'${t}')">
           <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
         </button>`).join('')}</span>
+      <span class="hf-med-chip-reorder-mobile">
+        <button type="button" class="hf-med-chip-arrow" ${i === 0 ? 'disabled' : ''} onclick="_hfMoveMedicine(${i}, -1)" title="Move up" aria-label="Move up"><i class="fa-solid fa-chevron-up"></i></button>
+        <button type="button" class="hf-med-chip-arrow" ${i === lastIndex ? 'disabled' : ''} onclick="_hfMoveMedicine(${i}, 1)" title="Move down" aria-label="Move down"><i class="fa-solid fa-chevron-down"></i></button>
+      </span>
       <button type="button" class="hf-med-chip-remove" title="Remove ${escHtml(med)}" aria-label="Remove ${escHtml(med)}" onclick="_hfRemoveMedicine(decodeURIComponent('${encodeURIComponent(med)}'))">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -207,6 +237,94 @@ function _hfToggleDose(med, t) {
   _hfRenderMedsList();
 }
 
+// ── Reordering: drag-and-drop on desktop, up/down arrows on mobile ───────
+// Both end up calling the same splice-based reorder, so which one the person
+// used doesn't matter — the result (and what gets saved) is identical.
+function _hfArmDrag(index) {
+  const chip = document.querySelector(`.hf-med-chip[data-index="${index}"]`);
+  if (chip) chip.setAttribute('draggable', 'true');
+}
+function _hfChipDragStart(event, index) {
+  _hfEditingIndex = null;
+  _hfDragIndex = index;
+  event.dataTransfer.effectAllowed = 'move';
+  // Firefox won't start a drag at all unless setData is called.
+  event.dataTransfer.setData('text/plain', String(index));
+  event.currentTarget.classList.add('hf-med-chip-dragging');
+}
+function _hfChipDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+function _hfChipDrop(event, index) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (_hfDragIndex === null || _hfDragIndex === index) return;
+  const [moved] = _hfMedList.splice(_hfDragIndex, 1);
+  _hfMedList.splice(index, 0, moved);
+  _hfDragIndex = null;
+  _hfRenderMedsList();
+}
+function _hfChipDragEnd(event) {
+  event.currentTarget.classList.remove('hf-med-chip-dragging');
+  event.currentTarget.removeAttribute('draggable');
+  _hfDragIndex = null;
+}
+function _hfMoveMedicine(index, dir) {
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= _hfMedList.length) return;
+  _hfEditingIndex = null;
+  const [moved] = _hfMedList.splice(index, 1);
+  _hfMedList.splice(newIndex, 0, moved);
+  _hfRenderMedsList();
+}
+
+// ── Renaming a medicine already on the entry, any time before Save ───────
+function _hfStartEditMedicine(index) {
+  _hfEditingIndex = index;
+  _hfRenderMedsList();
+  const input = document.getElementById(`hfMedEditInput${index}`);
+  if (input) { input.focus(); input.select(); }
+}
+function _hfRenameKeydown(event, index) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    _hfCommitEditMedicine(index, event.target.value);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    _hfEditingIndex = null;
+    _hfRenderMedsList();
+  }
+}
+function _hfCommitEditMedicine(index, rawValue) {
+  // Enter already commits and clears _hfEditingIndex; the blur that follows
+  // (moving focus away) would otherwise try to commit a second time against
+  // a now-stale index — bail out if this edit session already ended.
+  if (_hfEditingIndex !== index) return;
+  const newName = (rawValue || '').trim();
+  const oldName = _hfMedList[index];
+  if (!newName) {
+    // Blank isn't a valid medicine name — revert to what it was rather than
+    // silently deleting the medicine out from under someone mid-edit.
+    _hfEditingIndex = null;
+    _hfRenderMedsList();
+    return;
+  }
+  const isDuplicate = newName.toLowerCase() !== oldName.toLowerCase() &&
+    _hfMedList.some((m, i) => i !== index && m.toLowerCase() === newName.toLowerCase());
+  if (isDuplicate) {
+    showToast(`"${newName}" is already on this entry.`, 'info');
+    return; // stay in edit mode so the name can be fixed
+  }
+  _hfMedList[index] = newName;
+  if (newName !== oldName) {
+    _hfDosesByMed[newName] = _hfDosesByMed[oldName] || new Set();
+    if (newName.toLowerCase() !== oldName.toLowerCase()) delete _hfDosesByMed[oldName];
+  }
+  _hfEditingIndex = null;
+  _hfRenderMedsList();
+}
+
 // Adds a medicine chip (case-insensitive de-duped against what's already on
 // the entry). Returns true if it was added, false if it was blank/duplicate.
 function _hfAddMedicine(rawName) {
@@ -216,12 +334,14 @@ function _hfAddMedicine(rawName) {
     showToast(`"${name}" is already on this entry.`, 'info');
     return false;
   }
+  _hfEditingIndex = null;
   _hfMedList.push(name);
   if (!_hfDosesByMed[name]) _hfDosesByMed[name] = new Set();
   _hfRenderMedsList();
   return true;
 }
 function _hfRemoveMedicine(name) {
+  _hfEditingIndex = null;
   _hfMedList = _hfMedList.filter(m => m !== name);
   delete _hfDosesByMed[name];
   _hfRenderMedsList();
@@ -255,6 +375,8 @@ function openHealthEntryForm(opts = {}) {
     _hfSuggestActiveIndex = -1;
     document.getElementById('hfDoseLabel').textContent = opts.doseLabel || 'Doses taken';
     _hfMedList = (opts.meds || '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+    _hfEditingIndex = null;
+    _hfDragIndex = null;
     _hfDosesByMed = {};
     if (opts.dosesByMed) {
       Object.keys(opts.dosesByMed).forEach(med => { _hfDosesByMed[med] = new Set(opts.dosesByMed[med]); });
