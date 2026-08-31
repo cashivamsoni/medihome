@@ -1141,6 +1141,27 @@
          overflow instead of floating over the whole page. -->
     <div class="hf-suggest-list hidden" id="hfMedsSuggest"></div>
 
+    <!-- Welcome / Attention Needed popup — a quick-glance notification of
+         medicines that are expired, out of stock, low, or expiring soon,
+         shown once per page load so nothing gets missed after a refresh. -->
+    <div id="welcomePopupOverlay" class="hidden welcome-popup-overlay" onclick="if(event.target===this) dismissWelcomePopup()">
+      <div class="welcome-popup" role="dialog" aria-modal="true" aria-labelledby="welcomePopupTitle">
+        <div class="welcome-popup-header">
+          <span class="welcome-popup-icon"><i class="fa-solid fa-bell"></i></span>
+          <div class="welcome-popup-title-wrap">
+            <h2 class="welcome-popup-title" id="welcomePopupTitle">Needs Your Attention</h2>
+            <p class="welcome-popup-sub" id="welcomePopupSub"></p>
+          </div>
+          <button class="modal-close" onclick="dismissWelcomePopup()" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="welcome-popup-list" id="welcomePopupList"></div>
+        <div class="welcome-popup-footer">
+          <button class="btn-cancel" onclick="dismissWelcomePopup()">Dismiss</button>
+          <button class="btn-save" onclick="viewAllAttentionItems()">View All</button>
+        </div>
+      </div>
+    </div>
+
     <!-- hidden compat elements for JS references -->
     <button id="themeToggleBtn" style="display: none">🌙</button>
     <button id="bulkToggleBtn" style="display: none"></button>
