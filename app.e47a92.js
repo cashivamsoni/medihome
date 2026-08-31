@@ -183,15 +183,13 @@ function _hfRenderMedsList() {
   const genericGroup = document.getElementById('hfGenericDoseGroup');
 
   if (!_hfMedList.length) {
-    // No medicines added — show the plain generic "Doses taken" row instead
-    // of an empty list, same as before this feature existed.
+    // No medicines added yet — there's nothing to mark as "taken", so hide
+    // "Doses taken" entirely rather than showing a row with no medicine
+    // attached to it. It reappears once a medicine chip exists, since each
+    // chip carries its own M/A/E ticks right there.
     listEl.innerHTML = '';
-    genericGroup.classList.remove('hidden');
+    genericGroup.classList.add('hidden');
     if (!_hfDosesByMed['']) _hfDosesByMed[''] = new Set();
-    document.getElementById('hfDoseRow').innerHTML = DOSE_TIME_ORDER.map(t => `
-      <button type="button" class="dose-tick ${_hfDosesByMed[''].has(t) ? 'dose-tick-active' : ''}" title="${t.charAt(0).toUpperCase()}${t.slice(1)}" onclick="_hfToggleDose('','${t}')">
-        <i class="fa-solid ${DOSE_TIME_ICONS[t]}"></i>
-      </button>`).join('');
     return;
   }
 
