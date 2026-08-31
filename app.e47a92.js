@@ -5110,6 +5110,32 @@ function exportToPDF() {
   }
 }
 
+// Medicines column for the PDF: one medicine per line (with that medicine's
+// own M/A/E letters right next to it) instead of a single comma-joined line
+// — a multi-medicine entry read as one run-on line was easy to misread as
+// which dose went with which medicine.
+function _pdfMedsText(e) {
+  const medsList = getEntryMedicineList(e);
+  if (!medsList.length) return stripEmoji(e.medicines || '—');
+
+  const days = allDoseDays(e);
+  if (days.length <= 1) {
+    // Single tracked day (the common case) — each medicine gets its own
+    // line, with its own letters right there, e.g. "Vitamin D3 — M".
+    const day = days[0] || e.lastActiveDate || e.date;
+    return medsList.map(med => {
+      const letters = doseTimesToLetters(getDoseTimesForDay(e, day, med));
+      return stripEmoji(med) + (letters ? ` — ${letters}` : '');
+    }).join('\n');
+  }
+  // Multiple tracked days (an ongoing/checked-in entry) — list the medicine
+  // names on their own lines first, then the full day-by-day breakdown
+  // below, since a single line can't cleanly show per-day-per-medicine ticks.
+  const namesBlock = medsList.map(med => stripEmoji(med)).join('\n');
+  const summary = doseSummaryText(e);
+  return namesBlock + (summary ? `\n[${summary}]` : '');
+}
+
 function exportHealthDiaryPDF() {
   try {
     if (!currentHealthOwner) { showToast('Select an owner first.', 'error'); return; }
@@ -5134,7 +5160,7 @@ function exportHealthDiaryPDF() {
       .map(e => ({
         date: formatHealthDate(e.date),
         issue: stripEmoji(e.issue),
-        meds: stripEmoji(e.medicines || '—') + (doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : '')
+        meds: _pdfMedsText(e)
       }));
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
