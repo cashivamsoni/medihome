@@ -413,9 +413,23 @@ let _hfSuggestActiveIndex = -1; // -1 = nothing highlighted yet
 
 function _hfBuildMedicinePool() {
   const pool = new Set();
-  medicines.forEach(m => { if (m.name) pool.add(m.name.trim()); });
+  // Names of medicines currently at 0 stock — tracked separately so a past
+  // diary mention of the same name (logged back when it still had stock)
+  // doesn't keep getting suggested either, once it's run out.
+  const zeroStock = new Set();
+  medicines.forEach(m => {
+    if (!m.name) return;
+    if (m.quantity > 0) pool.add(m.name.trim());
+    else zeroStock.add(m.name.trim().toLowerCase());
+  });
+  // Deleted medicines are already gone from the array above by the time we
+  // get here, so nothing further is needed to exclude those.
   healthDiary.forEach(e => {
-    if (e.medicines) e.medicines.split(/[,;]/).forEach(s => { const t = s.trim(); if (t) pool.add(t); });
+    if (!e.medicines) return;
+    e.medicines.split(/[,;]/).forEach(s => {
+      const t = s.trim();
+      if (t && !zeroStock.has(t.toLowerCase())) pool.add(t);
+    });
   });
   return Array.from(pool);
 }
