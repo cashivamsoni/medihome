@@ -2560,6 +2560,64 @@ function openEdit(id) {
 document.getElementById('saveBtn').addEventListener('click', saveMedicine);
 
 // Marks (or clears) the red required-field highlight on a form field
+// Keeps Health Diary entries in sync when a medicine's name is changed from
+// the main "Edit Medicine" form — otherwise a diary entry logged against the
+// old name would silently stop matching the (now renamed) medicine record.
+// Health Diary's own per-entry rename (the pencil on each chip) only ever
+// touches that one entry; this is the other direction — one rename here
+// updates every entry that mentions the medicine.
+function renameMedicineInHealthDiaryEntries(oldName, newName) {
+  const oldLower = (oldName || '').trim().toLowerCase();
+  const newTrimmed = (newName || '').trim();
+  if (!oldLower || !newTrimmed || oldLower === newTrimmed.toLowerCase()) return;
+  let touched = false;
+
+  healthDiary.forEach(entry => {
+    const medsList = getEntryMedicineList(entry);
+    const idx = medsList.findIndex(m => m.toLowerCase() === oldLower);
+    if (idx === -1) return;
+    // Preserve every other medicine and their order — only this one's name changes.
+    medsList[idx] = newTrimmed;
+    // Rare edge case: if the entry already had another medicine with this
+    // exact name (case-insensitive), collapse the now-duplicate text rather
+    // than showing the same name twice — the doseLog merge just below
+    // already combines their tick sets, so nothing is lost.
+    const seen = new Set();
+    const dedupedList = medsList.filter(m => {
+      const key = m.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    entry.medicines = dedupedList.join(', ');
+
+    // doseLog is keyed by medicine name per day — carry each day's ticks
+    // over to the new key. If the new name happens to already exist on the
+    // same day (renaming effectively merges it with another medicine
+    // already on the entry), combine the two tick sets instead of one
+    // silently overwriting the other.
+    if (entry.doseLog && typeof entry.doseLog === 'object') {
+      Object.keys(entry.doseLog).forEach(date => {
+        const dayLog = entry.doseLog[date];
+        if (!dayLog || typeof dayLog !== 'object' || Array.isArray(dayLog)) return; // legacy flat array — nothing keyed by name
+        const key = Object.keys(dayLog).find(k => k.toLowerCase() === oldLower);
+        if (key === undefined) return;
+        const oldTimes = dayLog[key] || [];
+        delete dayLog[key];
+        const merged = new Set([...(dayLog[newTrimmed] || []), ...oldTimes]);
+        if (merged.size) dayLog[newTrimmed] = Array.from(merged); else delete dayLog[newTrimmed];
+      });
+    }
+    touched = true;
+  });
+
+  if (touched) {
+    // Health Diary might already be open showing the old name — refresh it
+    // in place instead of waiting for it to be reopened.
+    renderHealthDiaryList();
+  }
+}
+
 function highlightInvalidField(id, isInvalid) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -2644,6 +2702,7 @@ function saveMedicine() {
     if (idx !== -1) {
       const oldQty = medicines[idx].quantity;
       const oldUnit = medicines[idx].quantityUnit;
+      const oldName = medicines[idx].name;
       medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
       // The quantity field in this form doubles as a manual stock update, so
       // treat a changed value the same as the quick +/- adjuster does —
@@ -2653,6 +2712,9 @@ function saveMedicine() {
           ? `${oldQty} → ${quantity} ${quantityUnit}`
           : `${oldQty} ${oldUnit} → ${quantity} ${quantityUnit}`;
         logQuantityChange(quantity > oldQty ? 'increased' : 'decreased', name, detail);
+      }
+      if (name !== oldName) {
+        renameMedicineInHealthDiaryEntries(oldName, name);
       }
     }
     showUndoToast(`"${name}" updated — tap Undo within 6s`, 'fa-pen');
