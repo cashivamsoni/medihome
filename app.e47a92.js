@@ -1235,9 +1235,10 @@ function maybeShowWelcomePopup() {
   // before the person has even seen the page.
   setTimeout(() => {
     const overlay = document.getElementById('welcomePopupOverlay');
-    if (!overlay) return;
+    if (!overlay || !overlay.classList.contains('hidden')) return; // already shown/dismissed — ignore
     overlay.classList.remove('hidden');
     requestAnimationFrame(() => overlay.classList.add('active'));
+    lockBodyScroll();
   }, 500);
 }
 
@@ -1273,9 +1274,11 @@ function renderWelcomePopup(items) {
 
 function dismissWelcomePopup() {
   const overlay = document.getElementById('welcomePopupOverlay');
-  if (!overlay) return;
+  if (!overlay || overlay.classList.contains('hidden')) return; // already dismissed — ignore duplicate call
   overlay.classList.remove('active');
   setTimeout(() => overlay.classList.add('hidden'), 250); // matches the CSS transition duration
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 
 // Jumps to whichever filter chip best matches what's in the popup — expired
@@ -2299,7 +2302,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'dlgOverlay', 'healthFormOverlay'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'dlgOverlay', 'healthFormOverlay', 'welcomePopupOverlay'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
