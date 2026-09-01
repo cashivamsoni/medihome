@@ -1938,7 +1938,7 @@ function highlightResult(idx) {
   if (el) {
     scrollCardIntoView(el);
     el.classList.add('highlight-pulse', 'highlight-active');
-    setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 1800);
+    setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 2800);
   }
 
   showToast(`${idx + 1} of ${searchResults.length}: ${med.name}`, 'info');
@@ -2019,7 +2019,7 @@ function _doScrollToMed(id) {
     if (pulseFired) return;
     pulseFired = true;
     el.classList.add('highlight-pulse');
-    setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 1800);
+    setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 2800);
   };
   const io = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) { io.disconnect(); firePulse(); }
