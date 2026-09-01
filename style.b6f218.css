@@ -1353,7 +1353,7 @@ body.bulk-mode .assistant-panel {
   border-color: var(--amber-200);
 }
 .medicine-card.highlight-pulse {
-  animation: pulse-highlight 1.4s ease;
+  animation: pulse-highlight 1.4s ease 2;
 }
 .medicine-card.highlight-active {
   outline: 3px solid var(--teal-400);
