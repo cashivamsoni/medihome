@@ -5590,3 +5590,12 @@ body.login-locked {
 [data-theme="dark"] .welcome-popup-item-badge.attn-critical {
   background: var(--red-600);
 }
+[data-theme="dark"] .welcome-popup-item-badge.attn-expired,
+[data-theme="dark"] .welcome-popup-item-badge.attn-low {
+  background: #321617;
+  color: #FCA5A5;
+}
+[data-theme="dark"] .welcome-popup-item-badge.attn-expiring {
+  background: #322A14;
+  color: #FCD34D;
+}
