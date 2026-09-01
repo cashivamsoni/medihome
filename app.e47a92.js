@@ -2001,11 +2001,31 @@ function _doScrollToMed(id) {
     el.classList.remove('highlight-pulse', 'highlight-active')
   );
   const el = document.getElementById(`med-${id}`);
-  if (el) {
-    scrollCardIntoView(el);
-    el.classList.add('highlight-pulse', 'highlight-active');
+  if (!el) return;
+  scrollCardIntoView(el);
+  // The outline appears right away as a "heading there" cue while the page
+  // is still smooth-scrolling. The glow *pulse*, though, is held until the
+  // card has actually arrived in view — reorder/welcome-popup jumps can
+  // land anywhere in a long, grouped list, so starting the pulse
+  // immediately (as soon as scrolling begins) meant most or all of its
+  // 1.4s animation played out off-screen and was never actually seen by
+  // the time the scroll settled. An IntersectionObserver fires once the
+  // card crosses into view (instantly if it's already visible), and the
+  // timeout is just a safety net in case it never crosses the threshold
+  // (e.g. it's shorter than the viewport near the very bottom of the page).
+  el.classList.add('highlight-active');
+  let pulseFired = false;
+  const firePulse = () => {
+    if (pulseFired) return;
+    pulseFired = true;
+    el.classList.add('highlight-pulse');
     setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 1800);
-  }
+  };
+  const io = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) { io.disconnect(); firePulse(); }
+  }, { threshold: 0.6 });
+  io.observe(el);
+  setTimeout(() => { io.disconnect(); firePulse(); }, 900);
 }
 
 // ── Scroll features ───────────────────────────────────────
