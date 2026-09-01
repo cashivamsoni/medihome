@@ -5576,8 +5576,11 @@ body.login-locked {
   flex-shrink: 0;
 }
 @media (max-width: 480px) {
+  .welcome-popup-overlay {
+    align-items: center;
+  }
   .welcome-popup {
-    margin-top: 6vh;
+    margin-top: 0;
     max-height: 82vh;
   }
   .welcome-popup-item-meta {
