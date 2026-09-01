@@ -1994,11 +1994,17 @@ function scrollToMedicine(id) {
 }
 
 function _doScrollToMed(id) {
+  // Clear any leftover highlight from a previous jump so rapid clicks
+  // (e.g. tapping through several reorder cards) don't leave more than one
+  // card outlined at once.
+  document.querySelectorAll('.medicine-card').forEach(el =>
+    el.classList.remove('highlight-pulse', 'highlight-active')
+  );
   const el = document.getElementById(`med-${id}`);
   if (el) {
     scrollCardIntoView(el);
-    el.classList.add('highlight-pulse');
-    setTimeout(() => el.classList.remove('highlight-pulse'), 1500);
+    el.classList.add('highlight-pulse', 'highlight-active');
+    setTimeout(() => el.classList.remove('highlight-pulse', 'highlight-active'), 1800);
   }
 }
 
