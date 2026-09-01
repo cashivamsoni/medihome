@@ -5503,6 +5503,10 @@ body.login-locked {
   border-color: var(--teal-300, var(--teal-500));
   background: var(--teal-50);
 }
+[data-theme="dark"] .welcome-popup-item:hover {
+  background: #16302C;
+  border-color: #1F4641;
+}
 .welcome-popup-item-icon {
   flex-shrink: 0;
   font-size: 1.15rem;
