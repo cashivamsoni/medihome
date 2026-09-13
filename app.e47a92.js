@@ -5465,6 +5465,13 @@ function exportToPDF() {
   }
 }
 
+// Short "13 Sep" form (no year) used only in the PDF's per-medicine dose
+// history, where the entry's own date column already anchors the year.
+function _pdfShortDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return isNaN(dt) ? d : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
 // Medicines column for the PDF: one medicine per line (with that medicine's
 // own M/A/E letters right next to it) instead of a single comma-joined line
 // — a multi-medicine entry read as one run-on line was easy to misread as
@@ -5483,12 +5490,27 @@ function _pdfMedsText(e) {
       return stripEmoji(med) + (letters ? ` — ${letters}` : '');
     }).join('\n');
   }
-  // Multiple tracked days (an ongoing/checked-in entry) — list the medicine
-  // names on their own lines first, then the full day-by-day breakdown
-  // below, since a single line can't cleanly show per-day-per-medicine ticks.
-  const namesBlock = medsList.map(med => stripEmoji(med)).join('\n');
-  const summary = doseSummaryText(e);
-  return namesBlock + (summary ? `\n[${summary}]` : '');
+  // Multiple tracked days (an ongoing/checked-in entry) — grouped per
+  // medicine, not per date: each medicine gets its own block with its
+  // full chronological history on the line right underneath it, e.g.
+  //   Apis Mellifica
+  //     13 Sep: M; 12 Sep: M, A, E; 11 Sep: M, A, E
+  //   Belladona 200
+  //     12 Sep: M, A, E; 11 Sep: M, A, E
+  // The old format listed every date first with all medicines crammed
+  // into it, so reading one medicine's own history meant hunting through
+  // every date group for its name. Days where a medicine has no ticks are
+  // skipped for that medicine's line rather than shown as empty.
+  return medsList.map(med => {
+    const history = days
+      .map(d => {
+        const letters = doseTimesToLetters(getDoseTimesForDay(e, d, med));
+        return letters ? `${_pdfShortDate(d)}: ${letters}` : null;
+      })
+      .filter(Boolean)
+      .join('; ');
+    return stripEmoji(med) + (history ? `\n   ${history}` : '');
+  }).join('\n\n');
 }
 
 function exportHealthDiaryPDF() {
