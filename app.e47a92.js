@@ -6212,35 +6212,47 @@ function setSortOrder(val) {
   renderAll();
 }
 
-// ── Custom sort dropdown (native <select> can't render icons in its options) ──
-const SORT_OPTIONS = {
-  expiry:   { icon: 'fa-hourglass-half', label: 'Sort by: Expiry (Soonest→Latest)' },
-  name:     { icon: 'fa-font',           label: 'Sort by: Name (A→Z)' },
-  quantity: { icon: 'fa-box',            label: 'Sort by: Quantity (High→Low)' },
-  added:    { icon: 'fa-clock',          label: 'Sort by: Recently Added' }
-};
+// ── Sort options now live inline inside the "View" menu flyout;
+// updateSortLabel just highlights whichever option matches sortOrder. ──
 function updateSortLabel() {
-  const cfg = SORT_OPTIONS[sortOrder] || SORT_OPTIONS.expiry;
-  const icon = document.getElementById('menuSortIcon');
-  const label = document.getElementById('menuSortLabel');
-  if (icon) icon.className = `fa-solid ${cfg.icon}`;
-  if (label) label.textContent = cfg.label;
-}
-function toggleSortDropdown() {
-  const dd = document.getElementById('menuSortDropdown');
-  if (dd) dd.classList.toggle('hidden');
-}
-function closeSortDropdown() {
-  const dd = document.getElementById('menuSortDropdown');
-  if (dd) dd.classList.add('hidden');
+  document.querySelectorAll('.menu-flyout-option[data-sort]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sort === sortOrder);
+  });
 }
 function selectSortOption(val) {
   setSortOrder(val);
-  closeSortDropdown();
+  closeMenuFlyout('view');
+}
+
+// ── Menu category flyouts (View / Data / Records) ───────────
+// Generic version of what used to be the one-off sort dropdown: each
+// flyout button toggles its own panel, and opening one closes the others.
+const MENU_FLYOUTS = ['view', 'data', 'records'];
+function menuFlyoutPanel(name) {
+  const cap = name.charAt(0).toUpperCase() + name.slice(1);
+  return document.getElementById(`menu${cap}FlyoutPanel`);
+}
+function toggleMenuFlyout(name) {
+  const panel = menuFlyoutPanel(name);
+  if (!panel) return;
+  const willOpen = panel.classList.contains('hidden');
+  closeAllMenuFlyouts();
+  if (willOpen) panel.classList.remove('hidden');
+}
+function closeMenuFlyout(name) {
+  const panel = menuFlyoutPanel(name);
+  if (panel) panel.classList.add('hidden');
+}
+function closeAllMenuFlyouts() {
+  MENU_FLYOUTS.forEach(closeMenuFlyout);
 }
 document.addEventListener('click', e => {
-  const wrap = document.querySelector('.menu-sort-wrap');
-  if (wrap && !wrap.contains(e.target)) closeSortDropdown();
+  document.querySelectorAll('.menu-flyout-wrap').forEach(wrap => {
+    if (!wrap.contains(e.target)) {
+      const panel = wrap.querySelector('.menu-flyout-panel');
+      if (panel) panel.classList.add('hidden');
+    }
+  });
 });
 
 function toggleTheme() {
@@ -6284,7 +6296,7 @@ function toggleAppMenu() {
     menu.classList.remove('menu-expanded'); // clip immediately so closing also animates cleanly
     menu.classList.add('hidden');
     btn.classList.remove('active');
-    closeSortDropdown();
+    closeAllMenuFlyouts();
   } else {
     menu.classList.remove('hidden');
     btn.classList.add('active');
@@ -6306,7 +6318,7 @@ function toggleAppMenu() {
 function closeAppMenu() {
   const menu = document.getElementById('appMenu');
   const btn  = document.getElementById('menuToggleBtn');
-  closeSortDropdown();
+  closeAllMenuFlyouts();
   if (menu) { menu.classList.add('hidden'); menu.classList.remove('menu-expanded'); }
   if (btn) btn.classList.remove('active');
 }
