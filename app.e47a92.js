@@ -18,6 +18,8 @@ let healthDiary = [];       // current branch's health diary entries
 let currentHealthOwner = null; // which owner tab is selected in the Health Diary modal
 let ownerProfiles = {};     // current branch's owner health profiles: { [ownerKey]: {weight,height,age,gender,image,updatedAt} }
 let currentProfileOwner = null; // which owner tab is selected in the Owner Health Profile modal
+let ownerProfileEditMode = false; // whether the profile's vitals fields (weight/height/DOB/gender) are currently editable
+let _ownerProfileEditSnapshot = null; // { weight, height, dob, gender } as they were right before Edit was pressed — restored on Cancel
 let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
@@ -3339,18 +3341,22 @@ bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
 function openOwnerProfile() {
   const modal = document.getElementById('ownerProfileModal');
   if (!modal || !modal.classList.contains('hidden')) return;
+  ownerProfileEditMode = false;
+  _ownerProfileEditSnapshot = null;
   const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
   if (!currentProfileOwner || !eligibleOwners.some(o => o.key === currentProfileOwner)) {
     currentProfileOwner = eligibleOwners.length ? eligibleOwners[0].key : null;
   }
   renderProfileOwnerTabs();
   renderOwnerProfileContent();
+  _setProfileEditButtonsVisibility();
   modal.classList.remove('hidden');
   lockBodyScroll();
 }
 function closeOwnerProfile() {
   const modal = document.getElementById('ownerProfileModal');
   if (!modal || modal.classList.contains('hidden')) return;
+  _discardProfileEditIfActive();
   modal.classList.add('hidden');
   unlockBodyScroll();
   setTimeout(reconcileBodyScrollLock, 50);
@@ -3378,6 +3384,7 @@ function renderProfileOwnerTabs() {
   `).join('');
 }
 function selectProfileOwnerTab(key) {
+  _discardProfileEditIfActive();
   currentProfileOwner = key;
   renderProfileOwnerTabs();
   renderOwnerProfileContent();
@@ -3423,7 +3430,7 @@ function renderOwnerProfileContent() {
             <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
             <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
           </button>
-          <button type="button" class="profile-avatar-edit-badge" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}"><i class="fa-solid fa-pencil"></i></button>
+          <button type="button" class="profile-avatar-edit-badge ${ownerProfileEditMode ? '' : 'hidden'}" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}"><i class="fa-solid fa-pencil"></i></button>
         </div>
       </div>
       <div class="profile-name-col">
@@ -3438,20 +3445,20 @@ function renderOwnerProfileContent() {
     <div class="form-grid profile-vitals-grid">
       <div class="form-group">
         <label class="form-label" for="profileWeight">Weight (kg)</label>
-        <input class="form-input" type="text" inputmode="decimal" id="profileWeight" placeholder="e.g. 62.5" value="${p.weight ?? ''}" oninput="handleProfileVitalInput('weight', this.value)" />
+        <input class="form-input" type="text" inputmode="decimal" id="profileWeight" placeholder="e.g. 62.5" value="${p.weight ?? ''}" oninput="handleProfileVitalInput('weight', this.value)" ${ownerProfileEditMode ? '' : 'disabled'} />
       </div>
       <div class="form-group">
         <label class="form-label" for="profileHeight">Height (cm)</label>
-        <input class="form-input" type="text" inputmode="decimal" id="profileHeight" placeholder="e.g. 165.1" value="${p.height ?? ''}" oninput="handleProfileVitalInput('height', this.value)" />
+        <input class="form-input" type="text" inputmode="decimal" id="profileHeight" placeholder="e.g. 165.1" value="${p.height ?? ''}" oninput="handleProfileVitalInput('height', this.value)" ${ownerProfileEditMode ? '' : 'disabled'} />
       </div>
       <div class="form-group">
         <label class="form-label" for="profileDob">Date of Birth</label>
-        <input class="form-input" type="date" id="profileDob" value="${p.dob || ''}" oninput="handleProfileVitalInput('dob', this.value)" />
+        <input class="form-input" type="date" id="profileDob" value="${p.dob || ''}" oninput="handleProfileVitalInput('dob', this.value)" ${ownerProfileEditMode ? '' : 'disabled'} />
         <span class="profile-age-hint" id="profileAgeHint">${p.dob ? `Age: ${calculateAge(p.dob)} years` : ''}</span>
       </div>
       <div class="form-group">
         <label class="form-label" for="profileGender">Gender</label>
-        <select class="form-select" id="profileGender" onchange="handleProfileVitalInput('gender', this.value)">
+        <select class="form-select" id="profileGender" onchange="handleProfileVitalInput('gender', this.value)" ${ownerProfileEditMode ? '' : 'disabled'}>
           <option value="" ${!p.gender ? 'selected' : ''}>— Select —</option>
           <option value="female" ${p.gender === 'female' ? 'selected' : ''}>Female</option>
           <option value="male" ${p.gender === 'male' ? 'selected' : ''}>Male</option>
@@ -3771,6 +3778,68 @@ function summarizeRecentMedicines(ownerKey) {
 
 // ── Profile form field handlers ─────────────────────────────
 let _profileSaveTimer = null;
+
+// Shows/hides the header's Edit vs. Save+Cancel buttons to match the current
+// edit-mode state. These buttons live in the modal's static header markup
+// (outside #profileContent), so renderOwnerProfileContent()'s innerHTML swap
+// never touches them — this is the one spot that keeps them in sync.
+function _setProfileEditButtonsVisibility() {
+  const editBtn = document.getElementById('profileEditBtn');
+  const saveBtn = document.getElementById('profileSaveBtn');
+  const cancelBtn = document.getElementById('profileCancelBtn');
+  if (editBtn) editBtn.classList.toggle('hidden', ownerProfileEditMode);
+  if (saveBtn) saveBtn.classList.toggle('hidden', !ownerProfileEditMode);
+  if (cancelBtn) cancelBtn.classList.toggle('hidden', !ownerProfileEditMode);
+}
+
+function enterProfileEditMode() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const p = ensureOwnerProfile(key);
+  // Only the four form fields are snapshotted — the profile photo has its
+  // own self-contained edit dialog with its own Save/Cancel, and stays that
+  // way regardless of this Edit mode, so it's deliberately not included here.
+  _ownerProfileEditSnapshot = { weight: p.weight, height: p.height, dob: p.dob, gender: p.gender };
+  ownerProfileEditMode = true;
+  renderOwnerProfileContent();
+  _setProfileEditButtonsVisibility();
+}
+
+function saveProfileEditMode() {
+  const key = currentProfileOwner;
+  if (!key) return;
+  clearTimeout(_profileSaveTimer);
+  ownerProfileEditMode = false;
+  _ownerProfileEditSnapshot = null;
+  ensureOwnerProfile(key).updatedAt = Date.now();
+  saveData();
+  renderOwnerProfileContent();
+  _setProfileEditButtonsVisibility();
+  showToast('Profile saved ✓', 'success');
+}
+
+// Reverts weight/height/dob/gender to how they were right before Edit was
+// pressed. Shared by the explicit Cancel button and by switching owner tabs
+// or closing the modal mid-edit, so an unsaved change never silently lingers
+// or bleeds onto the wrong owner.
+function _discardProfileEditIfActive() {
+  if (!ownerProfileEditMode) return;
+  clearTimeout(_profileSaveTimer);
+  const key = currentProfileOwner;
+  if (key && _ownerProfileEditSnapshot) {
+    Object.assign(ensureOwnerProfile(key), _ownerProfileEditSnapshot);
+    saveData();
+  }
+  ownerProfileEditMode = false;
+  _ownerProfileEditSnapshot = null;
+}
+
+function cancelProfileEditMode() {
+  _discardProfileEditIfActive();
+  renderOwnerProfileContent();
+  _setProfileEditButtonsVisibility();
+}
+
 function handleProfileVitalInput(field, value) {
   const key = currentProfileOwner;
   if (!key) return;
