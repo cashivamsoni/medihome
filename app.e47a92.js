@@ -3394,8 +3394,9 @@ function selectProfileOwnerTab(key) {
 // owner's tab is viewed, so the form always has something to read/write.
 function ensureOwnerProfile(key) {
   if (!ownerProfiles[key]) {
-    ownerProfiles[key] = { weight: null, height: null, dob: null, gender: '', image: null, updatedAt: null };
+    ownerProfiles[key] = { weight: null, height: null, dob: null, gender: '', image: null, notes: '', updatedAt: null };
   }
+  if (ownerProfiles[key].notes === undefined) ownerProfiles[key].notes = ''; // backfill for profiles saved before Quick Notes existed
   return ownerProfiles[key];
 }
 
@@ -3465,6 +3466,11 @@ function renderOwnerProfileContent() {
           <option value="other" ${p.gender === 'other' ? 'selected' : ''}>Other</option>
         </select>
       </div>
+    </div>
+
+    <div class="profile-sticky-note">
+      <div class="profile-sticky-note-header"><i class="fa-solid fa-thumbtack"></i> Quick Notes</div>
+      <textarea class="profile-sticky-note-textarea" id="profileNotes" placeholder="Doctor's number, blood group, insurance ID, anything worth keeping handy..." oninput="handleProfileNotesInput(this.value)">${escHtml(p.notes || '')}</textarea>
     </div>
 
     <div id="profileMetricsContainer"></div>
@@ -3859,6 +3865,20 @@ function handleProfileVitalInput(field, value) {
   }
   p.updatedAt = Date.now();
   updateProfileMetricsDisplay();
+  clearTimeout(_profileSaveTimer);
+  _profileSaveTimer = setTimeout(saveData, 600);
+}
+
+// Deliberately NOT gated by ownerProfileEditMode — a sticky note is meant to
+// be jotted on and saved instantly, the way a real one works, not locked
+// behind an Edit button first. Unlike the vitals fields it doesn't feed any
+// calculation, so there's nothing at risk from an accidental mid-scroll edit.
+function handleProfileNotesInput(value) {
+  const key = currentProfileOwner;
+  if (!key) return;
+  const p = ensureOwnerProfile(key);
+  p.notes = value;
+  p.updatedAt = Date.now();
   clearTimeout(_profileSaveTimer);
   _profileSaveTimer = setTimeout(saveData, 600);
 }
