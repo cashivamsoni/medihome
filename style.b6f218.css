@@ -3502,6 +3502,57 @@ body.bulk-mode .timer-panel {
   margin-top: 4px;
   min-height: 1em;
 }
+/* Quick Notes — styled to actually read as a sticky note (warm paper tone,
+   soft tilt, pin icon) rather than just another form field, since it's meant
+   to feel like a scratchpad you jot on, not a structured input. */
+.profile-sticky-note {
+  margin-top: 16px;
+  background: var(--amber-50);
+  border: 1.5px solid var(--amber-200);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 10px;
+  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.14);
+  transform: rotate(-0.6deg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.profile-sticky-note:focus-within {
+  transform: rotate(0deg);
+  box-shadow: 0 5px 14px rgba(217, 119, 6, 0.2);
+}
+.profile-sticky-note-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--amber-600);
+  margin-bottom: 6px;
+}
+.profile-sticky-note-header i {
+  font-size: 0.85rem;
+  transform: rotate(-28deg);
+}
+.profile-sticky-note-textarea {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border: none;
+  background: transparent;
+  font-family: "Kalam", "Comic Sans MS", "Inter", sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #78350F;
+  padding: 0;
+}
+.profile-sticky-note-textarea:focus {
+  outline: none;
+}
+.profile-sticky-note-textarea::placeholder {
+  color: rgba(120, 83, 15, 0.5);
+}
 .profile-section {
   margin-top: 16px;
   padding-top: 14px;
