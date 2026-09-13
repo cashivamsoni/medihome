@@ -5001,6 +5001,7 @@ function splitFormIcon(form) {
 }
 
 // ── Toast ─────────────────────────────────────────────────
+let _toastTimer = null;
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
   const msgEl = document.getElementById('toastMsg');
@@ -5010,7 +5011,12 @@ function showToast(msg, type='success') {
   const icons = { success: 'fa-check', error: 'fa-triangle-exclamation', info: 'fa-circle-info' };
   if (iconEl) iconEl.className = `fa-solid ${icons[type] || icons.success}`;
   t.className = `toast toast-${type} show`;
-  setTimeout(() => t.classList.remove('show'), 4000);
+  // Without clearing the prior timer, a toast shown moments before this one
+  // could still have its own "hide after 4s" timeout pending — it would fire
+  // on schedule and yank `show` off THIS toast early, sometimes almost
+  // immediately. Clearing it means every toast always gets its own full 4s.
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
 }
 
 // ── Undo System ───────────────────────────────────────────
