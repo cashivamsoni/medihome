@@ -1314,6 +1314,15 @@ const OWNER_HEALTH_INTERVAL = 9000; // 8–10s, per spec
 // 7:05am page load doesn't immediately flag the morning dose as missed.
 const DOSE_DUE_HOUR = { morning: 8, afternoon: 13, evening: 19 };
 
+// True if this medicine has ever had at least one dose logged, on any day,
+// for this entry. Used to tell a genuinely brand-new medicine (which should
+// still get an initial "take your first dose" nudge) apart from one that
+// was taken before and has since gone quiet.
+function hasEverBeenTaken(entry, med) {
+  if (!entry.doseLog || typeof entry.doseLog !== 'object') return false;
+  return Object.keys(entry.doseLog).some(d => getDoseTimesForDay(entry, d, med).length > 0);
+}
+
 function computeOwnerHealthReminder(key) {
   const active = healthDiary.filter(e => e.owner === key && !e.cured);
   if (!active.length) return { text: 'No active health concerns', ok: true };
@@ -1329,13 +1338,18 @@ function computeOwnerHealthReminder(key) {
     const meds = getEntryMedicineList(e);
     const rows = meds.length ? meds : [''];
     rows.forEach(med => {
-      // Expect a slot only if this medicine was actually taken in that slot
-      // yesterday — a morning-only medicine shouldn't be flagged "missed" in
-      // the afternoon/evening just because those hours have passed. Falls
-      // back to every due slot when there's no usable history yet (brand-new
-      // entry, or nothing was logged at all yesterday).
+      // Only yesterday's actual pattern decides what's expected today:
+      // - taken yesterday  -> expect the same slot(s) again today
+      // - never taken at all (brand-new) -> nudge for a first dose, all slots
+      // - taken before but NOT yesterday -> treat as discontinued (a one-time
+      //   medicine that was only ever meant for a single dose), expect
+      //   nothing, so it stops being flagged from the day after the first
+      //   skipped day onward.
       const yesterdayPattern = getDoseTimesForDay(e, yesterdayStr, med);
-      const expectedSlots = yesterdayPattern.length ? yesterdayPattern : DOSE_TIME_ORDER;
+      let expectedSlots;
+      if (yesterdayPattern.length) expectedSlots = yesterdayPattern;
+      else if (hasEverBeenTaken(e, med)) expectedSlots = [];
+      else expectedSlots = DOSE_TIME_ORDER;
       const takenToday = new Set(getDoseTimesForDay(e, todayStr, med));
       dueSlots.forEach(slot => { if (expectedSlots.includes(slot) && !takenToday.has(slot)) missed++; });
     });
