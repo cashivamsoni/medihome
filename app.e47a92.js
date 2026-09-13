@@ -18,8 +18,10 @@ let healthDiary = [];       // current branch's health diary entries
 let currentHealthOwner = null; // which owner tab is selected in the Health Diary modal
 let ownerProfiles = {};     // current branch's owner health profiles: { [ownerKey]: {weight,height,age,gender,image,updatedAt} }
 let currentProfileOwner = null; // which owner tab is selected in the Owner Health Profile modal
-let ownerProfileEditMode = false; // whether the profile's vitals fields (weight/height/DOB/gender) are currently editable
-let _ownerProfileEditSnapshot = null; // { weight, height, dob, gender } as they were right before Edit was pressed — restored on Cancel
+let ownerProfileEditMode = false; // whether the profile's vitals fields (weight/height/DOB/gender/blood group) are currently editable
+let _ownerProfileEditSnapshot = null; // { weight, height, dob, gender, bloodGroup } as they were right before Edit was pressed — restored on Cancel
+const STICKY_NOTE_COLORS = ['yellow', 'pink', 'blue', 'green', 'purple'];
+let _stickyNoteColor = STICKY_NOTE_COLORS[0]; // re-rolled each time the profile modal opens or the owner tab changes — see _rerollStickyNoteColor()
 let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
@@ -3343,6 +3345,7 @@ function openOwnerProfile() {
   if (!modal || !modal.classList.contains('hidden')) return;
   ownerProfileEditMode = false;
   _ownerProfileEditSnapshot = null;
+  _rerollStickyNoteColor();
   const eligibleOwners = customOwners.filter(o => o.key !== 'shared');
   if (!currentProfileOwner || !eligibleOwners.some(o => o.key === currentProfileOwner)) {
     currentProfileOwner = eligibleOwners.length ? eligibleOwners[0].key : null;
@@ -3386,17 +3389,30 @@ function renderProfileOwnerTabs() {
 function selectProfileOwnerTab(key) {
   _discardProfileEditIfActive();
   currentProfileOwner = key;
+  _rerollStickyNoteColor();
   renderProfileOwnerTabs();
   renderOwnerProfileContent();
 }
 
 // Lazily creates (without saving) a blank profile record the first time an
 // owner's tab is viewed, so the form always has something to read/write.
+// Picks a new sticky-note color, always different from whatever it currently
+// is, so opening the modal or switching owner tabs visibly changes it rather
+// than occasionally landing on the same one by chance.
+function _rerollStickyNoteColor() {
+  const options = STICKY_NOTE_COLORS.filter(c => c !== _stickyNoteColor);
+  _stickyNoteColor = options[Math.floor(Math.random() * options.length)];
+}
+function _stickyNoteColorClass() {
+  return `profile-sticky-note--${_stickyNoteColor}`;
+}
+
 function ensureOwnerProfile(key) {
   if (!ownerProfiles[key]) {
-    ownerProfiles[key] = { weight: null, height: null, dob: null, gender: '', image: null, notes: '', updatedAt: null };
+    ownerProfiles[key] = { weight: null, height: null, dob: null, gender: '', bloodGroup: '', image: null, notes: '', updatedAt: null };
   }
   if (ownerProfiles[key].notes === undefined) ownerProfiles[key].notes = ''; // backfill for profiles saved before Quick Notes existed
+  if (ownerProfiles[key].bloodGroup === undefined) ownerProfiles[key].bloodGroup = ''; // backfill for profiles saved before Blood Group existed
   return ownerProfiles[key];
 }
 
@@ -3466,11 +3482,25 @@ function renderOwnerProfileContent() {
           <option value="other" ${p.gender === 'other' ? 'selected' : ''}>Other</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="profileBloodGroup">Blood Group</label>
+        <select class="form-select" id="profileBloodGroup" onchange="handleProfileVitalInput('bloodGroup', this.value)" ${ownerProfileEditMode ? '' : 'disabled'}>
+          <option value="" ${!p.bloodGroup ? 'selected' : ''}>— Select —</option>
+          <option value="A+" ${p.bloodGroup === 'A+' ? 'selected' : ''}>A+</option>
+          <option value="A-" ${p.bloodGroup === 'A-' ? 'selected' : ''}>A-</option>
+          <option value="B+" ${p.bloodGroup === 'B+' ? 'selected' : ''}>B+</option>
+          <option value="B-" ${p.bloodGroup === 'B-' ? 'selected' : ''}>B-</option>
+          <option value="AB+" ${p.bloodGroup === 'AB+' ? 'selected' : ''}>AB+</option>
+          <option value="AB-" ${p.bloodGroup === 'AB-' ? 'selected' : ''}>AB-</option>
+          <option value="O+" ${p.bloodGroup === 'O+' ? 'selected' : ''}>O+</option>
+          <option value="O-" ${p.bloodGroup === 'O-' ? 'selected' : ''}>O-</option>
+        </select>
+      </div>
     </div>
 
-    <div class="profile-sticky-note">
+    <div class="profile-sticky-note ${_stickyNoteColorClass()}">
       <div class="profile-sticky-note-header"><i class="fa-solid fa-thumbtack"></i> Quick Notes</div>
-      <textarea class="profile-sticky-note-textarea" id="profileNotes" placeholder="Doctor's number, blood group, insurance ID, anything worth keeping handy..." oninput="handleProfileNotesInput(this.value)">${escHtml(p.notes || '')}</textarea>
+      <textarea class="profile-sticky-note-textarea" id="profileNotes" placeholder="Doctor's number, insurance ID, allergies, anything worth keeping handy..." oninput="handleProfileNotesInput(this.value)">${escHtml(p.notes || '')}</textarea>
     </div>
 
     <div id="profileMetricsContainer"></div>
@@ -3802,10 +3832,10 @@ function enterProfileEditMode() {
   const key = currentProfileOwner;
   if (!key) return;
   const p = ensureOwnerProfile(key);
-  // Only the four form fields are snapshotted — the profile photo has its
+  // Only the five form fields are snapshotted — the profile photo has its
   // own self-contained edit dialog with its own Save/Cancel, and stays that
   // way regardless of this Edit mode, so it's deliberately not included here.
-  _ownerProfileEditSnapshot = { weight: p.weight, height: p.height, dob: p.dob, gender: p.gender };
+  _ownerProfileEditSnapshot = { weight: p.weight, height: p.height, dob: p.dob, gender: p.gender, bloodGroup: p.bloodGroup };
   ownerProfileEditMode = true;
   renderOwnerProfileContent();
   _setProfileEditButtonsVisibility();
@@ -3850,8 +3880,8 @@ function handleProfileVitalInput(field, value) {
   const key = currentProfileOwner;
   if (!key) return;
   const p = ensureOwnerProfile(key);
-  if (field === 'gender') {
-    p.gender = value;
+  if (field === 'gender' || field === 'bloodGroup') {
+    p[field] = value;
   } else if (field === 'dob') {
     p.dob = value || null;
     const hint = document.getElementById('profileAgeHint');
@@ -5916,6 +5946,7 @@ async function exportOwnerHealthProfilePDF() {
     const metaBits = [];
     if (age != null) metaBits.push(`${age} yrs`);
     if (p.gender) metaBits.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+    if (p.bloodGroup) metaBits.push(p.bloodGroup);
     if (p.weight) metaBits.push(`${p.weight} kg`);
     if (p.height) metaBits.push(`${p.height} cm`);
     if (bmi != null) metaBits.push(`BMI ${bmi.toFixed(1)} (${cat})`);
