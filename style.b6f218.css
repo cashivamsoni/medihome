@@ -4780,12 +4780,12 @@ body.bulk-mode .medicine-card {
 }
 .menu-flyout-check {
   margin-left: auto;
-  display: none;
+  display: none !important;
   width: auto !important;
   color: var(--teal-600) !important;
 }
 .menu-flyout-option.active .menu-flyout-check {
-  display: inline-block;
+  display: inline-block !important;
 }
 [data-theme="dark"] .menu-flyout-option:hover {
   background: var(--surface-2);
