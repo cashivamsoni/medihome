@@ -113,102 +113,106 @@
       <div class="app-menu hidden" id="appMenu">
         <div class="app-menu-inner">
           <div class="menu-section menu-actions-row">
-            <button
-              class="menu-action-btn"
-              onclick="
-                toggleTheme();
-                updateMenuThemeLabel();
-              "
-              id="menuThemeBtn"
-            >
-              <i class="fa-solid fa-moon" id="menuThemeIcon"></i> <span id="menuThemeLabel">Dark Mode</span>
-            </button>
-            <button class="menu-action-btn" onclick="exportToPDF()">
-              <i class="fa-solid fa-file-pdf"></i> Export PDF
-            </button>
-            <button
-              class="menu-action-btn"
-              id="menuBulkBtn"
-              onclick="toggleBulkMode()"
-            >
-              <i class="fa-solid fa-square-check" id="menuBulkIcon"></i> <span id="menuBulkLabel">Select</span>
-            </button>
-            <button
-              class="menu-action-btn"
-              id="menuViewBtn"
-              onclick="toggleCompactView()"
-            >
-              <i class="fa-solid fa-list" id="menuViewIcon"></i> <span id="menuViewLabel">Compact View</span>
-            </button>
-            <div class="menu-sort-wrap">
+            <!-- ── View (display + sort) ─────────────────── -->
+            <div class="menu-flyout-wrap">
               <button
                 type="button"
-                class="menu-action-btn menu-sort-btn"
-                id="menuSortBtn"
-                onclick="toggleSortDropdown()"
+                class="menu-action-btn menu-flyout-btn"
+                onclick="toggleMenuFlyout('view')"
               >
-                <i class="fa-solid fa-hourglass-half" id="menuSortIcon"></i>
-                <span id="menuSortLabel">Sort by: Expiry (Soonest→Latest)</span>
-                <i class="fa-solid fa-caret-down menu-sort-caret"></i>
+                <i class="fa-solid fa-sliders"></i> View
+                <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
               </button>
-              <div class="menu-sort-dropdown hidden" id="menuSortDropdown">
-                <button type="button" class="menu-sort-option" onclick="selectSortOption('expiry')">
-                  <i class="fa-solid fa-hourglass-half"></i> Sort by: Expiry (Soonest→Latest)
+              <div class="menu-flyout-panel hidden" id="menuViewFlyoutPanel">
+                <button
+                  class="menu-flyout-option"
+                  onclick="toggleTheme(); updateMenuThemeLabel();"
+                >
+                  <i class="fa-solid fa-moon" id="menuThemeIcon"></i>
+                  <span id="menuThemeLabel">Dark Mode</span>
                 </button>
-                <button type="button" class="menu-sort-option" onclick="selectSortOption('name')">
-                  <i class="fa-solid fa-font"></i> Sort by: Name (A→Z)
+                <button class="menu-flyout-option" id="menuBulkBtn" onclick="toggleBulkMode()">
+                  <i class="fa-solid fa-square-check" id="menuBulkIcon"></i>
+                  <span id="menuBulkLabel">Select</span>
                 </button>
-                <button type="button" class="menu-sort-option" onclick="selectSortOption('quantity')">
-                  <i class="fa-solid fa-box"></i> Sort by: Quantity (High→Low)
+                <button class="menu-flyout-option" id="menuViewBtn" onclick="toggleCompactView()">
+                  <i class="fa-solid fa-list" id="menuViewIcon"></i>
+                  <span id="menuViewLabel">Compact View</span>
                 </button>
-                <button type="button" class="menu-sort-option" onclick="selectSortOption('added')">
-                  <i class="fa-solid fa-clock"></i> Sort by: Recently Added
+                <div class="menu-flyout-divider"></div>
+                <div class="menu-flyout-section-label">Sort By</div>
+                <button type="button" class="menu-flyout-option" data-sort="expiry" onclick="selectSortOption('expiry')">
+                  <i class="fa-solid fa-hourglass-half"></i> Expiry (Soonest→Latest)
+                  <i class="fa-solid fa-check menu-flyout-check"></i>
+                </button>
+                <button type="button" class="menu-flyout-option" data-sort="name" onclick="selectSortOption('name')">
+                  <i class="fa-solid fa-font"></i> Name (A→Z)
+                  <i class="fa-solid fa-check menu-flyout-check"></i>
+                </button>
+                <button type="button" class="menu-flyout-option" data-sort="quantity" onclick="selectSortOption('quantity')">
+                  <i class="fa-solid fa-box"></i> Quantity (High→Low)
+                  <i class="fa-solid fa-check menu-flyout-check"></i>
+                </button>
+                <button type="button" class="menu-flyout-option" data-sort="added" onclick="selectSortOption('added')">
+                  <i class="fa-solid fa-clock"></i> Recently Added
+                  <i class="fa-solid fa-check menu-flyout-check"></i>
                 </button>
               </div>
             </div>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); manageField('owner');"
-            >
-              <i class="fa-solid fa-gear"></i> Manage
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); openHealthDiary();"
-            >
-              <i class="fa-solid fa-book-medical"></i> Health Diary
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); openOwnerProfile();"
-            >
-              <i class="fa-solid fa-heart-pulse"></i> Owner Health Profile
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); openQuantityLog();"
-            >
-              <i class="fa-solid fa-clipboard-list"></i> Quantity Log
-            </button>
-            <button
-              class="menu-action-btn"
-              id="menuBranchBtn"
-              onclick="closeAppMenu(); openBranchModal();"
-            >
-              <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); exportBackupJSON();"
-            >
-              <i class="fa-solid fa-file-export"></i> Export Backup (JSON)
-            </button>
-            <button
-              class="menu-action-btn"
-              onclick="closeAppMenu(); triggerBackupImport();"
-            >
-              <i class="fa-solid fa-file-import"></i> Import Backup (JSON)
-            </button>
+
+            <!-- ── Data (logs, exports, backup) ──────────────── -->
+            <div class="menu-flyout-wrap">
+              <button
+                type="button"
+                class="menu-action-btn menu-flyout-btn"
+                onclick="toggleMenuFlyout('data')"
+              >
+                <i class="fa-solid fa-database"></i> Data
+                <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
+              </button>
+              <div class="menu-flyout-panel hidden" id="menuDataFlyoutPanel">
+                <button class="menu-flyout-option" onclick="closeAppMenu(); openQuantityLog();">
+                  <i class="fa-solid fa-clipboard-list"></i> Quantity Log
+                </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); exportToPDF();">
+                  <i class="fa-solid fa-file-pdf"></i> Export PDF
+                </button>
+                <div class="menu-flyout-divider"></div>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); exportBackupJSON();">
+                  <i class="fa-solid fa-file-export"></i> Export Backup (JSON)
+                </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); triggerBackupImport();">
+                  <i class="fa-solid fa-file-import"></i> Import Backup (JSON)
+                </button>
+              </div>
+            </div>
+
+            <!-- ── Records (setup + health records) ──────────── -->
+            <div class="menu-flyout-wrap">
+              <button
+                type="button"
+                class="menu-action-btn menu-flyout-btn"
+                onclick="toggleMenuFlyout('records')"
+              >
+                <i class="fa-solid fa-folder-open"></i> Records
+                <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
+              </button>
+              <div class="menu-flyout-panel hidden" id="menuRecordsFlyoutPanel">
+                <button class="menu-flyout-option" onclick="closeAppMenu(); manageField('owner');">
+                  <i class="fa-solid fa-gear"></i> Manage
+                </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); openHealthDiary();">
+                  <i class="fa-solid fa-book-medical"></i> Health Diary
+                </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); openOwnerProfile();">
+                  <i class="fa-solid fa-heart-pulse"></i> Owner Health Profile
+                </button>
+                <button class="menu-flyout-option" id="menuBranchBtn" onclick="closeAppMenu(); openBranchModal();">
+                  <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
+                </button>
+              </div>
+            </div>
+
             <input
               type="file"
               id="backupImportFile"
@@ -216,6 +220,9 @@
               style="display: none"
               onchange="handleBackupImportFile(event)"
             />
+
+            <div class="menu-divider"></div>
+
             <button
               class="menu-action-btn menu-action-danger"
               id="menuLogoutBtn"
