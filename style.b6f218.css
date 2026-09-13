@@ -1744,6 +1744,18 @@ body.bulk-mode .assistant-panel {
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
   background: var(--surface);
 }
+/* Owner Health Profile vitals (weight/height/DOB/gender) are disabled
+   outside of Edit mode — the default disabled look was too faint to read
+   clearly against the modal background, so this gives it a clear
+   "view-only" treatment instead of looking like a broken/empty input. */
+.profile-vitals-grid .form-input:disabled,
+.profile-vitals-grid .form-select:disabled {
+  background: var(--slate-100);
+  color: var(--text-secondary);
+  border-color: transparent;
+  cursor: default;
+  opacity: 1;
+}
 .form-textarea {
   resize: vertical;
   min-height: 60px;
@@ -3045,6 +3057,16 @@ body.bulk-mode .timer-panel {
   background: var(--slate-200);
   color: var(--text-primary);
 }
+.qty-log-select-btn.hidden {
+  display: none;
+}
+.qty-log-select-btn.profile-save-btn {
+  background: var(--teal-600);
+  color: #fff;
+}
+.qty-log-select-btn.profile-save-btn:hover {
+  background: var(--teal-700);
+}
 .qty-log-select-bar {
   display: flex;
   justify-content: flex-end;
@@ -3202,6 +3224,18 @@ body.bulk-mode .timer-panel {
     font-size: 0.7rem;
     padding: 0 2px;
   }
+  .mgmt-modal-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .mgmt-modal-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .mgmt-modal-header-actions .qty-log-select-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
 }
 
 /* ── Owner Health Profile modal ──────────────────────────── */
@@ -3291,6 +3325,9 @@ body.bulk-mode .timer-panel {
 }
 .profile-avatar-edit-badge:hover {
   background: var(--teal-700);
+}
+.profile-avatar-edit-badge.hidden {
+  display: none;
 }
 
 /* ── Profile Photo modal: picker + square cropper ────────── */
