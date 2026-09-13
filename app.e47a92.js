@@ -3432,6 +3432,16 @@ function calculateAge(dobStr) {
 function renderOwnerProfileContent() {
   const container = document.getElementById('profileContent');
   if (!container) return;
+  // Every save (including the Quick Notes autosave) round-trips through
+  // Firebase, and the realtime listener echoes it back into this same
+  // render path even when it's just our own write coming back. The
+  // innerHTML swap below discards and recreates every field, so that echo
+  // was silently stealing focus mid-sentence a moment or two after typing
+  // paused — not the sticky note's tilt animation, which never touches
+  // focus. Whatever's already typed is already held in memory (oninput
+  // writes straight into the profile object before any save happens), so
+  // skipping this redraw while a field here is focused loses nothing.
+  if (container.contains(document.activeElement)) return;
   if (!currentProfileOwner) { container.innerHTML = ''; return; }
 
   const key = currentProfileOwner;
