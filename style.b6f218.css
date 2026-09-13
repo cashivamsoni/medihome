@@ -1300,11 +1300,19 @@ body.bulk-mode .assistant-panel {
   --reveal-y: 0px;
   --hover-y: 0px;
   transform: translateY(calc(var(--reveal-y) + var(--hover-y)));
+  /* outline-color is kept in this list (with a permanent 3px/2px-offset
+     outline of transparent below) so the search-highlight ring fades in
+     and out — outline-style itself can't be transitioned, so toggling
+     `outline: 3px solid ...` on and off directly pops abruptly with no
+     in-between frame; animating just the color avoids that. */
+  outline: 3px solid transparent;
+  outline-offset: 2px;
   transition:
     box-shadow var(--transition),
     transform var(--transition),
     border-color var(--transition),
-    opacity var(--transition);
+    opacity var(--transition),
+    outline-color 0.4s ease;
   position: relative;
   scroll-margin-top: calc(var(--header-h, 64px) + var(--stats-h, 50px) + 16px);
 }
@@ -1356,8 +1364,7 @@ body.bulk-mode .assistant-panel {
   animation: pulse-highlight 1.4s ease 2;
 }
 .medicine-card.highlight-active {
-  outline: 3px solid var(--teal-400);
-  outline-offset: 2px;
+  outline-color: var(--teal-400);
 }
 
 @keyframes pulse-highlight {
