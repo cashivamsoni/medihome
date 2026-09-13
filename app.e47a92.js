@@ -5901,7 +5901,7 @@ async function exportOwnerHealthProfilePDF() {
     doc.setFont(FONT, 'bold');
     doc.setFontSize(18);
     const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
-    doc.text(branchName ? `MediHome - Owner Health Profiles (${branchName})` : 'MediHome - Owner Health Profiles', pageW / 2, y, { align: 'center' });
+    doc.text(branchName ? `MediHome - Owner Health Profile (${branchName})` : 'MediHome - Owner Health Profile', pageW / 2, y, { align: 'center' });
     y += 7;
 
     doc.setFont(FONT, 'normal');
