@@ -1318,8 +1318,10 @@ function computeOwnerHealthReminder(key) {
   const active = healthDiary.filter(e => e.owner === key && !e.cured);
   if (!active.length) return { text: 'No active health concerns', ok: true };
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const hour = new Date().getHours();
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+  const hour = now.getHours();
   const dueSlots = DOSE_TIME_ORDER.filter(t => hour >= DOSE_DUE_HOUR[t]);
 
   let missed = 0;
@@ -1327,8 +1329,15 @@ function computeOwnerHealthReminder(key) {
     const meds = getEntryMedicineList(e);
     const rows = meds.length ? meds : [''];
     rows.forEach(med => {
+      // Expect a slot only if this medicine was actually taken in that slot
+      // yesterday — a morning-only medicine shouldn't be flagged "missed" in
+      // the afternoon/evening just because those hours have passed. Falls
+      // back to every due slot when there's no usable history yet (brand-new
+      // entry, or nothing was logged at all yesterday).
+      const yesterdayPattern = getDoseTimesForDay(e, yesterdayStr, med);
+      const expectedSlots = yesterdayPattern.length ? yesterdayPattern : DOSE_TIME_ORDER;
       const takenToday = new Set(getDoseTimesForDay(e, todayStr, med));
-      dueSlots.forEach(slot => { if (!takenToday.has(slot)) missed++; });
+      dueSlots.forEach(slot => { if (expectedSlots.includes(slot) && !takenToday.has(slot)) missed++; });
     });
   });
 
