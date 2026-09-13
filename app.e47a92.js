@@ -6005,7 +6005,7 @@ async function exportOwnerHealthProfilePDF() {
       monthEntries.forEach(e => {
         doc.setFont(FONT, 'normal'); doc.setFontSize(fs);
         const issueText = stripEmoji(e.issue) + (e.cured ? ' (Cured)' : ((e.checkInCount || 1) > 1 ? ` (Day ${e.checkInCount})` : ''));
-        const medsText = stripEmoji(e.medicines || '-') + (doseSummaryText(e) ? ` [${doseSummaryText(e)}]` : '');
+        const medsText = _pdfMedsText(e);
         const dateLines = doc.splitTextToSize(formatHealthDate(e.date), dateW - 3);
         const issueLines = doc.splitTextToSize(issueText, issueW - 3);
         const medsLines = doc.splitTextToSize(medsText, medsW - 3);
