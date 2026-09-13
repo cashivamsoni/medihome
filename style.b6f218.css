@@ -3130,6 +3130,9 @@ body.bulk-mode .timer-panel {
   background: var(--slate-200);
   color: var(--text-primary);
 }
+.mgmt-btn.hidden {
+  display: none;
+}
 .mgmt-fab {
   position: absolute;
   bottom: 18px;
