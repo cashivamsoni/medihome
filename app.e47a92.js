@@ -3436,7 +3436,7 @@ function renderOwnerProfileContent() {
       <div class="profile-name-col">
         <div class="profile-name-row">
           <h4 class="profile-owner-name">${escHtml(ownerCfg ? ownerCfg.short : key)}</h4>
-          <button class="mgmt-btn" onclick="editProfileOwnerName()" title="Edit name"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn ${ownerProfileEditMode ? '' : 'hidden'}" onclick="editProfileOwnerName()" title="Edit name"><i class="fa-solid fa-pen"></i></button>
         </div>
         <p class="branch-modal-hint">${p.updatedAt ? 'Last updated ' + formatHealthDate(new Date(p.updatedAt).toISOString().slice(0, 10)) : 'Fill in the details below to build this health profile.'}</p>
       </div>
@@ -3865,7 +3865,7 @@ function handleProfileVitalInput(field, value) {
 
 async function editProfileOwnerName() {
   const key = currentProfileOwner;
-  if (!key) return;
+  if (!key || !ownerProfileEditMode) return;
   const idx = customOwners.findIndex(o => o.key === key);
   if (idx === -1) return;
   const current = customOwners[idx];
