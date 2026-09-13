@@ -3502,22 +3502,28 @@ body.bulk-mode .timer-panel {
   margin-top: 4px;
   min-height: 1em;
 }
-/* Quick Notes — styled to actually read as a sticky note (warm paper tone,
-   soft tilt, pin icon) rather than just another form field, since it's meant
-   to feel like a scratchpad you jot on, not a structured input. */
+/* Quick Notes — styled to actually read as a sticky note (paper tone, soft
+   tilt, pin icon) rather than just another form field, since it's meant to
+   feel like a scratchpad you jot on, not a structured input. Colors come
+   from CSS vars set per `.profile-sticky-note--<color>` modifier (JS rerolls
+   which one applies each time the profile opens or the owner tab changes),
+   with a `[data-theme="dark"]` override per color so it stays legible —
+   paper tones stay colorful rather than switching to grey, matching how the
+   rest of the app treats pastel badges in dark mode, but muted/darkened so
+   they don't glare against a dark modal. */
 .profile-sticky-note {
   margin-top: 16px;
-  background: var(--amber-50);
-  border: 1.5px solid var(--amber-200);
+  background: var(--note-bg);
+  border: 1.5px solid var(--note-border);
   border-radius: var(--radius-md);
   padding: 12px 14px 10px;
-  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.14);
+  box-shadow: 0 3px 8px var(--note-shadow);
   transform: rotate(-0.6deg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.25s ease, border-color 0.25s ease;
 }
 .profile-sticky-note:focus-within {
   transform: rotate(0deg);
-  box-shadow: 0 5px 14px rgba(217, 119, 6, 0.2);
+  box-shadow: 0 5px 14px var(--note-shadow-strong);
 }
 .profile-sticky-note-header {
   display: flex;
@@ -3527,7 +3533,7 @@ body.bulk-mode .timer-panel {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--amber-600);
+  color: var(--note-accent);
   margin-bottom: 6px;
 }
 .profile-sticky-note-header i {
@@ -3544,14 +3550,105 @@ body.bulk-mode .timer-panel {
   font-family: "Kalam", "Comic Sans MS", "Inter", sans-serif;
   font-size: 0.92rem;
   line-height: 1.5;
-  color: #78350F;
+  color: var(--note-text);
   padding: 0;
 }
 .profile-sticky-note-textarea:focus {
   outline: none;
 }
 .profile-sticky-note-textarea::placeholder {
-  color: rgba(120, 83, 15, 0.5);
+  color: var(--note-text-muted);
+}
+
+.profile-sticky-note--yellow {
+  --note-bg: var(--amber-50);
+  --note-border: var(--amber-200);
+  --note-accent: var(--amber-600);
+  --note-text: #78350F;
+  --note-text-muted: rgba(120, 83, 15, 0.5);
+  --note-shadow: rgba(217, 119, 6, 0.14);
+  --note-shadow-strong: rgba(217, 119, 6, 0.2);
+}
+[data-theme="dark"] .profile-sticky-note--yellow {
+  --note-bg: #3D2E0A;
+  --note-border: #6B4E1A;
+  --note-accent: #FBBF24;
+  --note-text: #FDE9B0;
+  --note-text-muted: rgba(253, 233, 176, 0.5);
+  --note-shadow: rgba(0, 0, 0, 0.35);
+  --note-shadow-strong: rgba(0, 0, 0, 0.45);
+}
+.profile-sticky-note--pink {
+  --note-bg: #FDF2F8;
+  --note-border: #FBCFE8;
+  --note-accent: #DB2777;
+  --note-text: #831843;
+  --note-text-muted: rgba(131, 24, 67, 0.5);
+  --note-shadow: rgba(219, 39, 119, 0.14);
+  --note-shadow-strong: rgba(219, 39, 119, 0.2);
+}
+[data-theme="dark"] .profile-sticky-note--pink {
+  --note-bg: #3D1530;
+  --note-border: #6B2554;
+  --note-accent: #F472B6;
+  --note-text: #FBCFE8;
+  --note-text-muted: rgba(251, 207, 232, 0.5);
+  --note-shadow: rgba(0, 0, 0, 0.35);
+  --note-shadow-strong: rgba(0, 0, 0, 0.45);
+}
+.profile-sticky-note--blue {
+  --note-bg: #EFF6FF;
+  --note-border: #BFDBFE;
+  --note-accent: #2563EB;
+  --note-text: #1E3A5F;
+  --note-text-muted: rgba(30, 58, 95, 0.5);
+  --note-shadow: rgba(37, 99, 235, 0.14);
+  --note-shadow-strong: rgba(37, 99, 235, 0.2);
+}
+[data-theme="dark"] .profile-sticky-note--blue {
+  --note-bg: #142A42;
+  --note-border: #1E4976;
+  --note-accent: #60A5FA;
+  --note-text: #DBEAFE;
+  --note-text-muted: rgba(219, 234, 254, 0.5);
+  --note-shadow: rgba(0, 0, 0, 0.35);
+  --note-shadow-strong: rgba(0, 0, 0, 0.45);
+}
+.profile-sticky-note--green {
+  --note-bg: #F0FDF4;
+  --note-border: var(--green-100);
+  --note-accent: var(--green-600);
+  --note-text: #14532D;
+  --note-text-muted: rgba(20, 83, 45, 0.5);
+  --note-shadow: rgba(22, 163, 74, 0.14);
+  --note-shadow-strong: rgba(22, 163, 74, 0.2);
+}
+[data-theme="dark"] .profile-sticky-note--green {
+  --note-bg: #0F2E1B;
+  --note-border: #1F4A2E;
+  --note-accent: #4ADE80;
+  --note-text: #DCFCE7;
+  --note-text-muted: rgba(220, 252, 231, 0.5);
+  --note-shadow: rgba(0, 0, 0, 0.35);
+  --note-shadow-strong: rgba(0, 0, 0, 0.45);
+}
+.profile-sticky-note--purple {
+  --note-bg: var(--purple-100);
+  --note-border: #E9D5FF;
+  --note-accent: var(--purple-600);
+  --note-text: #4C1D6B;
+  --note-text-muted: rgba(76, 29, 107, 0.5);
+  --note-shadow: rgba(147, 51, 234, 0.14);
+  --note-shadow-strong: rgba(147, 51, 234, 0.2);
+}
+[data-theme="dark"] .profile-sticky-note--purple {
+  --note-bg: #2A1442;
+  --note-border: #4A2470;
+  --note-accent: #C084FC;
+  --note-text: #F3E8FF;
+  --note-text-muted: rgba(243, 232, 255, 0.5);
+  --note-shadow: rgba(0, 0, 0, 0.35);
+  --note-shadow-strong: rgba(0, 0, 0, 0.45);
 }
 .profile-section {
   margin-top: 16px;
