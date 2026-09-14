@@ -4358,11 +4358,22 @@ body.bulk-mode .main {
   }
   .menu-actions-row {
     width: 100%;
-    justify-content: center;
+    gap: 6px;
+    /* Keep all 4 buttons on one line, same as desktop, instead of
+       wrapping Log Out onto its own row. If a very narrow screen still
+       can't fit everything, scroll horizontally rather than wrap. */
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  .menu-divider {
-    width: 100%;
-    height: 1px;
+  .menu-actions-row::-webkit-scrollbar {
+    display: none;
+  }
+  .menu-flyout-btn,
+  #menuLogoutBtn {
+    flex-shrink: 0;
   }
 }
 
@@ -4765,6 +4776,14 @@ body.bulk-mode .medicine-card {
   opacity: 0;
   transform: translateY(-6px) scale(0.97);
   pointer-events: none;
+}
+/* Panels for buttons sitting near the right edge of the row (e.g. Records)
+   open anchored to their own right edge instead of their left edge, so the
+   panel extends back over the row instead of off the side of the screen. */
+.menu-flyout-panel-end {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
 }
 .menu-flyout-option {
   display: flex;
