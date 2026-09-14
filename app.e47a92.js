@@ -6350,6 +6350,7 @@ function updateMenuBulkLabel() {
       if (!panel || panel.classList.contains('hidden')) return;
       if (!panel.contains(e.target) && btn && !btn.contains(e.target)) {
         panel.classList.add('hidden');
+        btn.classList.remove('hidden');
         startAssistantHints();
         stopAssistantSpeech();
       }
@@ -6418,8 +6419,10 @@ function stopAssistantHints() {
 
 function toggleAssistant() {
   const panel = document.getElementById('assistantPanel');
+  const btn = document.getElementById('assistantBtn');
   if (!panel) return;
   panel.classList.toggle('hidden');
+  if (btn) btn.classList.toggle('hidden', !panel.classList.contains('hidden'));
   if (!panel.classList.contains('hidden')) {
     stopAssistantHints();
     const input = document.getElementById('assistantInput');
