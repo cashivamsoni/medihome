@@ -6895,10 +6895,9 @@ async function sendAssistantMessage() {
     _assistantBusy = false;
   }
 }
-
 /* ── Global custom tooltip system: replaces native title= tooltips ── */
 (function () {
-  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return; // desktop only
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return; // desktop/mouse only
 
   var tipEl = null, showTimer = null, currentTarget = null;
 
@@ -6918,12 +6917,22 @@ async function sendAssistantMessage() {
     var tipRect = tip.getBoundingClientRect();
     var top = rect.top - tipRect.height - 8, below = false;
     if (top < 8) { top = rect.bottom + 8; below = true; }
-    var left = rect.left + rect.width / 2;
-    var minLeft = tipRect.width / 2 + 8;
-    var maxLeft = window.innerWidth - tipRect.width / 2 - 8;
-    left = Math.min(Math.max(left, minLeft), maxLeft);
+
+    var targetCenter = rect.left + rect.width / 2;
+    var minCenter = tipRect.width / 2 + 8;
+    var maxCenter = window.innerWidth - tipRect.width / 2 - 8;
+    var left = Math.min(Math.max(targetCenter, minCenter), maxCenter);
+
+    // Keep the arrow pointing at the real trigger even when the box itself
+    // had to be nudged away from center to stay on-screen (long labels
+    // near the viewport edge, e.g. "Ask MediHome Assistant").
+    var visualLeftEdge = left - tipRect.width / 2;
+    var arrowLeft = targetCenter - visualLeftEdge;
+    arrowLeft = Math.min(Math.max(arrowLeft, 12), tipRect.width - 12);
+
     tip.style.top = top + 'px';
     tip.style.left = left + 'px';
+    tip.style.setProperty('--arrow-left', arrowLeft + 'px');
     tip.classList.toggle('mh-tooltip-below', below);
   }
 
