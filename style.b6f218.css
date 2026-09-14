@@ -4360,20 +4360,23 @@ body.bulk-mode .main {
     width: 100%;
     gap: 6px;
     /* Keep all 4 buttons on one line, same as desktop, instead of
-       wrapping Log Out onto its own row. If a very narrow screen still
-       can't fit everything, scroll horizontally rather than wrap. */
+       wrapping Log Out onto its own row. Overflow stays visible (not
+       auto/scroll) so the flyout dropdowns aren't clipped by the row. */
     flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    justify-content: center;
+    overflow: visible;
   }
-  .menu-actions-row::-webkit-scrollbar {
+  /* Text labels collapse to icon-only pills at mobile widths so all 4
+     buttons reliably fit on one line without needing to scroll. The
+     caret (on View/Data/Records) still signals "this opens something",
+     and aria-label/title on each button keep it accessible/labelled. */
+  .menu-flyout-label {
     display: none;
   }
   .menu-flyout-btn,
   #menuLogoutBtn {
     flex-shrink: 0;
+    padding: 0 10px;
   }
 }
 
