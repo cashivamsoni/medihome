@@ -6955,7 +6955,12 @@ async function sendAssistantMessage() {
     var tip = ensureTip();
     tip.textContent = text;
     tip.classList.remove('mh-tooltip-visible');
-    positionTip(target);
+    // Positioned once, inside the rAF, after the browser has laid out the
+    // new text width - not before. An earlier version also positioned
+    // synchronously right after setting the text (i.e. before that layout
+    // was settled), then corrected it a frame later once the real width
+    // was known - two different arrow positions computed a frame apart,
+    // which is what showed up as the arrow visibly snapping left/right.
     requestAnimationFrame(function () {
       positionTip(target);
       tip.classList.add('mh-tooltip-visible');
