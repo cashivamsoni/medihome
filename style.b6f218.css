@@ -1015,7 +1015,9 @@ body.bulk-mode #shareBtn {
   transform: translateY(-2px) scale(1.08);
 }
 .assistant-btn.hidden {
-  display: none;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
 }
 body.bulk-mode .assistant-btn {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
@@ -1096,10 +1098,18 @@ body.bulk-mode .assistant-hint {
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: contain;
-  transition: bottom 0.25s ease;
+  transform-origin: bottom right;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition: bottom 0.25s ease,
+              opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .assistant-panel.hidden {
-  display: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+  pointer-events: none;
 }
 body.bulk-mode .assistant-panel {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
