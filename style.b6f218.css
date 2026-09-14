@@ -1285,9 +1285,12 @@ body.bulk-mode .assistant-panel {
 }
 @media (max-width: 480px) {
   .assistant-panel {
-    right: 12px;
+    /* Match the assistant/share fab buttons' right offset (25px) exactly,
+       instead of the old 12px, so the panel's right edge lines up with
+       them the same way it does on desktop. */
+    right: 25px;
     bottom: 150px;
-    width: calc(100vw - 24px);
+    width: calc(100vw - 50px);
   }
 }
 
