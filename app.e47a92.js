@@ -7015,6 +7015,11 @@ async function sendAssistantMessage() {
   // tabs or windows away and back — no mouse movement happens either, so
   // without this the same stale tooltip just resurfaces once the tab is
   // visible again, looking like a fresh bug rather than a leftover one.
+  // mousedown fires before the button's own onclick runs, so the tooltip
+  // is gone before any modal-opening code executes - click is kept too as
+  // a belt-and-braces second pass for input types mousedown doesn't cover
+  // (e.g. keyboard-activated buttons, which dispatch click directly).
+  document.addEventListener('mousedown', hideTip, true);
   document.addEventListener('click', hideTip, true);
   document.addEventListener('visibilitychange', hideTip);
   window.addEventListener('blur', hideTip);
