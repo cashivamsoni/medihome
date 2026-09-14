@@ -2711,12 +2711,23 @@ body.bulk-mode .timer-panel {
    flush rather than leaving a 16px sliver of scrolled content above it. */
 #profileOwnerTabs {
   position: sticky;
-  top: -16px;
+  top: -16px; /* still -16px: cancels .mgmt-modal-body's own padding, unrelated to this row's own (now smaller) padding below */
   z-index: 5;
   background: var(--surface);
   margin: -16px -16px 0;
-  padding: 16px 16px 12px;
+  padding: 10px 16px 8px; /* shrunk from 16/12 - this row is pinned on screen while scrolling, so its footprint matters more than a normal in-flow element's would */
   border-bottom: 1px solid var(--border);
+}
+/* Shorter, slightly denser pills to match the trimmed row padding above -
+   scoped to this modal only so the shared .mgmt-tab-btn style used
+   elsewhere (management modal, Health Diary owner tabs) is untouched. */
+#profileOwnerTabs .mgmt-tab-btn {
+  height: 30px;
+  font-size: 0.74rem;
+}
+#profileOwnerTabs .mgmt-tab-btn i {
+  font-size: 0.7rem;
+  margin-right: 3px;
 }
 .mgmt-tab-btn {
   flex: 1;
