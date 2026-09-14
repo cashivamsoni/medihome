@@ -3303,6 +3303,14 @@ body.bulk-mode .timer-panel {
 .profile-avatar-btn:hover {
   filter: brightness(0.94);
 }
+/* No photo yet + not in edit mode: nothing for a click to do, so drop the
+   pointer/hover affordance rather than let it look clickable. */
+.profile-avatar-btn-inert {
+  cursor: default;
+}
+.profile-avatar-btn-inert:hover {
+  filter: none;
+}
 .profile-avatar-img {
   width: 100%;
   height: 100%;
