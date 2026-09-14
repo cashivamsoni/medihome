@@ -3370,6 +3370,11 @@ body.bulk-mode .timer-panel {
    both it and the avatar photo itself open the same picker/crop modal. */
 .profile-avatar-edit-badge {
   position: absolute;
+  z-index: 2; /* .profile-avatar-btn is explicit z-index:1 (raised above the
+    glow ring), so this sibling needs its own explicit value higher than
+    that to stay on top - z-index:auto siblings lose to ANY explicit
+    positive z-index regardless of DOM order, which is what was pushing
+    this badge behind the photo. */
   bottom: -2px;
   right: -2px;
   width: 26px;
