@@ -3987,10 +3987,17 @@ body.bulk-mode .timer-panel {
    Health Profile modal stack (#ownerProfileModal 1100 -> #avatarEditOverlay
    1250 is the deepest layer in that chain), so this needs to sit above all
    of it rather than the old flat 1000, which only worked while it was only
-   ever opened directly from the medicine card list. */
+   ever opened directly from the medicine card list.
+   top:0 instead of the var(--header-h) skip other top-level modals (#modal,
+   #histModal) use: that skip is meant to keep the header visible/usable
+   above a modal opened straight from the main page, but this viewer can now
+   also open from inside another modal, and the header-skip left the site
+   header (and the parent modal's own title bar near it) showing through
+   un-dimmed above the overlay in that case. Full coverage matches how the
+   other nested overlays (#avatarEditOverlay, #dlgOverlay) already behave. */
 #imgViewerModal {
   position: fixed;
-  top: var(--header-h, 0px);
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
