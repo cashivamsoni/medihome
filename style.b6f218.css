@@ -4366,11 +4366,18 @@ body.bulk-mode .main {
     justify-content: center;
     overflow: visible;
   }
-  /* Text labels collapse to icon-only pills at mobile widths so all 4
-     buttons reliably fit on one line without needing to scroll. The
-     caret (on View/Data/Records) still signals "this opens something",
-     and aria-label/title on each button keep it accessible/labelled. */
-  .menu-flyout-label {
+  /* Records sits near the right edge on mobile, where there's no room for
+     its panel to extend rightward off-screen — anchor it to its own right
+     edge here so it opens back over the row instead. Desktop has plenty of
+     space to the right, so it keeps the default left-anchored open there. */
+  .menu-flyout-panel-end {
+    left: auto;
+    right: 0;
+    transform-origin: top right;
+  }
+  /* The divider before Log Out is a nice-to-have visual separator, but on
+     narrow screens it just eats space we need for the buttons themselves. */
+  .menu-divider {
     display: none;
   }
   .menu-flyout-btn,
@@ -4779,14 +4786,6 @@ body.bulk-mode .medicine-card {
   opacity: 0;
   transform: translateY(-6px) scale(0.97);
   pointer-events: none;
-}
-/* Panels for buttons sitting near the right edge of the row (e.g. Records)
-   open anchored to their own right edge instead of their left edge, so the
-   panel extends back over the row instead of off the side of the screen. */
-.menu-flyout-panel-end {
-  left: auto;
-  right: 0;
-  transform-origin: top right;
 }
 .menu-flyout-option {
   display: flex;
