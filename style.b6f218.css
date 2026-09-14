@@ -1293,7 +1293,11 @@ body.bulk-mode .assistant-panel {
        them the same way it does on desktop. */
     right: 25px;
     bottom: 150px;
-    width: calc(100vw - 50px);
+    /* Left edge sits 80px in (= .timer-btn's left:20px + its 44px width +
+       16px clearance) so the gap to the timer button matches the 16px
+       gap the panel already has above the share button on its own side
+       (150px panel-bottom − (90px shareBtn-bottom + 44px height) = 16px). */
+    width: calc(100vw - 25px - 80px);
   }
 }
 
