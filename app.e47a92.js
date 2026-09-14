@@ -3449,11 +3449,24 @@ function renderOwnerProfileContent() {
   const p = ensureOwnerProfile(key);
   const hasImage = !!p.image;
 
+  // Outside edit mode the photo is view-only (opens the same lightbox as a
+  // medicine image); editing/uploading is only reachable via the pencil
+  // badge, which itself only renders while ownerProfileEditMode is true.
+  const avatarOwnerName = ownerCfg ? ownerCfg.short : key;
+  const avatarTitle = ownerProfileEditMode
+    ? (hasImage ? 'Edit photo' : 'Add photo')
+    : (hasImage ? 'Click to view photo' : 'No photo yet');
+  const avatarClickAttr = ownerProfileEditMode
+    ? `onclick="openAvatarEditModal()"`
+    : hasImage
+      ? `onclick="openImgViewer('${escHtml(p.image)}','${escHtml(avatarOwnerName)} Photo')"`
+      : '';
+
   container.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar-col">
         <div class="profile-avatar-wrap">
-          <button type="button" class="profile-avatar-btn" onclick="openAvatarEditModal()" title="${hasImage ? 'Edit photo' : 'Add photo'}" aria-label="${hasImage ? 'Edit photo' : 'Add photo'}">
+          <button type="button" class="profile-avatar-btn ${!ownerProfileEditMode && !hasImage ? 'profile-avatar-btn-inert' : ''}" ${avatarClickAttr} title="${avatarTitle}" aria-label="${avatarTitle}">
             <img id="profileAvatarImg" class="profile-avatar-img ${hasImage ? '' : 'hidden'}"${hasImage ? ` src="${escHtml(p.image)}"` : ''} alt="" />
             <span class="profile-avatar-placeholder ${hasImage ? 'hidden' : ''}" id="profileAvatarPlaceholder"><i class="fa-solid fa-user"></i></span>
           </button>
