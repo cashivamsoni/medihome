@@ -2644,6 +2644,7 @@ function openAdd() {
 
 // ── Edit medicine ─────────────────────────────────────────
 function openEdit(id) {
+  if (window.mhHideTooltip) window.mhHideTooltip(); // dismiss the "Edit" hint from the button that opened this
   const m = medicines.find(x => x.id === id);
   if (!m) return;
   editingId = id;
@@ -3995,6 +3996,7 @@ const AV_CROP_SIZE = 280;   // on-screen crop viewport, in CSS px (canvas is dra
 const AV_OUTPUT_SIZE = 480; // exported square photo resolution
 
 function openAvatarEditModal() {
+  if (window.mhHideTooltip) window.mhHideTooltip(); // dismiss the "Edit photo"/"Add photo" hint from whatever triggered this
   const key = currentProfileOwner;
   if (!key) return;
   const overlay = document.getElementById('avatarEditOverlay');
@@ -7037,4 +7039,9 @@ async function sendAssistantMessage() {
   window.addEventListener('focus', function () {
     suppressUntil = Date.now() + 400;
   });
+
+  // Exposed so modal-opening functions can force-dismiss the tooltip
+  // directly and deterministically, rather than relying on generic
+  // click/focus/visibility listeners to catch every timing edge case.
+  window.mhHideTooltip = hideTip;
 })();
