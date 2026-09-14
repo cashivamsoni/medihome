@@ -3314,25 +3314,46 @@ body.bulk-mode .timer-panel {
   width: 84px;
   height: 84px;
 }
-/* Soft rotating glow ring behind the avatar photo. A blurred conic-gradient
-   spinning under the circular photo, rather than an animated border on the
-   photo itself, so the photo edge stays crisp and only the glow moves. */
+/* Two-layer glow behind the avatar photo, rather than one flat rotating
+   ring, so it reads as designed instead of just "spinning":
+   ::before - a soft, STATIC ambient halo sitting furthest back, so the
+     photo always looks like it's glowing even when the bright sweep below
+     is round on the far side.
+   ::after  - the rotating ring itself, mostly a dim, even glow (the
+     "normal" part) with one bright, near-white comet head sweeping around
+     it (the "heightened" part) - a highlight in motion rather than a
+     uniform spinning border.
+   Both sit behind the photo (.profile-avatar-btn is explicit z-index:1),
+   so no extra z-index is needed here - DOM order already puts them behind
+   it regardless of stacking specifics. */
 .profile-avatar-wrap::before {
   content: "";
   position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(45, 212, 191, 0.4) 0%,
+    rgba(45, 212, 191, 0.15) 55%,
+    transparent 75%
+  );
+  filter: blur(9px);
+}
+.profile-avatar-wrap::after {
+  content: "";
+  position: absolute;
   inset: -7px;
-  z-index: 0;
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
-    var(--teal-300),
-    var(--teal-500),
-    var(--teal-700),
-    var(--teal-400),
-    var(--teal-300)
+    rgba(45, 212, 191, 0.22) 0deg,
+    rgba(45, 212, 191, 0.22) 230deg,
+    rgba(94, 234, 212, 0.65) 264deg,
+    rgba(240, 253, 250, 0.98) 300deg,
+    rgba(94, 234, 212, 0.65) 336deg,
+    rgba(45, 212, 191, 0.22) 360deg
   );
-  filter: blur(7px);
-  opacity: 0.8;
+  filter: blur(6px);
   animation: mh-avatar-glow-spin 5s linear infinite;
 }
 @keyframes mh-avatar-glow-spin {
@@ -3341,7 +3362,7 @@ body.bulk-mode .timer-panel {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .profile-avatar-wrap::before {
+  .profile-avatar-wrap::after {
     animation: none;
   }
 }
