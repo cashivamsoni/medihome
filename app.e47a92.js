@@ -6963,6 +6963,14 @@ async function sendAssistantMessage() {
   function hideTip() {
     if (tipEl) tipEl.classList.remove('mh-tooltip-visible');
     clearTimeout(showTimer);
+    // Restore title so the element is still hoverable next time. The normal
+    // mouseout/focusout path already does this; forced hides (click, tab
+    // switch, window blur) bypass that path, so it needs doing here too -
+    // otherwise a static element that never re-renders loses its tooltip
+    // for good after the first click.
+    if (currentTarget && currentTarget.dataset.mhTooltip) {
+      currentTarget.setAttribute('title', currentTarget.dataset.mhTooltip);
+    }
     currentTarget = null;
   }
 
@@ -7000,4 +7008,14 @@ async function sendAssistantMessage() {
     if (currentTarget && tipEl && tipEl.classList.contains('mh-tooltip-visible')) positionTip(currentTarget);
   }, true);
   window.addEventListener('resize', hideTip);
+
+  // A click usually triggers a modal/action rather than moving the mouse
+  // off the trigger, so no mouseout fires and the tooltip is left stuck
+  // visible underneath whatever just opened. Same for switching browser
+  // tabs or windows away and back — no mouse movement happens either, so
+  // without this the same stale tooltip just resurfaces once the tab is
+  // visible again, looking like a fresh bug rather than a leftover one.
+  document.addEventListener('click', hideTip, true);
+  document.addEventListener('visibilitychange', hideTip);
+  window.addEventListener('blur', hideTip);
 })();
