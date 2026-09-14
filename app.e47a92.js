@@ -6912,7 +6912,7 @@ async function sendAssistantMessage() {
 (function () {
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return; // desktop/mouse only
 
-  var tipEl = null, showTimer = null, currentTarget = null;
+  var tipEl = null, showTimer = null, currentTarget = null, suppressUntil = 0;
 
   function ensureTip() {
     if (!tipEl) {
@@ -6976,6 +6976,14 @@ async function sendAssistantMessage() {
 
   function onEnter(target, delay) {
     if (!target || target === currentTarget) return;
+    // Browsers often re-fire mouseover on the element already under a
+    // stationary cursor when the tab/window regains focus (recomputing
+    // hover state), not just on real pointer movement. Without this, that
+    // synthetic re-hover schedules the tooltip right back up a moment
+    // after switching back to the tab, which reads as it never having
+    // been dismissed. Ignored for a brief window after refocus; a real
+    // mouse movement after that window still shows it normally.
+    if (Date.now() < suppressUntil) return;
     var text = target.getAttribute('title');
     if (!text) return;
     target.dataset.mhTooltip = text;
@@ -7021,6 +7029,12 @@ async function sendAssistantMessage() {
   // (e.g. keyboard-activated buttons, which dispatch click directly).
   document.addEventListener('mousedown', hideTip, true);
   document.addEventListener('click', hideTip, true);
-  document.addEventListener('visibilitychange', hideTip);
+  document.addEventListener('visibilitychange', function () {
+    hideTip();
+    if (!document.hidden) suppressUntil = Date.now() + 400;
+  });
   window.addEventListener('blur', hideTip);
+  window.addEventListener('focus', function () {
+    suppressUntil = Date.now() + 400;
+  });
 })();
