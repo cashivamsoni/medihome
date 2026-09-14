@@ -3983,6 +3983,11 @@ body.bulk-mode .timer-panel {
 }
 
 /* ── Image Viewer Modal ──────────────────────────────────── */
+/* z-index 1300: now also opened from the avatar photo inside the Owner
+   Health Profile modal stack (#ownerProfileModal 1100 -> #avatarEditOverlay
+   1250 is the deepest layer in that chain), so this needs to sit above all
+   of it rather than the old flat 1000, which only worked while it was only
+   ever opened directly from the medicine card list. */
 #imgViewerModal {
   position: fixed;
   top: var(--header-h, 0px);
@@ -3991,7 +3996,7 @@ body.bulk-mode .timer-panel {
   bottom: 0;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(6px);
-  z-index: 1000;
+  z-index: 1300;
   display: flex;
   align-items: center;
   justify-content: center;
