@@ -5934,8 +5934,9 @@ body.login-locked {
   background: #322A14;
   color: #FCD34D;
 }
-
-/* ── Custom hover tooltips (replaces native browser title tooltips) ── */
+/* ═══════════════════════════════════════════════════════════
+   Custom hover tooltips — replaces native browser title= tooltips
+   ═══════════════════════════════════════════════════════════ */
 .mh-tooltip {
   position: fixed;
   z-index: 9999;
@@ -5949,9 +5950,9 @@ body.login-locked {
   padding: 6px 10px;
   border-radius: var(--radius-sm, 8px);
   box-shadow: var(--shadow-md, 0 4px 16px rgba(15, 23, 42, 0.1));
-  max-width: 220px;
+  max-width: 200px;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal; /* long labels wrap instead of overflowing the box */
   top: 0;
   left: 0;
   opacity: 0;
@@ -5974,8 +5975,12 @@ body.login-locked {
   width: 8px;
   height: 8px;
   background: inherit;
-  left: 50%;
+  left: var(--arrow-left, 50%); /* follows the trigger even when the box is nudged to stay on-screen */
   transform: translateX(-50%) rotate(45deg);
 }
 .mh-tooltip:not(.mh-tooltip-below)::after { bottom: -4px; }
 .mh-tooltip.mh-tooltip-below::after { top: -4px; }
+
+[data-theme="dark"] .mh-tooltip {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
