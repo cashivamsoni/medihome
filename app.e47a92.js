@@ -6895,3 +6895,87 @@ async function sendAssistantMessage() {
     _assistantBusy = false;
   }
 }
+
+/* ── Global custom tooltip system: replaces native title= tooltips ── */
+(function () {
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return; // desktop only
+
+  var tipEl = null, showTimer = null, currentTarget = null;
+
+  function ensureTip() {
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.className = 'mh-tooltip';
+      tipEl.setAttribute('role', 'tooltip');
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
+
+  function positionTip(target) {
+    var tip = ensureTip();
+    var rect = target.getBoundingClientRect();
+    var tipRect = tip.getBoundingClientRect();
+    var top = rect.top - tipRect.height - 8, below = false;
+    if (top < 8) { top = rect.bottom + 8; below = true; }
+    var left = rect.left + rect.width / 2;
+    var minLeft = tipRect.width / 2 + 8;
+    var maxLeft = window.innerWidth - tipRect.width / 2 - 8;
+    left = Math.min(Math.max(left, minLeft), maxLeft);
+    tip.style.top = top + 'px';
+    tip.style.left = left + 'px';
+    tip.classList.toggle('mh-tooltip-below', below);
+  }
+
+  function showTip(target, text) {
+    var tip = ensureTip();
+    tip.textContent = text;
+    tip.classList.remove('mh-tooltip-visible');
+    positionTip(target);
+    requestAnimationFrame(function () {
+      positionTip(target);
+      tip.classList.add('mh-tooltip-visible');
+    });
+  }
+
+  function hideTip() {
+    if (tipEl) tipEl.classList.remove('mh-tooltip-visible');
+    clearTimeout(showTimer);
+    currentTarget = null;
+  }
+
+  function onEnter(target, delay) {
+    if (!target || target === currentTarget) return;
+    var text = target.getAttribute('title');
+    if (!text) return;
+    target.dataset.mhTooltip = text;
+    target.removeAttribute('title'); // suppress native tooltip
+    currentTarget = target;
+    clearTimeout(showTimer);
+    showTimer = setTimeout(function () { showTip(target, text); }, delay);
+  }
+
+  document.addEventListener('mouseover', function (e) {
+    onEnter(e.target.closest('[title]'), 350);
+  });
+  document.addEventListener('focusin', function (e) {
+    onEnter(e.target.closest('[title]'), 0);
+  });
+
+  document.addEventListener('mouseout', function (e) {
+    var target = e.target.closest('[data-mh-tooltip]');
+    if (!target) return;
+    if (e.relatedTarget && target.contains(e.relatedTarget)) return;
+    target.setAttribute('title', target.dataset.mhTooltip); // restore for resilience
+    hideTip();
+  });
+  document.addEventListener('focusout', function (e) {
+    var target = e.target.closest('[data-mh-tooltip]');
+    if (target) { target.setAttribute('title', target.dataset.mhTooltip); hideTip(); }
+  });
+
+  document.addEventListener('scroll', function () {
+    if (currentTarget && tipEl && tipEl.classList.contains('mh-tooltip-visible')) positionTip(currentTarget);
+  }, true);
+  window.addEventListener('resize', hideTip);
+})();
