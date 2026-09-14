@@ -1014,6 +1014,9 @@ body.bulk-mode #shareBtn {
   background: var(--teal-700);
   transform: translateY(-2px) scale(1.08);
 }
+.assistant-btn.hidden {
+  display: none;
+}
 body.bulk-mode .assistant-btn {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
 }
