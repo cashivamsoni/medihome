@@ -119,8 +119,10 @@
                 type="button"
                 class="menu-action-btn menu-flyout-btn"
                 onclick="toggleMenuFlyout('view')"
+                aria-label="View"
+                title="View"
               >
-                <i class="fa-solid fa-sliders"></i> View
+                <i class="fa-solid fa-sliders"></i> <span class="menu-flyout-label">View</span>
                 <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
               </button>
               <div class="menu-flyout-panel hidden" id="menuViewFlyoutPanel">
@@ -166,8 +168,10 @@
                 type="button"
                 class="menu-action-btn menu-flyout-btn"
                 onclick="toggleMenuFlyout('data')"
+                aria-label="Data"
+                title="Data"
               >
-                <i class="fa-solid fa-database"></i> Data
+                <i class="fa-solid fa-database"></i> <span class="menu-flyout-label">Data</span>
                 <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
               </button>
               <div class="menu-flyout-panel hidden" id="menuDataFlyoutPanel">
@@ -193,8 +197,10 @@
                 type="button"
                 class="menu-action-btn menu-flyout-btn"
                 onclick="toggleMenuFlyout('records')"
+                aria-label="Records"
+                title="Records"
               >
-                <i class="fa-solid fa-folder-open"></i> Records
+                <i class="fa-solid fa-folder-open"></i> <span class="menu-flyout-label">Records</span>
                 <i class="fa-solid fa-caret-down menu-flyout-caret"></i>
               </button>
               <div class="menu-flyout-panel menu-flyout-panel-end hidden" id="menuRecordsFlyoutPanel">
@@ -227,8 +233,10 @@
               class="menu-action-btn menu-action-danger"
               id="menuLogoutBtn"
               onclick="closeAppMenu(); confirmLogout();"
+              aria-label="Log Out"
+              title="Log Out"
             >
-              <i class="fa-solid fa-right-from-bracket"></i> Log Out
+              <i class="fa-solid fa-right-from-bracket"></i> <span class="menu-flyout-label">Log Out</span>
             </button>
           </div>
         </div>
