@@ -5934,3 +5934,48 @@ body.login-locked {
   background: #322A14;
   color: #FCD34D;
 }
+
+/* ── Custom hover tooltips (replaces native browser title tooltips) ── */
+.mh-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.94);
+  color: #F8FAFC;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(15, 23, 42, 0.1));
+  max-width: 220px;
+  text-align: center;
+  white-space: nowrap;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transform: translate(-50%, 4px) scale(0.94);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.mh-tooltip.mh-tooltip-visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.mh-tooltip.mh-tooltip-below {
+  transform: translate(-50%, -4px) scale(0.94);
+}
+.mh-tooltip.mh-tooltip-below.mh-tooltip-visible {
+  transform: translate(-50%, 0) scale(1);
+}
+.mh-tooltip::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+.mh-tooltip:not(.mh-tooltip-below)::after { bottom: -4px; }
+.mh-tooltip.mh-tooltip-below::after { top: -4px; }
