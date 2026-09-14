@@ -2702,6 +2702,22 @@ body.bulk-mode .timer-panel {
   gap: 6px;
   flex-shrink: 0;
 }
+/* Owner Health Profile's tab row specifically: pin it to the top of the
+   modal's scroll area so it stays reachable while scrolling through a
+   profile's vitals/notes. Negative margin cancels out .mgmt-modal-body's
+   own 16px padding so the sticky bar spans edge-to-edge (no see-through
+   gap at the sides) and re-applies its own padding to keep the pills'
+   original spacing; top:-16px accounts for that same offset so it sticks
+   flush rather than leaving a 16px sliver of scrolled content above it. */
+#profileOwnerTabs {
+  position: sticky;
+  top: -16px;
+  z-index: 5;
+  background: var(--surface);
+  margin: -16px -16px 0;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
