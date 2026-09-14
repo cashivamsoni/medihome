@@ -3287,6 +3287,37 @@ body.bulk-mode .timer-panel {
   width: 84px;
   height: 84px;
 }
+/* Soft rotating glow ring behind the avatar photo. A blurred conic-gradient
+   spinning under the circular photo, rather than an animated border on the
+   photo itself, so the photo edge stays crisp and only the glow moves. */
+.profile-avatar-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--teal-300),
+    var(--teal-500),
+    var(--teal-700),
+    var(--teal-400),
+    var(--teal-300)
+  );
+  filter: blur(7px);
+  opacity: 0.8;
+  animation: mh-avatar-glow-spin 5s linear infinite;
+}
+@keyframes mh-avatar-glow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-avatar-wrap::before {
+    animation: none;
+  }
+}
 .profile-avatar-btn {
   width: 84px;
   height: 84px;
@@ -3295,6 +3326,7 @@ body.bulk-mode .timer-panel {
   border: none;
   overflow: hidden;
   position: relative;
+  z-index: 1;
   display: block;
   cursor: pointer;
   background: var(--surface-2);
