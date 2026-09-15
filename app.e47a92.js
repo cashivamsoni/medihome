@@ -4519,7 +4519,10 @@ function renderTrashBinList() {
   const selectAllLabel = document.getElementById('trashSelectAllLabel');
   if (selectAllLabel) {
     const allSelected = entries.length > 0 && entries.every(m => trashSelected.has(m.id));
-    selectAllLabel.textContent = allSelected ? 'Deselect all' : 'Select all';
+    const label = allSelected ? 'Deselect all' : 'Select all';
+    selectAllLabel.textContent = label;
+    const selectAllBtn = selectAllLabel.closest('button');
+    if (selectAllBtn) selectAllBtn.title = label;
   }
 
   if (!entries.length) {
