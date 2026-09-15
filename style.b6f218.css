@@ -3154,7 +3154,8 @@ body.bulk-mode .timer-panel {
    sliding off to nowhere. visibility is delayed until the collapse
    finishes so the buttons stay keyboard-focusable while visible, but
    drop out of the tab order once fully tucked away (matching the old
-   display:none behavior). */
+   display:none behavior). Shared by Trash Bin and Quantity Log's
+   select-mode header actions. */
 .trash-header-bar.hidden {
   max-width: 0;
   opacity: 0;
@@ -3283,10 +3284,11 @@ body.bulk-mode .timer-panel {
   cursor: pointer;
   transition: var(--transition);
 }
-/* Trash Bin's 15-day hint is demoted to a small caption above the list
-   (search comes first in the body), so it reads lighter than the
-   standard .branch-modal-hint used as a modal's opening line elsewhere. */
-.trash-bin-hint {
+/* Search-first modals (Trash Bin, Quantity Log) demote their explanatory
+   line to a small caption above the list instead of the modal's opening
+   line, so it reads lighter than the standard .branch-modal-hint used
+   elsewhere. */
+.mgmt-hint-tight {
   font-size: 0.72rem;
   margin-top: -4px;
 }
