@@ -4632,12 +4632,7 @@ function selectHealthOwnerTab(key) {
   renderHealthDiaryList();
 }
 
-function renderHealthDiaryList() {
-  const container = document.getElementById('healthDiaryListContainer');
-  if (!container) return;
-  if (!currentHealthOwner) { container.innerHTML = ''; return; }
-
-  const query = (document.getElementById('healthSearchInput')?.value || '').toLowerCase().trim();
+function getFilteredHealthEntries(query) {
   let entries = healthDiary.filter(e => e.owner === currentHealthOwner);
   if (query) {
     entries = entries.filter(e =>
@@ -4648,11 +4643,29 @@ function renderHealthDiaryList() {
   }
   // Uncured entries first, cured entries after. Within each group: newest
   // first, with same-date entries keeping their most-recently-added first.
-  entries = entries.slice().sort((a, b) => {
+  return entries.slice().sort((a, b) => {
     if (!!a.cured !== !!b.cured) return a.cured ? 1 : -1;
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
+}
+
+function renderHealthDiaryList() {
+  const container = document.getElementById('healthDiaryListContainer');
+  if (!container) return;
+  if (!currentHealthOwner) { container.innerHTML = ''; return; }
+
+  const query = (document.getElementById('healthSearchInput')?.value || '').toLowerCase().trim();
+  const entries = getFilteredHealthEntries(query);
+
+  const selectAllLabel = document.getElementById('healthSelectAllLabel');
+  if (selectAllLabel) {
+    const allSelected = entries.length > 0 && entries.every(e => healthSelected.has(e.id));
+    const label = allSelected ? 'Deselect all' : 'Select all';
+    selectAllLabel.textContent = label;
+    const selectAllBtn = selectAllLabel.closest('button');
+    if (selectAllBtn) selectAllBtn.title = label;
+  }
 
   if (!entries.length) {
     container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching entries.' : 'No health diary entries yet.'}</p>`;
@@ -5145,6 +5158,17 @@ function toggleHealthSelectMode() {
 function toggleHealthEntrySelect(id) {
   if (healthSelected.has(id)) healthSelected.delete(id);
   else healthSelected.add(id);
+  renderHealthDiaryList();
+}
+
+// Selects/deselects everything currently visible — toggles to "deselect
+// all" once everything visible is already selected.
+function toggleHealthSelectAll() {
+  const query = (document.getElementById('healthSearchInput')?.value || '').toLowerCase().trim();
+  const visible = getFilteredHealthEntries(query);
+  if (!visible.length) return;
+  const allSelected = visible.every(e => healthSelected.has(e.id));
+  visible.forEach(e => allSelected ? healthSelected.delete(e.id) : healthSelected.add(e.id));
   renderHealthDiaryList();
 }
 
