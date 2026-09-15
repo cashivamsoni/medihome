@@ -3122,6 +3122,13 @@ body.bulk-mode .timer-panel {
 .qty-log-select-bar.hidden {
   display: none;
 }
+/* Trash Bin's bar has three buttons (Select all / Restore / Delete forever)
+   instead of the single delete button the other .qty-log-select-bar users
+   have, so it needs actual spacing between them - scoped so the existing
+   single-button bars elsewhere are untouched. */
+.trash-select-bar {
+  gap: 8px;
+}
 .qty-log-selectable {
   cursor: pointer;
   justify-content: flex-start;
