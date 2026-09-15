@@ -3571,13 +3571,24 @@ function renderOwnerProfileContent() {
 
     <div class="profile-sticky-note ${_stickyNoteColorClass()}">
       <div class="profile-sticky-note-header"><i class="fa-solid fa-thumbtack"></i> Quick Notes</div>
-      <textarea class="profile-sticky-note-textarea" id="profileNotes" placeholder="Doctor's number, insurance ID, allergies, anything worth keeping handy..." oninput="handleProfileNotesInput(this.value)">${escHtml(p.notes || '')}</textarea>
+      <textarea class="profile-sticky-note-textarea" id="profileNotes" placeholder="Doctor's number, insurance ID, allergies, anything worth keeping handy..." oninput="autoResizeStickyNote(this); handleProfileNotesInput(this.value)">${escHtml(p.notes || '')}</textarea>
     </div>
 
     <div id="profileMetricsContainer"></div>
   `;
 
   updateProfileMetricsDisplay();
+  autoResizeStickyNote(document.getElementById('profileNotes'));
+}
+
+// Grows/shrinks the Quick Notes textarea to exactly fit its content - no
+// drag handle, no leftover blank space below short notes. Resetting height
+// to 'auto' first (rather than just reading scrollHeight) is what lets it
+// shrink back down too, not just grow.
+function autoResizeStickyNote(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 // Only re-renders the read-only metrics block (BMI / score / advice / recent
