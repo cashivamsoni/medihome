@@ -6922,6 +6922,22 @@ async function sendAssistantMessage() {
       tipEl.className = 'mh-tooltip';
       tipEl.setAttribute('role', 'tooltip');
       document.body.appendChild(tipEl);
+      // Self-correct if the box's true rendered size settles later than our
+      // one-time measurement - e.g. the web font hasn't finished loading on
+      // the very first tooltip shown after page load, so that first
+      // measurement is based on a fallback font's (narrower) width; the box
+      // then silently resizes once the real font swaps in a moment later,
+      // and without this the arrow position (computed from the earlier,
+      // now-stale width) is left pointing at the wrong spot - matching
+      // exactly why this only ever showed up on the very first hover, never
+      // the second.
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+          if (currentTarget && tipEl.classList.contains('mh-tooltip-visible')) {
+            positionTip(currentTarget);
+          }
+        }).observe(tipEl);
+      }
     }
     return tipEl;
   }
