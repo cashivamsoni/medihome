@@ -2729,6 +2729,18 @@ body.bulk-mode .timer-panel {
   font-size: 0.7rem;
   margin-right: 3px;
 }
+/* Manage modal's field tabs (Owners/Categories/Types/Forms): same shorter,
+   denser pills as Owner Health Profile's tab row above - scoped so the
+   shared .mgmt-tab-btn style used elsewhere (Health Diary owner tabs) is
+   untouched. */
+#mgmtTabs .mgmt-tab-btn {
+  height: 30px;
+  font-size: 0.74rem;
+}
+#mgmtTabs .mgmt-tab-btn i {
+  font-size: 0.7rem;
+  margin-right: 3px;
+}
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
