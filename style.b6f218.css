@@ -3128,6 +3128,14 @@ body.bulk-mode .timer-panel {
    single-button bars elsewhere are untouched. */
 .trash-select-bar {
   gap: 8px;
+  flex-wrap: wrap;
+}
+.trash-select-bar .bulk-btn {
+  flex: 0 0 auto;
+  width: auto;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 0.78rem;
 }
 .qty-log-selectable {
   cursor: pointer;
