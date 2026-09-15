@@ -3034,6 +3034,34 @@ function toggleMgmtItemSelect(idx) {
   renderMgmtList();
 }
 
+// Indices currently visible under the active field tab + search query —
+// mirrors the per-field filtering renderMgmtList does below, so Select All
+// only selects what's actually on screen.
+function getVisibleMgmtIndices() {
+  const searchEl = document.getElementById('mgmtSearchInput');
+  const query = searchEl ? searchEl.value : '';
+  if (currentMgmtField === 'category') {
+    return customCategories.map((c, idx) => idx).filter(idx => fuzzyMatch(query, sortKey(customCategories[idx])));
+  } else if (currentMgmtField === 'owner') {
+    return customOwners.map((o, idx) => idx).filter(idx => fuzzyMatch(query, customOwners[idx].short));
+  } else if (currentMgmtField === 'form') {
+    return customForms.map((f, idx) => idx).filter(idx => fuzzyMatch(query, sortKey(customForms[idx])));
+  } else if (currentMgmtField === 'type') {
+    return customTypes.map((t, idx) => idx).filter(idx => fuzzyMatch(query, formatTypeLabel(customTypes[idx])));
+  }
+  return [];
+}
+
+// Selects/deselects everything currently visible — toggles to "deselect
+// all" once everything visible is already selected.
+function toggleMgmtSelectAll() {
+  const visible = getVisibleMgmtIndices();
+  if (!visible.length) return;
+  const allSelected = visible.every(idx => mgmtSelected.has(idx));
+  visible.forEach(idx => allSelected ? mgmtSelected.delete(idx) : mgmtSelected.add(idx));
+  renderMgmtList();
+}
+
 function deleteSelectedMgmtItems() {
   if (!mgmtSelected.size) { showToast('No items selected.', 'error'); return; }
   // Snapshot identifiers first — indices shift as items are deleted one by one
@@ -3069,6 +3097,16 @@ function renderMgmtList() {
   const searchEl = document.getElementById('mgmtSearchInput');
   const query = searchEl ? searchEl.value : '';
   let listHtml = '';
+
+  const selectAllLabel = document.getElementById('mgmtSelectAllLabel');
+  if (selectAllLabel) {
+    const visible = getVisibleMgmtIndices();
+    const allSelected = visible.length > 0 && visible.every(idx => mgmtSelected.has(idx));
+    const label = allSelected ? 'Deselect all' : 'Select all';
+    selectAllLabel.textContent = label;
+    const selectAllBtn = selectAllLabel.closest('button');
+    if (selectAllBtn) selectAllBtn.title = label;
+  }
 
   const chk = idx => mgmtSelectMode
     ? `<input type="checkbox" class="qty-log-check" ${mgmtSelected.has(idx) ? 'checked' : ''} onclick="event.stopPropagation(); toggleMgmtItemSelect(${idx})" />`
