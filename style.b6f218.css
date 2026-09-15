@@ -3769,7 +3769,8 @@ body.bulk-mode .timer-panel {
   display: block;
   width: 100%;
   min-height: 60px;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   border: none;
   background: transparent;
   font-family: "Kalam", "Comic Sans MS", "Inter", sans-serif;
