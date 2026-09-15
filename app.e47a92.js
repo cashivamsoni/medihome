@@ -5694,9 +5694,16 @@ function exportHealthDiaryPDF() {
     const fontSize = entries.length > 30 ? 9 : 10;
     const rowHeight = entries.length > 30 ? 6.5 : 8;
 
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.3);
-    doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+    // Drawn once up front and again after every addPage() below - the
+    // border only ever got drawn on page 1 before, so any entry list long
+    // enough to spill onto a second/third page left those continuation
+    // pages borderless.
+    function drawPageBorder() {
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.3);
+      doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+    }
+    drawPageBorder();
 
     let y = contentX + 3;
     doc.setFont(FONT, 'bold');
@@ -5753,6 +5760,7 @@ function exportHealthDiaryPDF() {
 
       if (y + thisRowHeight > pageH - MARGIN - PAD) {
         doc.addPage();
+        drawPageBorder();
         y = contentX + 3;
         drawHeaderRow(y);
         y += rowHeight;
@@ -5772,6 +5780,134 @@ function exportHealthDiaryPDF() {
     doc.save(fileName + '.pdf');
   } catch (err) {
     console.error('Export Health Diary PDF failed:', err);
+    showToast('Could not export PDF. Please try again.', 'error');
+  }
+}
+
+// ── Quantity Log PDF ──────────────────────────────────────────
+// Same structure/border-per-page pattern as exportHealthDiaryPDF() above -
+// a flat log table rather than a diary, but the pagination handling is
+// identical.
+function exportQuantityLogPDF() {
+  try {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast('The PDF tool did not load — check your connection and try again.', 'error');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateSlash   = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeColon   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeForName = timeColon.replace(/:/g, '-');
+    const branchName = (branches[activeBranchId] && branches[activeBranchId].name) ? branches[activeBranchId].name : '';
+    const fileName = `MediHome Quantity Log${branchName ? ' - ' + stripEmoji(branchName) : ''} ${dateSlash} ${timeForName}`;
+
+    const entries = quantityLog
+      .slice()
+      .reverse() // newest first, same order as the modal's own list
+      .map(e => ({
+        when: formatQtyLogTime(e.ts),
+        action: QTY_LOG_LABELS[e.action] || e.action,
+        medName: stripEmoji(e.medName || ''),
+        detail: stripEmoji(e.detail || '')
+      }));
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = 210, pageH = 297;
+    const MARGIN = 3;
+    const PAD = 4;
+    const contentX = MARGIN + PAD;
+    const contentW = pageW - 2 * contentX;
+    const FONT = 'times';
+    const fontSize = entries.length > 30 ? 9 : 10;
+    const rowHeight = entries.length > 30 ? 6.5 : 8;
+
+    function drawPageBorder() {
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.3);
+      doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+    }
+    drawPageBorder();
+
+    let y = contentX + 3;
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(fontSize + 8);
+    doc.text(
+      branchName ? `MediHome - Quantity Log (${stripEmoji(branchName)})` : 'MediHome - Quantity Log',
+      pageW / 2, y, { align: 'center' }
+    );
+    y += fontSize * 0.5 + 3;
+
+    doc.setFont(FONT, 'normal');
+    doc.setFontSize(fontSize - 1);
+    doc.text(
+      `Downloaded from https://medihomeapp.vercel.app/index.html on ${dateSlash} ${timeColon}`,
+      pageW / 2, y, { align: 'center' }
+    );
+    y += 5;
+
+    const whenW = 34, actionW = 26;
+    const medW = contentW * 0.32;
+    const detailW = contentW - whenW - actionW - medW;
+    const cols = { when: contentX, action: contentX + whenW, med: contentX + whenW + actionW, detail: contentX + whenW + actionW + medW };
+
+    function drawHeaderRow(rowY) {
+      doc.setFont(FONT, 'bold'); doc.setFontSize(fontSize);
+      doc.setFillColor(232, 232, 232);
+      doc.rect(cols.when, rowY, whenW, rowHeight, 'FD');
+      doc.rect(cols.action, rowY, actionW, rowHeight, 'FD');
+      doc.rect(cols.med, rowY, medW, rowHeight, 'FD');
+      doc.rect(cols.detail, rowY, detailW, rowHeight, 'FD');
+      const ty = rowY + rowHeight / 2 + fontSize * 0.15;
+      doc.text('Date / Time', cols.when + whenW / 2, ty, { align: 'center' });
+      doc.text('Action', cols.action + actionW / 2, ty, { align: 'center' });
+      doc.text('Medicine', cols.med + medW / 2, ty, { align: 'center' });
+      doc.text('Detail', cols.detail + detailW / 2, ty, { align: 'center' });
+    }
+
+    drawHeaderRow(y);
+    y += rowHeight;
+
+    if (!entries.length) {
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      doc.text('No quantity changes logged yet.', pageW / 2, y + 10, { align: 'center' });
+    }
+
+    entries.forEach(e => {
+      doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
+      const whenLines = doc.splitTextToSize(e.when, whenW - 3);
+      const actionLines = doc.splitTextToSize(e.action, actionW - 3);
+      const medLines = doc.splitTextToSize(e.medName, medW - 3);
+      const detailLines = doc.splitTextToSize(e.detail || '—', detailW - 3);
+      const lineCount = Math.max(whenLines.length, actionLines.length, medLines.length, detailLines.length, 1);
+      const linePitch = fontSize * 0.352778 * 1.15;
+      const blockHeight = lineCount * linePitch;
+      const thisRowHeight = Math.max(rowHeight, blockHeight + 3);
+
+      if (y + thisRowHeight > pageH - MARGIN - PAD) {
+        doc.addPage();
+        drawPageBorder();
+        y = contentX + 3;
+        drawHeaderRow(y);
+        y += rowHeight;
+      }
+      doc.setDrawColor(0);
+      doc.rect(cols.when, y, whenW, thisRowHeight);
+      doc.rect(cols.action, y, actionW, thisRowHeight);
+      doc.rect(cols.med, y, medW, thisRowHeight);
+      doc.rect(cols.detail, y, detailW, thisRowHeight);
+      const firstBaselineY = y + (thisRowHeight - blockHeight) / 2 + fontSize * 0.352778 * 0.75;
+      doc.text(whenLines, cols.when + 1.5, firstBaselineY);
+      doc.text(actionLines, cols.action + 1.5, firstBaselineY);
+      doc.text(medLines, cols.med + 1.5, firstBaselineY);
+      doc.text(detailLines, cols.detail + 1.5, firstBaselineY);
+      y += thisRowHeight;
+    });
+
+    doc.save(fileName + '.pdf');
+  } catch (err) {
+    console.error('Export Quantity Log PDF failed:', err);
     showToast('Could not export PDF. Please try again.', 'error');
   }
 }
@@ -5908,9 +6044,17 @@ async function exportOwnerHealthProfilePDF() {
     const contentW = pageW - 2 * contentX;
     const FONT = 'times';
 
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.3);
-    doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+    // Drawn once up front and again after every addPage() below - see the
+    // same fix/comment in exportHealthDiaryPDF() above. This report has
+    // three separate page-break points (health-updates table, the section
+    // break before the medicines-taken table, and that table's own
+    // overflow), and none of them redrew the border before this fix.
+    function drawPageBorder() {
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.3);
+      doc.rect(MARGIN, MARGIN, pageW - 2 * MARGIN, pageH - 2 * MARGIN);
+    }
+    drawPageBorder();
 
     let y = contentX + 3;
     doc.setFont(FONT, 'bold');
@@ -6092,6 +6236,7 @@ async function exportOwnerHealthProfilePDF() {
 
         if (y + thisRowH > pageH - MARGIN - PAD) {
           doc.addPage();
+          drawPageBorder();
           y = contentX + 3;
           drawHealthHdr(y);
           y += rowH;
@@ -6110,7 +6255,7 @@ async function exportOwnerHealthProfilePDF() {
     }
 
     // ── Medicines Taken table (last 30 days) ──
-    if (y > pageH - MARGIN - PAD - 20) { doc.addPage(); y = contentX + 3; }
+    if (y > pageH - MARGIN - PAD - 20) { doc.addPage(); drawPageBorder(); y = contentX + 3; }
     doc.setDrawColor(210);
     doc.line(contentX, y, contentX + contentW, y);
     y += 6;
@@ -6157,6 +6302,7 @@ async function exportOwnerHealthProfilePDF() {
 
         if (y + thisRowH > pageH - MARGIN - PAD) {
           doc.addPage();
+          drawPageBorder();
           y = contentX + 3;
           drawMedHdr(y);
           y += rowH;
