@@ -178,6 +178,9 @@
                 <button class="menu-flyout-option" onclick="closeAppMenu(); openQuantityLog();">
                   <i class="fa-solid fa-clipboard-list"></i> Quantity Log
                 </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); openTrashBin();">
+                  <i class="fa-solid fa-trash-can"></i> Trash Bin
+                </button>
                 <button class="menu-flyout-option" onclick="closeAppMenu(); exportToPDF();">
                   <i class="fa-solid fa-file-pdf"></i> Export PDF
                 </button>
@@ -985,6 +988,42 @@
             />
           </div>
           <div class="mgmt-list health-diary-list" id="quantityLogListContainer"></div>
+        </div>
+      </div>
+    </div>
+    <!-- ── Trash Bin Modal ─────────────────────────────────── -->
+    <div id="trashBinModal" class="hidden mgmt-modal-overlay">
+      <div class="mgmt-modal-box">
+        <div class="mgmt-modal-header">
+          <h3>Trash Bin</h3>
+          <div class="mgmt-modal-header-actions">
+            <button id="trashSelectBtn" class="qty-log-select-btn" onclick="toggleTrashSelectMode()">Select</button>
+            <button
+              class="modal-close"
+              onclick="closeTrashBin()"
+              aria-label="Close"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mgmt-modal-body">
+          <p class="branch-modal-hint">Deleted medicines are kept here for 15 days before being removed for good.</p>
+          <div id="trashSelectBar" class="qty-log-select-bar trash-select-bar hidden">
+            <button class="bulk-btn" onclick="toggleTrashSelectAll()"><i class="fa-solid fa-check-double"></i> <span id="trashSelectAllLabel">Select all</span></button>
+            <button class="bulk-btn" onclick="restoreSelectedTrashItems()"><i class="fa-solid fa-rotate-left"></i> Restore</button>
+            <button class="bulk-btn bulk-delete" onclick="deleteSelectedTrashItemsPermanently()"><i class="fa-solid fa-trash"></i> Delete forever</button>
+          </div>
+          <div class="mgmt-add-row">
+            <input
+              type="text"
+              id="trashBinSearchInput"
+              class="form-input"
+              placeholder="Search trash…"
+              oninput="renderTrashBinList()"
+            />
+          </div>
+          <div class="mgmt-list health-diary-list" id="trashBinListContainer"></div>
         </div>
       </div>
     </div>
