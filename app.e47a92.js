@@ -23,6 +23,7 @@ let _ownerProfileEditSnapshot = null; // { weight, height, dob, gender, bloodGro
 const STICKY_NOTE_COLORS = ['yellow', 'pink', 'blue', 'green', 'purple'];
 let _stickyNoteColor = STICKY_NOTE_COLORS[0]; // re-rolled each time the profile modal opens or the owner tab changes — see _rerollStickyNoteColor()
 let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
+let trashedMedicines = []; // current branch's deleted medicines, auto-purged after 15 days
 let editingHealthEntryId = null; // set while editing an existing entry
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
@@ -868,6 +869,8 @@ function loadActiveBranchIntoState() {
   healthDiary      = b.healthDiary || [];
   ownerProfiles    = b.ownerProfiles || {};
   quantityLog      = b.quantityLog || [];
+  trashedMedicines = b.trashedMedicines || [];
+  if (purgeExpiredTrash()) saveData(); // drop anything past 15 days as soon as this branch's data loads
   // Only clear the selected tab if it's genuinely no longer valid (e.g. we
   // just switched branches, or that owner was deleted) — NOT on every sync,
   // since this same function re-runs after every save (including our own),
@@ -903,6 +906,8 @@ function loadActiveBranchIntoState() {
   }
   const qtyModal = document.getElementById('quantityLogModal');
   if (qtyModal && !qtyModal.classList.contains('hidden')) renderQuantityLogList();
+  const trashModal = document.getElementById('trashBinModal');
+  if (trashModal && !trashModal.classList.contains('hidden')) renderTrashBinList();
 }
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
@@ -975,6 +980,7 @@ function saveData() {
   branches[activeBranchId].healthDiary = healthDiary;
   branches[activeBranchId].ownerProfiles = ownerProfiles;
   branches[activeBranchId].quantityLog = quantityLog;
+  branches[activeBranchId].trashedMedicines = trashedMedicines;
   saveAllBranches();
 }
 
@@ -1007,6 +1013,7 @@ function exportBackupJSON() {
       branches[activeBranchId].healthDiary   = healthDiary;
       branches[activeBranchId].ownerProfiles = ownerProfiles;
       branches[activeBranchId].quantityLog   = quantityLog;
+      branches[activeBranchId].trashedMedicines = trashedMedicines;
     }
 
     const payload = {
@@ -2355,7 +2362,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'dlgOverlay', 'healthFormOverlay', 'welcomePopupOverlay'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'trashBinModal', 'dlgOverlay', 'healthFormOverlay', 'welcomePopupOverlay'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -2911,6 +2918,8 @@ async function deleteMedicine(id) {
   pushUndo(`Deleted "${m.name}"`);
   logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
   medicines = medicines.filter(x => x.id !== id);
+  trashedMedicines.push({ ...m, deletedAt: Date.now() });
+  purgeExpiredTrash();
   saveData();
   exitBulkMode();
   searchMode = false;
@@ -4348,6 +4357,194 @@ function formatQtyLogTime(ts) {
     d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 }
 
+// ── Trash Bin ─────────────────────────────────────────────────
+// Deleted medicines land here (in addition to the existing 6-second Undo
+// toast) with a 15-day grace period before being purged for good. Selection
+// mode reuses the same .qty-log-selectable/.qty-log-check pattern as the
+// management modal and Quantity Log, per request - plus a "Select all"
+// toggle that only that modal's own selection mode has right now.
+function openTrashBin() {
+  const modal = document.getElementById('trashBinModal');
+  if (!modal || !modal.classList.contains('hidden')) return;
+  if (purgeExpiredTrash()) saveData(); // don't show anything that's already past its 15 days
+  const search = document.getElementById('trashBinSearchInput');
+  if (search) search.value = '';
+  trashSelectMode = false;
+  trashSelected.clear();
+  const btn = document.getElementById('trashSelectBtn');
+  const bar = document.getElementById('trashSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderTrashBinList();
+  modal.classList.remove('hidden');
+  lockBodyScroll();
+}
+function closeTrashBin() {
+  const modal = document.getElementById('trashBinModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('trashBinModal'), closeTrashBin);
+
+let trashSelectMode = false;
+let trashSelected = new Set();
+
+// Removes anything past its 15-day grace period. Returns true if it removed
+// something, so callers know whether a saveData() is actually needed.
+function purgeExpiredTrash() {
+  const cutoff = Date.now() - 15 * 24 * 60 * 60 * 1000;
+  const before = trashedMedicines.length;
+  trashedMedicines = trashedMedicines.filter(m => (m.deletedAt || 0) >= cutoff);
+  return trashedMedicines.length !== before;
+}
+
+function getFilteredTrash(query) {
+  let entries = trashedMedicines.slice().reverse(); // most recently deleted first
+  if (query) {
+    entries = entries.filter(m =>
+      (m.name || '').toLowerCase().includes(query) ||
+      (m.owner || '').toLowerCase().includes(query) ||
+      (m.category || '').toLowerCase().includes(query)
+    );
+  }
+  return entries;
+}
+
+function toggleTrashSelectMode() {
+  trashSelectMode = !trashSelectMode;
+  trashSelected.clear();
+  renderTrashBinList();
+  const btn = document.getElementById('trashSelectBtn');
+  const bar = document.getElementById('trashSelectBar');
+  if (btn) btn.textContent = trashSelectMode ? 'Cancel' : 'Select';
+  if (bar) bar.classList.toggle('hidden', !trashSelectMode);
+}
+
+function toggleTrashItemSelect(id) {
+  if (trashSelected.has(id)) trashSelected.delete(id);
+  else trashSelected.add(id);
+  renderTrashBinList();
+}
+
+// Selects/deselects everything currently visible under the active search —
+// toggles to "deselect all" once everything visible is already selected.
+function toggleTrashSelectAll() {
+  const query = (document.getElementById('trashBinSearchInput')?.value || '').toLowerCase().trim();
+  const visible = getFilteredTrash(query);
+  if (!visible.length) return;
+  const allSelected = visible.every(m => trashSelected.has(m.id));
+  visible.forEach(m => allSelected ? trashSelected.delete(m.id) : trashSelected.add(m.id));
+  renderTrashBinList();
+}
+
+function restoreTrashItem(id) {
+  const idx = trashedMedicines.findIndex(m => m.id === id);
+  if (idx === -1) return;
+  const item = trashedMedicines[idx];
+  trashedMedicines.splice(idx, 1);
+  const restored = { ...item };
+  delete restored.deletedAt;
+  delete restored.serialId; // avoid colliding with an ID reused since this was deleted — backfillSerialIds() assigns a fresh one on the next sync
+  medicines.push(restored);
+  saveData();
+  renderTrashBinList();
+  renderAll();
+  populateAllDropdowns();
+  renderOwnerNavChips();
+  showToast(`"${item.name}" restored.`);
+}
+
+async function deleteTrashItemPermanently(id) {
+  const item = trashedMedicines.find(m => m.id === id);
+  if (!item) return;
+  if (!(await customConfirm(`Permanently delete "${item.name}"? This cannot be undone.`, { title: 'Delete Forever', danger: true }))) return;
+  trashedMedicines = trashedMedicines.filter(m => m.id !== id);
+  saveData();
+  renderTrashBinList();
+  showToast(`"${item.name}" permanently deleted.`);
+}
+
+function restoreSelectedTrashItems() {
+  if (!trashSelected.size) { showToast('No items selected.', 'error'); return; }
+  const ids = Array.from(trashSelected);
+  const count = ids.length;
+  ids.forEach(id => {
+    const idx = trashedMedicines.findIndex(m => m.id === id);
+    if (idx === -1) return;
+    const item = trashedMedicines[idx];
+    trashedMedicines.splice(idx, 1);
+    const restored = { ...item };
+    delete restored.deletedAt;
+    delete restored.serialId;
+    medicines.push(restored);
+  });
+  saveData();
+  trashSelectMode = false;
+  trashSelected.clear();
+  const btn = document.getElementById('trashSelectBtn');
+  const bar = document.getElementById('trashSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderTrashBinList();
+  renderAll();
+  populateAllDropdowns();
+  renderOwnerNavChips();
+  showToast(`Restored ${count} medicine${count > 1 ? 's' : ''}.`);
+}
+
+async function deleteSelectedTrashItemsPermanently() {
+  if (!trashSelected.size) { showToast('No items selected.', 'error'); return; }
+  const count = trashSelected.size;
+  if (!(await customConfirm(`Permanently delete ${count} selected medicine${count > 1 ? 's' : ''}? This cannot be undone.`, { title: 'Delete Forever', danger: true }))) return;
+  trashedMedicines = trashedMedicines.filter(m => !trashSelected.has(m.id));
+  saveData();
+  trashSelectMode = false;
+  trashSelected.clear();
+  const btn = document.getElementById('trashSelectBtn');
+  const bar = document.getElementById('trashSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderTrashBinList();
+  showToast(`Permanently deleted ${count} medicine${count > 1 ? 's' : ''}.`);
+}
+
+function renderTrashBinList() {
+  const container = document.getElementById('trashBinListContainer');
+  if (!container) return;
+  const query = (document.getElementById('trashBinSearchInput')?.value || '').toLowerCase().trim();
+  const entries = getFilteredTrash(query);
+
+  const selectAllLabel = document.getElementById('trashSelectAllLabel');
+  if (selectAllLabel) {
+    const allSelected = entries.length > 0 && entries.every(m => trashSelected.has(m.id));
+    selectAllLabel.textContent = allSelected ? 'Deselect all' : 'Select all';
+  }
+
+  if (!entries.length) {
+    container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching trashed medicines.' : 'Trash is empty.'}</p>`;
+    return;
+  }
+  container.innerHTML = entries.map(m => {
+    const daysLeft = Math.max(0, 15 - Math.floor((Date.now() - (m.deletedAt || 0)) / 86400000));
+    return `
+    <div class="mgmt-item health-entry ${trashSelectMode ? 'qty-log-selectable' : ''} ${trashSelected.has(m.id) ? 'qty-log-selected' : ''}" ${trashSelectMode ? `onclick="toggleTrashItemSelect('${m.id}')"` : ''}>
+      ${trashSelectMode ? `<input type="checkbox" class="qty-log-check" ${trashSelected.has(m.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleTrashItemSelect('${m.id}')" />` : ''}
+      <span class="health-entry-body">
+        <span class="health-entry-date"><i class="fa-solid fa-trash"></i> Deleted ${escHtml(formatQtyLogTime(m.deletedAt))} — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span>
+        <span class="health-entry-issue">${escHtml(m.name)}</span>
+        <span class="health-entry-meds">${escHtml(`${m.quantity} ${m.quantityUnit}`)}</span>
+      </span>
+      ${!trashSelectMode ? `<div class="mgmt-actions">
+        <button class="btn-icon" onclick="event.stopPropagation(); restoreTrashItem('${m.id}')" title="Restore"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteTrashItemPermanently('${m.id}')" title="Delete forever"><i class="fa-solid fa-trash"></i></button>
+      </div>` : ''}
+    </div>
+  `;
+  }).join('');
+}
+
 function renderHealthOwnerTabs() {
   const container = document.getElementById('healthOwnerTabs');
   if (!container) return;
@@ -5380,10 +5577,15 @@ async function bulkDelete() {
   if (!bulkSelected.size) { showToast('No medicines selected.', 'error'); return; }
   if (!(await customConfirm(`Delete ${bulkSelected.size} selected medicine(s)? This can be undone via the Undo button.`, { title: 'Delete Medicines', danger: true }))) return;
   pushUndo(`Deleted ${bulkSelected.size} medicine(s)`);
+  const deletedAt = Date.now();
   medicines.forEach(m => {
-    if (bulkSelected.has(m.id)) logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
+    if (bulkSelected.has(m.id)) {
+      logQuantityChange('deleted', m.name, `${m.quantity} ${m.quantityUnit}`);
+      trashedMedicines.push({ ...m, deletedAt });
+    }
   });
   medicines = medicines.filter(m => !bulkSelected.has(m.id));
+  purgeExpiredTrash();
   saveData();
   searchMode = false;
   exitBulkMode();
