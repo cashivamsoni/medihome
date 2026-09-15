@@ -2759,6 +2759,12 @@ body.bulk-mode .timer-panel {
   font-size: 0.7rem;
   margin-right: 3px;
 }
+/* Pulls closer to the header above and the search box below - same
+   treatment as #mgmtTabs, scoped to this modal only. */
+#healthOwnerTabs {
+  margin-top: -10px;
+  margin-bottom: -6px;
+}
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
