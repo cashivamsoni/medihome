@@ -3140,9 +3140,27 @@ body.bulk-mode .timer-panel {
   display: flex;
   align-items: center;
   gap: 6px;
+  max-width: 110px;
+  opacity: 1;
+  visibility: visible;
+  overflow: hidden;
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease 0.05s, visibility 0s linear 0s;
 }
+/* Collapsing to 0 width (rather than display:none) is what makes this
+   animate at all — and because this bar sits directly before the
+   Select/Cancel button with no flex-grow on either side, its right edge
+   stays pinned right where Select/Cancel begins as it shrinks, so the
+   buttons visibly retreat back in behind Select/Cancel instead of just
+   sliding off to nowhere. visibility is delayed until the collapse
+   finishes so the buttons stay keyboard-focusable while visible, but
+   drop out of the tab order once fully tucked away (matching the old
+   display:none behavior). */
 .trash-header-bar.hidden {
-  display: none;
+  max-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, visibility 0s linear 0.3s;
 }
 .trash-header-btn {
   background: var(--slate-100);
