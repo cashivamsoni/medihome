@@ -2748,6 +2748,17 @@ body.bulk-mode .timer-panel {
   margin-top: -10px;
   margin-bottom: -6px;
 }
+/* Health Diary's owner tabs: same shorter, denser pills as Owner Health
+   Profile and the Manage modal above - scoped so other .mgmt-tab-btn
+   users are untouched. */
+#healthOwnerTabs .mgmt-tab-btn {
+  height: 30px;
+  font-size: 0.74rem;
+}
+#healthOwnerTabs .mgmt-tab-btn i {
+  font-size: 0.7rem;
+  margin-right: 3px;
+}
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
