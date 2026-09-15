@@ -829,8 +829,12 @@
        <div class="mgmt-modal-header">
           <h3>Health Diary</h3>
           <div class="mgmt-modal-header-actions">
-            <button id="healthMergeBtn" class="qty-log-select-btn" onclick="mergeDuplicateHealthEntries()" title="Merge duplicate entries"><i class="fa-solid fa-code-merge"></i></button>
+            <div id="healthSelectBar" class="trash-header-bar hidden">
+              <button class="trash-header-btn" onclick="toggleHealthSelectAll()" title="Select all"><i class="fa-solid fa-check-double"></i><span id="healthSelectAllLabel" class="sr-only">Select all</span></button>
+              <button class="trash-header-btn trash-header-btn-delete" onclick="deleteSelectedHealthEntries()" title="Delete selected"><i class="fa-solid fa-trash"></i></button>
+            </div>
             <button id="healthSelectBtn" class="qty-log-select-btn" onclick="toggleHealthSelectMode()">Select</button>
+            <button id="healthMergeBtn" class="qty-log-select-btn" onclick="mergeDuplicateHealthEntries()" title="Merge duplicate entries"><i class="fa-solid fa-code-merge"></i></button>
             <button id="healthDiaryExportBtn" class="qty-log-select-btn" onclick="exportHealthDiaryPDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             <button
               class="modal-close"
@@ -851,9 +855,6 @@
               placeholder="Search entries…"
               oninput="renderHealthDiaryList()"
             />
-          </div>
-          <div id="healthSelectBar" class="qty-log-select-bar hidden">
-            <button class="bulk-btn bulk-delete" onclick="deleteSelectedHealthEntries()"><i class="fa-solid fa-trash"></i> Delete selected</button>
           </div>
           <div class="mgmt-list health-diary-list" id="healthDiaryListContainer"></div>
         </div>
