@@ -6061,18 +6061,26 @@ body.login-locked {
   top: 0;
   left: 0;
   opacity: 0;
-  transform: translate(-50%, 4px) scale(0.94);
+  transform: translate(-50%, 4px);
   transition: opacity 0.14s ease, transform 0.14s ease;
 }
+/* No scale() in the entrance, only translate+opacity: the ::after arrow is
+   a 45deg-rotated diamond nested inside this box, and animating a scale
+   transform on a rotated shape's parent is a common source of sub-pixel
+   shimmer/wobble during the transition in most browsers - it read as the
+   arrow "adjusting" or drifting sideways, even though (checked frame by
+   frame) its settled position never actually moved. A plain translate
+   doesn't distort a rotated child the way scale does, so this keeps the
+   slide-in motion without the artifact. */
 .mh-tooltip.mh-tooltip-visible {
   opacity: 1;
-  transform: translate(-50%, 0) scale(1);
+  transform: translate(-50%, 0);
 }
 .mh-tooltip.mh-tooltip-below {
-  transform: translate(-50%, -4px) scale(0.94);
+  transform: translate(-50%, -4px);
 }
 .mh-tooltip.mh-tooltip-below.mh-tooltip-visible {
-  transform: translate(-50%, 0) scale(1);
+  transform: translate(-50%, 0);
 }
 .mh-tooltip::after {
   content: "";
