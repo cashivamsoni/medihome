@@ -2741,6 +2741,13 @@ body.bulk-mode .timer-panel {
   font-size: 0.7rem;
   margin-right: 3px;
 }
+/* Pulls closer to the header above and the search box below - shrinking
+   the gaps the shared 16px body padding / 12px flex gap otherwise leave
+   here, without touching .mgmt-modal-body for every other modal. */
+#mgmtTabs {
+  margin-top: -8px;
+  margin-bottom: -6px;
+}
 .mgmt-tab-btn {
   flex: 1;
   height: 34px;
