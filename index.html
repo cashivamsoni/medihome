@@ -997,6 +997,11 @@
         <div class="mgmt-modal-header">
           <h3>Trash Bin</h3>
           <div class="mgmt-modal-header-actions">
+            <div id="trashSelectBar" class="trash-header-bar hidden">
+              <button class="trash-header-btn" onclick="toggleTrashSelectAll()" title="Select all"><i class="fa-solid fa-check-double"></i><span id="trashSelectAllLabel" class="sr-only">Select all</span></button>
+              <button class="trash-header-btn" onclick="restoreSelectedTrashItems()" title="Restore"><i class="fa-solid fa-rotate-left"></i></button>
+              <button class="trash-header-btn trash-header-btn-delete" onclick="deleteSelectedTrashItemsPermanently()" title="Delete forever"><i class="fa-solid fa-trash"></i></button>
+            </div>
             <button id="trashSelectBtn" class="qty-log-select-btn" onclick="toggleTrashSelectMode()">Select</button>
             <button
               class="modal-close"
@@ -1009,11 +1014,6 @@
         </div>
         <div class="mgmt-modal-body">
           <p class="branch-modal-hint">Deleted medicines are kept here for 15 days before being removed for good.</p>
-          <div id="trashSelectBar" class="qty-log-select-bar trash-select-bar hidden">
-            <button class="bulk-btn" onclick="toggleTrashSelectAll()"><i class="fa-solid fa-check-double"></i> <span id="trashSelectAllLabel">Select all</span></button>
-            <button class="bulk-btn" onclick="restoreSelectedTrashItems()"><i class="fa-solid fa-rotate-left"></i> Restore</button>
-            <button class="bulk-btn bulk-delete" onclick="deleteSelectedTrashItemsPermanently()"><i class="fa-solid fa-trash"></i> Delete forever</button>
-          </div>
           <div class="mgmt-add-row">
             <input
               type="text"
