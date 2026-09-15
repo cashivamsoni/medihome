@@ -962,8 +962,12 @@
         <div class="mgmt-modal-header">
           <h3>Quantity Log</h3>
           <div class="mgmt-modal-header-actions">
-            <button id="qtyLogExportBtn" class="qty-log-select-btn" onclick="exportQuantityLogPDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            <div id="qtyLogSelectBar" class="trash-header-bar hidden">
+              <button class="trash-header-btn" onclick="toggleQtyLogSelectAll()" title="Select all"><i class="fa-solid fa-check-double"></i><span id="qtyLogSelectAllLabel" class="sr-only">Select all</span></button>
+              <button class="trash-header-btn trash-header-btn-delete" onclick="deleteSelectedQtyLogEntries()" title="Delete selected"><i class="fa-solid fa-trash"></i></button>
+            </div>
             <button id="qtyLogSelectBtn" class="qty-log-select-btn" onclick="toggleQtyLogSelectMode()">Select</button>
+            <button id="qtyLogExportBtn" class="qty-log-select-btn" onclick="exportQuantityLogPDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             <button
               class="modal-close"
               onclick="closeQuantityLog()"
@@ -974,10 +978,6 @@
           </div>
         </div>
         <div class="mgmt-modal-body">
-          <p class="branch-modal-hint">Additions, deletions, and quantity changes from the last 6 months for this branch.</p>
-          <div id="qtyLogSelectBar" class="qty-log-select-bar hidden">
-            <button class="bulk-btn bulk-delete" onclick="deleteSelectedQtyLogEntries()"><i class="fa-solid fa-trash"></i> Delete selected</button>
-          </div>
           <div class="mgmt-add-row">
             <input
               type="text"
@@ -987,6 +987,7 @@
               oninput="renderQuantityLogList()"
             />
           </div>
+          <p class="branch-modal-hint mgmt-hint-tight">Additions, deletions, and quantity changes from the last 6 months for this branch.</p>
           <div class="mgmt-list health-diary-list" id="quantityLogListContainer"></div>
         </div>
       </div>
@@ -1022,7 +1023,7 @@
               oninput="renderTrashBinList()"
             />
           </div>
-          <p class="branch-modal-hint trash-bin-hint">Deleted medicines are kept here for 15 days before being removed for good.</p>
+          <p class="branch-modal-hint mgmt-hint-tight">Deleted medicines are kept here for 15 days before being removed for good.</p>
           <div class="mgmt-list health-diary-list" id="trashBinListContainer"></div>
         </div>
       </div>
