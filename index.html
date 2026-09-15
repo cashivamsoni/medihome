@@ -788,6 +788,10 @@
        <div class="mgmt-modal-header">
           <h3 id="mgmtModalTitle">Manage Items</h3>
           <div class="mgmt-modal-header-actions">
+            <div id="mgmtSelectBar" class="trash-header-bar hidden">
+              <button class="trash-header-btn" onclick="toggleMgmtSelectAll()" title="Select all"><i class="fa-solid fa-check-double"></i><span id="mgmtSelectAllLabel" class="sr-only">Select all</span></button>
+              <button class="trash-header-btn trash-header-btn-delete" onclick="deleteSelectedMgmtItems()" title="Delete selected"><i class="fa-solid fa-trash"></i></button>
+            </div>
             <button id="mgmtSelectBtn" class="qty-log-select-btn" onclick="toggleMgmtSelectMode()">Select</button>
             <button
               class="modal-close"
@@ -813,9 +817,6 @@
               placeholder="Search…"
               oninput="filterMgmtList()"
             />
-          </div>
-          <div id="mgmtSelectBar" class="qty-log-select-bar hidden">
-            <button class="bulk-btn bulk-delete" onclick="deleteSelectedMgmtItems()"><i class="fa-solid fa-trash"></i> Delete selected</button>
           </div>
           <div class="mgmt-list" id="mgmtListContainer"></div>
         </div>
