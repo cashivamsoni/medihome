@@ -6914,7 +6914,7 @@ async function sendAssistantMessage() {
 (function () {
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return; // desktop/mouse only
 
-  var tipEl = null, showTimer = null, currentTarget = null, suppressUntil = 0;
+  var tipEl = null, showTimer = null, currentTarget = null, suppressUntil = 0, mouseDownAt = 0;
 
   function ensureTip() {
     if (!tipEl) {
@@ -7004,6 +7004,15 @@ async function sendAssistantMessage() {
     onEnter(e.target.closest('[title]'), 350);
   });
   document.addEventListener('focusin', function (e) {
+    // A click focuses its target too (in most browsers), which fired this
+    // exact same handler a second time right alongside the click's own
+    // hideTip() - two independent single-computation show cycles landing
+    // a moment apart, which still looked like one double-adjustment even
+    // after the earlier fix removed the duplicate positioning inside a
+    // single show. The instant (0-delay) show here is only meant for
+    // keyboard Tab navigation, so skip it when focus just happened because
+    // of a mouse click - hover already covers the mouse case.
+    if (Date.now() - mouseDownAt < 400) return;
     onEnter(e.target.closest('[title]'), 0);
   });
 
@@ -7034,7 +7043,10 @@ async function sendAssistantMessage() {
   // is gone before any modal-opening code executes - click is kept too as
   // a belt-and-braces second pass for input types mousedown doesn't cover
   // (e.g. keyboard-activated buttons, which dispatch click directly).
-  document.addEventListener('mousedown', hideTip, true);
+  document.addEventListener('mousedown', function () {
+    mouseDownAt = Date.now();
+    hideTip();
+  }, true);
   document.addEventListener('click', hideTip, true);
   document.addEventListener('visibilitychange', function () {
     hideTip();
