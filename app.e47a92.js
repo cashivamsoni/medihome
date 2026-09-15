@@ -4305,6 +4305,29 @@ function toggleQtyLogEntrySelect(id) {
   renderQuantityLogList();
 }
 
+function getFilteredQtyLog(query) {
+  let entries = quantityLog.slice().reverse(); // newest first
+  if (query) {
+    entries = entries.filter(e =>
+      (e.medName || '').toLowerCase().includes(query) ||
+      (e.action || '').toLowerCase().includes(query) ||
+      (e.detail || '').toLowerCase().includes(query)
+    );
+  }
+  return entries;
+}
+
+// Selects/deselects everything currently visible under the active search —
+// toggles to "deselect all" once everything visible is already selected.
+function toggleQtyLogSelectAll() {
+  const query = (document.getElementById('quantityLogSearchInput')?.value || '').toLowerCase().trim();
+  const visible = getFilteredQtyLog(query);
+  if (!visible.length) return;
+  const allSelected = visible.every(e => qtyLogSelected.has(e.id));
+  visible.forEach(e => allSelected ? qtyLogSelected.delete(e.id) : qtyLogSelected.add(e.id));
+  renderQuantityLogList();
+}
+
 async function deleteSelectedQtyLogEntries() {
   if (!qtyLogSelected.size) { showToast('No entries selected.', 'error'); return; }
   const count = qtyLogSelected.size;
@@ -4326,14 +4349,17 @@ function renderQuantityLogList() {
   const container = document.getElementById('quantityLogListContainer');
   if (!container) return;
   const query = (document.getElementById('quantityLogSearchInput')?.value || '').toLowerCase().trim();
-  let entries = quantityLog.slice().reverse(); // newest first
-  if (query) {
-    entries = entries.filter(e =>
-      (e.medName || '').toLowerCase().includes(query) ||
-      (e.action || '').toLowerCase().includes(query) ||
-      (e.detail || '').toLowerCase().includes(query)
-    );
+  const entries = getFilteredQtyLog(query);
+
+  const selectAllLabel = document.getElementById('qtyLogSelectAllLabel');
+  if (selectAllLabel) {
+    const allSelected = entries.length > 0 && entries.every(e => qtyLogSelected.has(e.id));
+    const label = allSelected ? 'Deselect all' : 'Select all';
+    selectAllLabel.textContent = label;
+    const selectAllBtn = selectAllLabel.closest('button');
+    if (selectAllBtn) selectAllBtn.title = label;
   }
+
   if (!entries.length) {
     container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching log entries.' : 'No quantity changes logged yet.'}</p>`;
     return;
