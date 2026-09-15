@@ -3265,6 +3265,13 @@ body.bulk-mode .timer-panel {
   cursor: pointer;
   transition: var(--transition);
 }
+/* Trash Bin's 15-day hint is demoted to a small caption above the list
+   (search comes first in the body), so it reads lighter than the
+   standard .branch-modal-hint used as a modal's opening line elsewhere. */
+.trash-bin-hint {
+  font-size: 0.72rem;
+  margin-top: -4px;
+}
 .branch-item:hover {
   border-color: var(--teal-200);
   background: var(--teal-50);
