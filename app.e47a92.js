@@ -3098,6 +3098,9 @@ function renderMgmtList() {
   const query = searchEl ? searchEl.value : '';
   let listHtml = '';
 
+  const clearBtn = document.getElementById('mgmtSearchClear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
   const selectAllLabel = document.getElementById('mgmtSelectAllLabel');
   if (selectAllLabel) {
     const visible = getVisibleMgmtIndices();
@@ -4354,6 +4357,19 @@ function toggleQtyLogEntrySelect(id) {
   renderQuantityLogList();
 }
 
+// Shared "cross" clear button for modal search bars, mirroring the main
+// page's #clearSearch — clears the input, refocuses it, and re-runs
+// whichever render function drives that modal's list (which also takes
+// care of re-hiding the button itself, since it re-reads the now-empty
+// query).
+function clearModalSearch(inputId, renderFn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.value = '';
+  inp.focus();
+  if (typeof renderFn === 'function') renderFn();
+}
+
 function getFilteredQtyLog(query) {
   let entries = quantityLog.slice().reverse(); // newest first
   if (query) {
@@ -4399,6 +4415,9 @@ function renderQuantityLogList() {
   if (!container) return;
   const query = (document.getElementById('quantityLogSearchInput')?.value || '').toLowerCase().trim();
   const entries = getFilteredQtyLog(query);
+
+  const clearBtn = document.getElementById('quantityLogSearchClear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !query);
 
   const selectAllLabel = document.getElementById('qtyLogSelectAllLabel');
   if (selectAllLabel) {
@@ -4591,6 +4610,9 @@ function renderTrashBinList() {
   const query = (document.getElementById('trashBinSearchInput')?.value || '').toLowerCase().trim();
   const entries = getFilteredTrash(query);
 
+  const clearBtn = document.getElementById('trashBinSearchClear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
   const selectAllLabel = document.getElementById('trashSelectAllLabel');
   if (selectAllLabel) {
     const allSelected = entries.length > 0 && entries.every(m => trashSelected.has(m.id));
@@ -4664,6 +4686,8 @@ function getFilteredHealthEntries(query) {
 function renderHealthDiaryList() {
   const container = document.getElementById('healthDiaryListContainer');
   if (!container) return;
+  const clearBtn = document.getElementById('healthSearchClear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !document.getElementById('healthSearchInput')?.value);
   if (!currentHealthOwner) { container.innerHTML = ''; return; }
 
   const query = (document.getElementById('healthSearchInput')?.value || '').toLowerCase().trim();
