@@ -810,13 +810,20 @@
             <button class="mgmt-tab-btn" onclick="manageField('form')" data-field="form"><i class="fa-solid fa-pills"></i> Forms</button>
           </div>
           <div class="mgmt-add-row">
-            <input
-              type="text"
-              id="mgmtSearchInput"
-              class="form-input"
-              placeholder="Search…"
-              oninput="filterMgmtList()"
-            />
+            <div class="mgmt-search-wrap">
+              <input
+                type="text"
+                id="mgmtSearchInput"
+                class="form-input"
+                placeholder="Search…"
+                autocomplete="off"
+                spellcheck="false"
+                oninput="filterMgmtList()"
+              />
+              <button type="button" class="mgmt-search-clear hidden" id="mgmtSearchClear" onclick="clearModalSearch('mgmtSearchInput', filterMgmtList)" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
           <div class="mgmt-list" id="mgmtListContainer"></div>
         </div>
@@ -848,13 +855,20 @@
         <div class="mgmt-modal-body">
           <div class="mgmt-tabs" id="healthOwnerTabs"></div>
           <div class="mgmt-add-row">
-            <input
-              type="text"
-              id="healthSearchInput"
-              class="form-input"
-              placeholder="Search entries…"
-              oninput="renderHealthDiaryList()"
-            />
+            <div class="mgmt-search-wrap">
+              <input
+                type="text"
+                id="healthSearchInput"
+                class="form-input"
+                placeholder="Search entries…"
+                autocomplete="off"
+                spellcheck="false"
+                oninput="renderHealthDiaryList()"
+              />
+              <button type="button" class="mgmt-search-clear hidden" id="healthSearchClear" onclick="clearModalSearch('healthSearchInput', renderHealthDiaryList)" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
           <div class="mgmt-list health-diary-list" id="healthDiaryListContainer"></div>
         </div>
@@ -981,13 +995,20 @@
         </div>
         <div class="mgmt-modal-body">
           <div class="mgmt-add-row">
-            <input
-              type="text"
-              id="quantityLogSearchInput"
-              class="form-input"
-              placeholder="Search log…"
-              oninput="renderQuantityLogList()"
-            />
+            <div class="mgmt-search-wrap">
+              <input
+                type="text"
+                id="quantityLogSearchInput"
+                class="form-input"
+                placeholder="Search log…"
+                autocomplete="off"
+                spellcheck="false"
+                oninput="renderQuantityLogList()"
+              />
+              <button type="button" class="mgmt-search-clear hidden" id="quantityLogSearchClear" onclick="clearModalSearch('quantityLogSearchInput', renderQuantityLogList)" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
           <p class="branch-modal-hint mgmt-hint-tight">Additions, deletions, and quantity changes from the last 6 months for this branch.</p>
           <div class="mgmt-list health-diary-list" id="quantityLogListContainer"></div>
@@ -1017,13 +1038,20 @@
         </div>
         <div class="mgmt-modal-body">
           <div class="mgmt-add-row">
-            <input
-              type="text"
-              id="trashBinSearchInput"
-              class="form-input"
-              placeholder="Search trash…"
-              oninput="renderTrashBinList()"
-            />
+            <div class="mgmt-search-wrap">
+              <input
+                type="text"
+                id="trashBinSearchInput"
+                class="form-input"
+                placeholder="Search trash…"
+                autocomplete="off"
+                spellcheck="false"
+                oninput="renderTrashBinList()"
+              />
+              <button type="button" class="mgmt-search-clear hidden" id="trashBinSearchClear" onclick="clearModalSearch('trashBinSearchInput', renderTrashBinList)" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
           <p class="branch-modal-hint mgmt-hint-tight">Deleted medicines are kept here for 15 days before being removed for good.</p>
           <div class="mgmt-list health-diary-list" id="trashBinListContainer"></div>
