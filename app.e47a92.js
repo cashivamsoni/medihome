@@ -2844,8 +2844,12 @@ async function promptDuplicateMedicine(existing, key) {
     // Hands off to the existing record's own Edit form rather than trying
     // to merge quantities blindly — quantity/expiry this early in the Add
     // form are usually still blank anyway, so there's nothing reliable to
-    // add together yet.
-    closeModal();
+    // add together yet. Deliberately NOT calling closeModal() first — the
+    // modal is already open, and closeModal()'s 250ms delayed hide would
+    // race with openEdit()'s own openModal() call (which no-ops if the
+    // modal isn't already marked hidden), causing it to just close instead
+    // of switching to Edit mode. openEdit() simply repopulates the same
+    // open modal's fields in place.
     openEdit(existing.id);
     setTimeout(() => {
       const qtyField = document.getElementById('medQuantity');
