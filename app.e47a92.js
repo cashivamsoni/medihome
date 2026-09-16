@@ -4,6 +4,10 @@
 
 let medicines = [];
 let editingId = null;
+// Remembers a "no, this is a different medicine" dismissal from the
+// duplicate-medicine prompt below, keyed by "name|owner" (lowercased), so
+// re-blurring the same fields without changing them doesn't re-nag.
+let _dupMedIgnoredKey = null;
 let searchTimeout = null;
 let activeFilter = 'all';   // 'all' | 'low' | 'expiring' | 'expired'
 let sortOrder = 'expiry';   // 'expiry' | 'name' | 'quantity' | 'added'
@@ -1789,6 +1793,12 @@ function bindEvents() {
   // Live duplicate-ID check as the user types
   document.getElementById('medSerialId').addEventListener('input', validateSerialIdField);
 
+  // Duplicate-medicine nudge: catches "I already have this one" as soon as
+  // name + owner are both known, before the rest of the form gets filled
+  // in by hand — see checkDuplicateMedicineOnAdd().
+  document.getElementById('medName').addEventListener('blur', checkDuplicateMedicineOnAdd);
+  document.getElementById('medOwner').addEventListener('change', checkDuplicateMedicineOnAdd);
+
   // Live filter as user types
   inp.addEventListener('input', () => {
     // Hide/show the Family Health carousel immediately (not debounced) so it
@@ -2612,6 +2622,7 @@ function initImageDropZone() {
 // ── Add medicine ──────────────────────────────────────────
 function openAdd() {
   editingId = null;
+  _dupMedIgnoredKey = null;
   document.getElementById('modalTitle').textContent = 'Add Medicine';
   document.getElementById('medId').value = '';
   document.getElementById('medSerialId').value = '';
@@ -2799,6 +2810,136 @@ function highlightInvalidField(id, isInvalid) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.toggle('input-error', !!isInvalid);
+}
+
+// Fires on medName blur / medOwner change while adding a brand-new
+// medicine (never while editing one — that can't create a duplicate of
+// itself). Only meaningful once both fields are known, since owner sits
+// further down the form than name and may still be at its default value.
+function checkDuplicateMedicineOnAdd() {
+  if (editingId) return;
+  const name = document.getElementById('medName').value.trim();
+  const owner = document.getElementById('medOwner').value;
+  if (!name || !owner) return;
+  const key = name.toLowerCase() + '|' + owner;
+  if (_dupMedIgnoredKey === key) return; // already said "this is different" for this exact pair
+  const existing = medicines.find(m => m.name.trim().toLowerCase() === name.toLowerCase() && m.owner === owner);
+  if (!existing) return;
+  promptDuplicateMedicine(existing, key);
+}
+
+async function promptDuplicateMedicine(existing, key) {
+  const stockText = existing.quantity === 0 ? 'Finished' : `${existing.quantity} ${existing.quantityUnit} left`;
+  const expiryText = existing.expiryDate ? formatExpiry(existing.expiryDate) : 'no expiry set';
+  const choice = await customChoice(
+    `You already have "${existing.name}" for ${ownerLabel(existing.owner)} — ${stockText}, ${expiryText}. What's this new one?`,
+    [
+      { label: 'Same batch — top up this stock', value: 'topup' },
+      { label: 'New batch — copy its details', value: 'prefill' },
+      { label: 'No, this is a different medicine', value: 'ignore' },
+    ],
+    { title: 'Already have this medicine?' }
+  );
+  if (choice === 'topup') {
+    // Hands off to the existing record's own Edit form rather than trying
+    // to merge quantities blindly — quantity/expiry this early in the Add
+    // form are usually still blank anyway, so there's nothing reliable to
+    // add together yet.
+    closeModal();
+    openEdit(existing.id);
+    setTimeout(() => {
+      const qtyField = document.getElementById('medQuantity');
+      if (qtyField) { qtyField.focus(); qtyField.select(); }
+    }, 60);
+  } else if (choice === 'prefill') {
+    prefillFromExistingMedicine(existing);
+  } else {
+    // 'ignore', or dismissed via backdrop/X — don't ask again for this
+    // exact name+owner pair unless one of them changes.
+    _dupMedIgnoredKey = key;
+  }
+}
+
+// "New batch" choice: copies everything about the existing medicine except
+// quantity, expiry and serial ID — the fields that genuinely differ per
+// physical bottle — so a fresh bottle with a different expiry doesn't mean
+// retyping description, type, form, category, unit and notes from scratch.
+// Mirrors openEdit()'s field population, minus editingId (this stays a
+// brand-new Add).
+function prefillFromExistingMedicine(existing) {
+  document.getElementById('medDesc').value = existing.description || '';
+  populateTypeDropdown(existing.type);
+  document.getElementById('medType').value = existing.type;
+
+  populateFormDropdown();
+  const formSel = document.getElementById('medFormField');
+  const formCustom = document.getElementById('medFormCustom');
+  if (formCustom) {
+    if (customForms.includes(existing.form)) {
+      formSel.value = existing.form;
+      formCustom.classList.add('hidden');
+      formCustom.value = '';
+    } else {
+      formSel.value = '__new__';
+      formCustom.classList.remove('hidden');
+      formCustom.value = existing.form;
+    }
+  } else {
+    formSel.value = existing.form;
+  }
+
+  populateCategoryDropdown();
+  const catSel = document.getElementById('medCategory');
+  const catCustom = document.getElementById('medCategoryCustom');
+  if (customCategories.includes(existing.category)) {
+    catSel.value = existing.category;
+    catCustom.classList.add('hidden');
+    catCustom.value = '';
+  } else {
+    catSel.value = '__new__';
+    catCustom.classList.remove('hidden');
+    catCustom.value = existing.category;
+  }
+
+  // Owner already matches — that's how this duplicate was found — so it's
+  // left as-is.
+  document.getElementById('medQuantityUnit').value = existing.quantityUnit || '';
+  document.getElementById('medFrequent').checked = existing.frequentlyUsed;
+  document.getElementById('medLowStock').checked = existing.lowStock;
+  document.getElementById('medNotes').value = existing.notes || '';
+  syncLowStockUI();
+
+  // Image carries over too — almost always the same product photo.
+  resetImageFields();
+  if (existing.image) {
+    document.getElementById('medImageData').value = existing.image;
+    if (existing.image.startsWith('data:')) {
+      switchImgTab('upload');
+      const preview = document.getElementById('imgPreviewUpload');
+      preview.src = existing.image;
+      preview.classList.remove('hidden');
+      document.getElementById('imgDropContent').style.display = 'none';
+      document.getElementById('imgClearUpload').classList.remove('hidden');
+    } else {
+      switchImgTab('url');
+      document.getElementById('medImageUrl').value = existing.image;
+      const preview = document.getElementById('imgPreviewUrl');
+      preview.src = existing.image;
+      preview.classList.remove('hidden');
+      document.getElementById('imgClearUrl').classList.remove('hidden');
+    }
+  }
+
+  // Quantity and expiry are deliberately left blank — that's the whole
+  // point of a new batch — with focus handed to quantity so typing the
+  // new bottle's amount is the very next thing that happens.
+  document.getElementById('medQuantity').value = '';
+  document.getElementById('medExpiry').value = '';
+  showToast(`Copied details from your existing "${existing.name}" — just add the new quantity & expiry.`, 'info');
+  setTimeout(() => {
+    const qtyField = document.getElementById('medQuantity');
+    if (qtyField) qtyField.focus();
+  }, 60);
 }
 
 function saveMedicine() {
