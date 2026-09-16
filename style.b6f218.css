@@ -3195,6 +3195,37 @@ body.bulk-mode .timer-panel {
 .qty-log-select-btn.profile-save-btn:hover {
   background: var(--teal-700);
 }
+/* Save sits in the shared slide-reveal bar (see #healthOwnerTabs/#mgmtTabs
+   comment above) but holds a full text+icon pill rather than bare icon
+   circles, so it needs more room than that bar's default 110px. */
+#profileSaveBar {
+  max-width: 130px;
+}
+/* Edit/Cancel is one button whose label crossfades between the two states
+   instead of two separate buttons swapping visibility — the grid overlay
+   stacks both labels in the same cell (sized to whichever is wider) so the
+   button's width never jumps when the label changes. */
+.profile-edit-cancel-btn {
+  position: relative;
+  display: grid;
+}
+.profile-edit-cancel-label {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.22s ease;
+}
+.profile-edit-cancel-label--cancel {
+  opacity: 0;
+}
+.profile-edit-cancel-btn.is-editing .profile-edit-cancel-label--edit {
+  opacity: 0;
+}
+.profile-edit-cancel-btn.is-editing .profile-edit-cancel-label--cancel {
+  opacity: 1;
+}
 .qty-log-select-bar {
   display: flex;
   justify-content: flex-end;
