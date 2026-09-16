@@ -4050,12 +4050,20 @@ let _profileSaveTimer = null;
 // (outside #profileContent), so renderOwnerProfileContent()'s innerHTML swap
 // never touches them — this is the one spot that keeps them in sync.
 function _setProfileEditButtonsVisibility() {
-  const editBtn = document.getElementById('profileEditBtn');
-  const saveBtn = document.getElementById('profileSaveBtn');
-  const cancelBtn = document.getElementById('profileCancelBtn');
-  if (editBtn) editBtn.classList.toggle('hidden', ownerProfileEditMode);
-  if (saveBtn) saveBtn.classList.toggle('hidden', !ownerProfileEditMode);
-  if (cancelBtn) cancelBtn.classList.toggle('hidden', !ownerProfileEditMode);
+  const saveBar = document.getElementById('profileSaveBar');
+  const toggleBtn = document.getElementById('profileEditCancelBtn');
+  if (saveBar) saveBar.classList.toggle('hidden', !ownerProfileEditMode);
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('is-editing', ownerProfileEditMode);
+    toggleBtn.title = ownerProfileEditMode ? 'Discard changes' : 'Edit profile';
+  }
+}
+
+// Single Edit/Cancel button's onclick — routes to whichever action matches
+// its current label, since it's no longer two separate buttons.
+function toggleProfileEditCancel() {
+  if (ownerProfileEditMode) cancelProfileEditMode();
+  else enterProfileEditMode();
 }
 
 function enterProfileEditMode() {
