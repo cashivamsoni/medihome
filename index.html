@@ -881,9 +881,13 @@
         <div class="mgmt-modal-header">
           <h3>Owner Health Profiles</h3>
           <div class="mgmt-modal-header-actions">
-            <button id="profileEditBtn" class="qty-log-select-btn" onclick="enterProfileEditMode()" title="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button>
-            <button id="profileSaveBtn" class="qty-log-select-btn profile-save-btn hidden" onclick="saveProfileEditMode()" title="Save changes"><i class="fa-solid fa-check"></i> Save</button>
-            <button id="profileCancelBtn" class="qty-log-select-btn hidden" onclick="cancelProfileEditMode()" title="Discard changes"><i class="fa-solid fa-xmark"></i> Cancel</button>
+            <div id="profileSaveBar" class="trash-header-bar hidden">
+              <button id="profileSaveBtn" class="qty-log-select-btn profile-save-btn" onclick="saveProfileEditMode()" title="Save changes"><i class="fa-solid fa-check"></i> Save</button>
+            </div>
+            <button id="profileEditCancelBtn" class="qty-log-select-btn profile-edit-cancel-btn" onclick="toggleProfileEditCancel()" title="Edit profile">
+              <span class="profile-edit-cancel-label profile-edit-cancel-label--edit"><i class="fa-solid fa-pen"></i> Edit</span>
+              <span class="profile-edit-cancel-label profile-edit-cancel-label--cancel"><i class="fa-solid fa-xmark"></i> Cancel</span>
+            </button>
             <button id="profileExportBtn" class="qty-log-select-btn" onclick="exportOwnerHealthProfilePDF()" title="Export PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             <button
               class="modal-close"
