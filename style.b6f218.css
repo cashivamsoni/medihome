@@ -2804,6 +2804,51 @@ body.bulk-mode .timer-panel {
   flex: 1;
   height: 38px;
 }
+/* Cross/clear button for modal search bars, mirroring the main page's
+   #clearSearch — same show-only-when-typed behavior, just sized down to
+   match these smaller .form-input search boxes instead of the big
+   top-level search bar. */
+.mgmt-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.mgmt-search-wrap .form-input {
+  padding-right: 36px;
+}
+.mgmt-search-clear {
+  position: absolute;
+  right: 8px;
+  background: var(--slate-200);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+.mgmt-search-clear:hover {
+  background: var(--slate-300);
+}
+.mgmt-search-clear i {
+  font-size: 0.65rem;
+}
+.mgmt-search-clear.hidden {
+  display: none;
+}
+[data-theme="dark"] .mgmt-search-clear {
+  background: var(--slate-400);
+  color: var(--slate-800);
+}
+[data-theme="dark"] .mgmt-search-clear:hover {
+  background: var(--slate-300);
+}
 .mgmt-list {
   height: 210px;
   overflow-y: auto;
