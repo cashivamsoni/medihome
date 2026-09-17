@@ -3390,6 +3390,9 @@ body.bulk-mode .timer-panel {
   transition: var(--transition);
   z-index: 5;
 }
+.mgmt-fab i {
+  font-size: 1.3rem;
+}
 .mgmt-fab:hover {
   background: var(--teal-700);
   transform: scale(1.06);
