@@ -2022,6 +2022,16 @@ body.bulk-mode .assistant-panel {
 .img-clear-btn i {
   font-size: 0.7rem;
 }
+/* These three start visible by default (no dedicated 0-state), so the
+   "hidden" class needs an explicit override here — same reason .img-panel
+   gets one above. Covers both the medicine form and the Devices form, which
+   reuse this exact upload-file/paste-URL widget on their own element IDs. */
+.img-preview.hidden,
+.img-preview-url.hidden,
+.img-clear-btn.hidden,
+input[type="file"].hidden {
+  display: none;
+}
 #medImageUrl {
   margin-top: 2px;
 }
@@ -5516,7 +5526,8 @@ body.compact-view.bulk-mode .medicine-card {
 
 /* ── Custom Dialog (replaces native prompt/confirm/alert) ─── */
 #dlgOverlay,
-#healthFormOverlay {
+#healthFormOverlay,
+#deviceFormOverlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -5533,11 +5544,13 @@ body.compact-view.bulk-mode .medicine-card {
   transition: opacity 0.22s ease;
 }
 #dlgOverlay.active,
-#healthFormOverlay.active {
+#healthFormOverlay.active,
+#deviceFormOverlay.active {
   opacity: 1;
 }
 #dlgOverlay.hidden,
-#healthFormOverlay.hidden {
+#healthFormOverlay.hidden,
+#deviceFormOverlay.hidden {
   display: none;
 }
 /* Opened from within the Owner Health Profile modal (like #healthDiaryModal
