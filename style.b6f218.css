@@ -2692,12 +2692,18 @@ body.bulk-mode .timer-panel {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  gap: 10px;
 }
 .mgmt-modal-header h3 {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
   font-family: "DM Serif Display", Georgia, serif;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mgmt-modal-body {
   padding: 16px;
@@ -3179,6 +3185,7 @@ body.bulk-mode .timer-panel {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .qty-log-select-btn {
   background: var(--slate-100);
@@ -3553,11 +3560,10 @@ body.bulk-mode .timer-panel {
     padding: 0 2px;
   }
   .mgmt-modal-header {
-    flex-wrap: wrap;
-    row-gap: 8px;
+    flex-wrap: nowrap;
   }
   .mgmt-modal-header-actions {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
   }
   .mgmt-modal-header-actions .qty-log-select-btn {
