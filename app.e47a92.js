@@ -29,6 +29,7 @@ let _stickyNoteColor = STICKY_NOTE_COLORS[0]; // re-rolled each time the profile
 let quantityLog = [];       // current branch's log of add/delete/increase/decrease (last 20)
 let trashedMedicines = []; // current branch's deleted medicines, auto-purged after 15 days
 let editingHealthEntryId = null; // set while editing an existing entry
+let devices = [];           // current branch's medical devices
 let currentMgmtField = '';  // 'category' | 'owner' | 'form' | 'type' — which manage modal is open
 
 // ── Custom Dialog System (replaces native prompt/confirm/alert) ───────────
@@ -161,6 +162,11 @@ document.addEventListener('keydown', (e) => {
   if (hf && hf.classList.contains('active') && e.key === 'Escape') {
     e.preventDefault();
     _healthFormResolve(null);
+  }
+  const df = document.getElementById('deviceFormOverlay');
+  if (df && df.classList.contains('active') && e.key === 'Escape') {
+    e.preventDefault();
+    _deviceFormResolve(null);
   }
 });
 
@@ -874,6 +880,7 @@ function loadActiveBranchIntoState() {
   ownerProfiles    = b.ownerProfiles || {};
   quantityLog      = b.quantityLog || [];
   trashedMedicines = b.trashedMedicines || [];
+  devices          = b.devices || [];
   if (purgeExpiredTrash()) saveData(); // drop anything past 15 days as soon as this branch's data loads
   // Only clear the selected tab if it's genuinely no longer valid (e.g. we
   // just switched branches, or that owner was deleted) — NOT on every sync,
@@ -912,6 +919,8 @@ function loadActiveBranchIntoState() {
   if (qtyModal && !qtyModal.classList.contains('hidden')) renderQuantityLogList();
   const trashModal = document.getElementById('trashBinModal');
   if (trashModal && !trashModal.classList.contains('hidden')) renderTrashBinList();
+  const devicesModal = document.getElementById('devicesModal');
+  if (devicesModal && !devicesModal.classList.contains('hidden')) renderDevicesList();
 }
 
 // Serial ID helpers — user-assignable medicine numbers (separate from internal m.id)
@@ -985,6 +994,7 @@ function saveData() {
   branches[activeBranchId].ownerProfiles = ownerProfiles;
   branches[activeBranchId].quantityLog = quantityLog;
   branches[activeBranchId].trashedMedicines = trashedMedicines;
+  branches[activeBranchId].devices = devices;
   saveAllBranches();
 }
 
@@ -1018,6 +1028,7 @@ function exportBackupJSON() {
       branches[activeBranchId].ownerProfiles = ownerProfiles;
       branches[activeBranchId].quantityLog   = quantityLog;
       branches[activeBranchId].trashedMedicines = trashedMedicines;
+      branches[activeBranchId].devices       = devices;
     }
 
     const payload = {
@@ -2372,7 +2383,7 @@ function unlockBodyScroll() {
 // counter thinks otherwise (or vice versa), reconcile so scroll never gets
 // stuck locked (or unlocked while a modal is genuinely open).
 function reconcileBodyScrollLock() {
-  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'trashBinModal', 'dlgOverlay', 'healthFormOverlay', 'welcomePopupOverlay'].some(id => {
+  const anyOpen = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'trashBinModal', 'devicesModal', 'dlgOverlay', 'healthFormOverlay', 'deviceFormOverlay', 'welcomePopupOverlay'].some(id => {
     const el = document.getElementById(id);
     return el && !el.classList.contains('hidden');
   });
@@ -3461,6 +3472,351 @@ async function deleteMgmtItem(idx) {
   saveData();
   renderMgmtList();
   showUndoToast(`Deleted — tap Undo within 6s`, 'fa-trash');
+}
+
+// ── Devices ────────────────────────────────────────────────
+// Per-branch list of the medical devices/equipment available at that branch
+// (e.g. BP monitor, nebulizer, glucometer). Each entry: {id, name, description,
+// image, working, createdAt}. Modeled on the Health Diary modal (search,
+// select/delete, per-entry edit) and the medicine form's image upload widget.
+
+function openDevicesModal() {
+  const modal = document.getElementById('devicesModal');
+  if (!modal || !modal.classList.contains('hidden')) return;
+  const search = document.getElementById('deviceSearchInput');
+  if (search) search.value = '';
+  deviceSelectMode = false;
+  deviceSelected.clear();
+  const dsBtn = document.getElementById('deviceSelectBtn');
+  const dsBar = document.getElementById('deviceSelectBar');
+  if (dsBtn) dsBtn.textContent = 'Select';
+  if (dsBar) dsBar.classList.add('hidden');
+  renderDevicesList();
+  modal.classList.remove('hidden');
+  lockBodyScroll();
+}
+function closeDevicesModal() {
+  const modal = document.getElementById('devicesModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 50);
+}
+bindOverlayClose(document.getElementById('devicesModal'), closeDevicesModal);
+
+function getFilteredDevices(query) {
+  let entries = devices.slice();
+  if (query) {
+    entries = entries.filter(d =>
+      (d.name || '').toLowerCase().includes(query) ||
+      (d.description || '').toLowerCase().includes(query)
+    );
+  }
+  return entries.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function renderDevicesList() {
+  const container = document.getElementById('devicesListContainer');
+  if (!container) return;
+  const clearBtn = document.getElementById('deviceSearchClear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !document.getElementById('deviceSearchInput')?.value);
+
+  const query = (document.getElementById('deviceSearchInput')?.value || '').toLowerCase().trim();
+  const entries = getFilteredDevices(query);
+
+  const selectAllLabel = document.getElementById('deviceSelectAllLabel');
+  if (selectAllLabel) {
+    const allSelected = entries.length > 0 && entries.every(d => deviceSelected.has(d.id));
+    const label = allSelected ? 'Deselect all' : 'Select all';
+    selectAllLabel.textContent = label;
+    const selectAllBtn = selectAllLabel.closest('button');
+    if (selectAllBtn) selectAllBtn.title = label;
+  }
+
+  if (!entries.length) {
+    container.innerHTML = `<p class="branch-modal-hint">${query ? 'No matching devices.' : 'No devices added yet.'}</p>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(d => {
+    const isWorking = d.working !== false;
+    return `
+    <div class="mgmt-item device-entry ${deviceSelectMode ? 'qty-log-selectable' : ''} ${deviceSelected.has(d.id) ? 'qty-log-selected' : ''}" ${deviceSelectMode ? `onclick="toggleDeviceSelect('${d.id}')"` : ''}>
+      ${deviceSelectMode ? `<input type="checkbox" class="qty-log-check" ${deviceSelected.has(d.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleDeviceSelect('${d.id}')" />` : ''}
+      <div class="device-entry-thumb${d.image ? ' device-entry-thumb-has-img' : ''}" ${d.image ? `onclick="event.stopPropagation(); openImgViewer('${escHtml(d.image)}','${escHtml(d.name)}')"` : ''} title="${d.image ? 'Click to view image' : ''}">
+        ${d.image ? `<img src="${escHtml(d.image)}" alt="${escHtml(d.name)}" onerror="this.parentElement.classList.add('device-entry-thumb-broken'); this.remove();" />` : `<i class="fa-solid fa-kit-medical"></i>`}
+      </div>
+      <span class="device-entry-body">
+        <span class="device-entry-name">${escHtml(d.name)}</span>
+        ${d.description ? `<span class="device-entry-desc">${escHtml(d.description)}</span>` : ''}
+      </span>
+      ${!deviceSelectMode ? `
+        <button class="mgmt-btn device-toggle-btn ${isWorking ? 'device-working' : 'device-not-working'}" onclick="event.stopPropagation(); toggleDeviceWorking('${d.id}')" title="${isWorking ? 'Working — tap to mark not working' : 'Not working — tap to mark working'}">
+          <i class="fa-solid ${isWorking ? 'fa-check' : 'fa-xmark'}"></i>
+        </button>
+        <div class="mgmt-actions">
+          <button class="mgmt-btn" onclick="editDevice('${d.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="mgmt-btn" onclick="deleteDevice('${d.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>` : ''}
+    </div>
+  `;
+  }).join('');
+}
+
+// ── Device Entry Form (Add/Edit) — promise-based, mirrors openHealthEntryForm ──
+let _devFormResolve = null;
+
+// opts: {title, name, description, image, working}
+// Resolves to {name, description, image, working} or null if cancelled.
+function openDeviceForm(opts = {}) {
+  return new Promise(resolve => {
+    _devFormResolve = resolve;
+    document.getElementById('deviceFormTitle').textContent = opts.title || 'Add Device';
+    document.getElementById('devName').value = opts.name || '';
+    document.getElementById('devDesc').value = opts.description || '';
+    document.getElementById('devWorking').checked = opts.working !== false;
+    resetDeviceImageFields();
+    if (opts.image) {
+      // Route the existing image through whichever tab (upload vs URL) fits —
+      // a remote URL stays editable as a URL, anything else (data URL) shows
+      // as an uploaded-file preview.
+      if (/^https?:\/\//i.test(opts.image)) {
+        switchDevImgTab('url');
+        document.getElementById('devImageUrl').value = opts.image;
+        handleDeviceImageUrl();
+      } else {
+        document.getElementById('devImageData').value = opts.image;
+        const preview = document.getElementById('devImgPreviewUpload');
+        preview.src = opts.image;
+        preview.classList.remove('hidden');
+        document.getElementById('devImgDropContent').style.display = 'none';
+        document.getElementById('devImgClearUpload').classList.remove('hidden');
+      }
+    }
+    document.getElementById('deviceFormError').classList.add('hidden');
+    const ov = document.getElementById('deviceFormOverlay');
+    ov.classList.remove('hidden');
+    setTimeout(() => ov.classList.add('active'), 10);
+    lockBodyScroll();
+    setTimeout(() => document.getElementById('devName').focus(), 60);
+  });
+}
+function _closeDeviceFormOverlay() {
+  const ov = document.getElementById('deviceFormOverlay');
+  ov.classList.remove('active');
+  setTimeout(() => ov.classList.add('hidden'), 250);
+  unlockBodyScroll();
+  setTimeout(reconcileBodyScrollLock, 300);
+}
+function _deviceFormResolve(save) {
+  if (!_devFormResolve) return;
+  if (save) {
+    const name = document.getElementById('devName').value.trim();
+    if (!name) {
+      const err = document.getElementById('deviceFormError');
+      err.textContent = 'Please enter a device name.';
+      err.classList.remove('hidden');
+      document.getElementById('devName').focus();
+      return; // keep the form open so the person can fix it
+    }
+  }
+  const resolve = _devFormResolve;
+  _devFormResolve = null;
+  const result = save ? {
+    name: document.getElementById('devName').value.trim(),
+    description: document.getElementById('devDesc').value.trim(),
+    image: document.getElementById('devImageData').value || '',
+    working: document.getElementById('devWorking').checked
+  } : null;
+  _closeDeviceFormOverlay();
+  resolve(result);
+}
+bindOverlayClose(document.getElementById('deviceFormOverlay'), () => _deviceFormResolve(null));
+
+// ── Device image upload (upload file / URL tabs) — mirrors the medicine
+// image widget (handleImageFile/handleImageUrl/etc.) but scoped to its own
+// element IDs so both forms can hold independent state.
+let _activeDevImgTab = 'upload';
+function switchDevImgTab(tab) {
+  _activeDevImgTab = tab;
+  document.getElementById('devImgTabUpload').classList.toggle('active', tab === 'upload');
+  document.getElementById('devImgTabUrl').classList.toggle('active', tab === 'url');
+  document.getElementById('devImgPanelUpload').classList.toggle('hidden', tab !== 'upload');
+  document.getElementById('devImgPanelUrl').classList.toggle('hidden', tab !== 'url');
+}
+function handleDeviceImageFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 1.2 * 1024 * 1024) { showToast('Image too large (max 1 MB).', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    document.getElementById('devImageData').value = data;
+    const preview = document.getElementById('devImgPreviewUpload');
+    preview.src = data;
+    preview.classList.remove('hidden');
+    document.getElementById('devImgDropContent').style.display = 'none';
+    document.getElementById('devImgClearUpload').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+function handleDeviceImageUrl() {
+  const url = document.getElementById('devImageUrl').value.trim();
+  const preview = document.getElementById('devImgPreviewUrl');
+  const clearBtn = document.getElementById('devImgClearUrl');
+  if (url) {
+    preview.src = url;
+    preview.classList.remove('hidden');
+    clearBtn.classList.remove('hidden');
+    document.getElementById('devImageData').value = url;
+    preview.onerror = () => { preview.classList.add('hidden'); };
+    preview.onload = () => { preview.classList.remove('hidden'); };
+  } else {
+    clearDeviceImageUrl();
+  }
+}
+function clearDeviceImage() {
+  document.getElementById('devImageFile').value = '';
+  document.getElementById('devImageData').value = '';
+  const preview = document.getElementById('devImgPreviewUpload');
+  preview.src = '';
+  preview.classList.add('hidden');
+  document.getElementById('devImgDropContent').style.display = '';
+  document.getElementById('devImgClearUpload').classList.add('hidden');
+}
+function clearDeviceImageUrl() {
+  document.getElementById('devImageUrl').value = '';
+  document.getElementById('devImageData').value = '';
+  const preview = document.getElementById('devImgPreviewUrl');
+  preview.src = '';
+  preview.classList.add('hidden');
+  document.getElementById('devImgClearUrl').classList.add('hidden');
+}
+function resetDeviceImageFields() {
+  clearDeviceImage();
+  clearDeviceImageUrl();
+  switchDevImgTab('upload');
+}
+function initDeviceImageDropZone() {
+  const zone = document.getElementById('devImgDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const fakeEvt = { target: { files: [file] } };
+      handleDeviceImageFile(fakeEvt);
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', initDeviceImageDropZone);
+
+// ── Device CRUD ──────────────────────────────────────────────
+async function promptAddDevice() {
+  const result = await openDeviceForm({ title: 'Add Device' });
+  if (!result) return;
+
+  const device = {
+    id: 'dv' + Date.now(),
+    name: result.name,
+    description: result.description,
+    image: result.image,
+    working: result.working,
+    createdAt: Date.now()
+  };
+  devices.push(device);
+  saveData();
+  renderDevicesList();
+  showToast('Device added.', 'success');
+}
+
+async function editDevice(id) {
+  const device = devices.find(d => d.id === id);
+  if (!device) return;
+
+  const result = await openDeviceForm({
+    title: 'Edit Device',
+    name: device.name,
+    description: device.description,
+    image: device.image,
+    working: device.working
+  });
+  if (!result) return;
+
+  device.name = result.name;
+  device.description = result.description;
+  device.image = result.image;
+  device.working = result.working;
+  saveData();
+  renderDevicesList();
+  showToast('Device updated.', 'success');
+}
+
+function toggleDeviceWorking(id) {
+  const device = devices.find(d => d.id === id);
+  if (!device) return;
+  device.working = !(device.working !== false);
+  saveData();
+  renderDevicesList();
+  showToast(device.working ? `Marked "${device.name}" as working ✓` : `Marked "${device.name}" as not working`, 'success');
+}
+
+let deviceSelectMode = false;
+let deviceSelected = new Set();
+
+function toggleDeviceSelectMode() {
+  deviceSelectMode = !deviceSelectMode;
+  deviceSelected.clear();
+  renderDevicesList();
+  const btn = document.getElementById('deviceSelectBtn');
+  const bar = document.getElementById('deviceSelectBar');
+  if (btn) btn.textContent = deviceSelectMode ? 'Cancel' : 'Select';
+  if (bar) bar.classList.toggle('hidden', !deviceSelectMode);
+}
+
+function toggleDeviceSelect(id) {
+  if (deviceSelected.has(id)) deviceSelected.delete(id);
+  else deviceSelected.add(id);
+  renderDevicesList();
+}
+
+function toggleDeviceSelectAll() {
+  const query = (document.getElementById('deviceSearchInput')?.value || '').toLowerCase().trim();
+  const visible = getFilteredDevices(query);
+  if (!visible.length) return;
+  const allSelected = visible.every(d => deviceSelected.has(d.id));
+  visible.forEach(d => allSelected ? deviceSelected.delete(d.id) : deviceSelected.add(d.id));
+  renderDevicesList();
+}
+
+async function deleteSelectedDevices() {
+  if (!deviceSelected.size) { showToast('No devices selected.', 'error'); return; }
+  const count = deviceSelected.size;
+  if (!(await customConfirm(`Delete ${count} selected device${count > 1 ? 's' : ''}?`, { title: 'Delete Devices', danger: true }))) return;
+  pushUndo(`Deleted ${count} device${count > 1 ? 's' : ''}`);
+  devices = devices.filter(d => !deviceSelected.has(d.id));
+  saveData();
+  deviceSelectMode = false;
+  deviceSelected.clear();
+  const btn = document.getElementById('deviceSelectBtn');
+  const bar = document.getElementById('deviceSelectBar');
+  if (btn) btn.textContent = 'Select';
+  if (bar) bar.classList.add('hidden');
+  renderDevicesList();
+  showUndoToast(`Deleted ${count} device${count > 1 ? 's' : ''} — tap Undo within 6s`, 'fa-trash');
+}
+
+async function deleteDevice(id) {
+  const device = devices.find(d => d.id === id);
+  if (!device) return;
+  if (!(await customConfirm(`Delete "${device.name}"?`, { title: 'Delete Device', danger: true }))) return;
+  pushUndo('Deleted device');
+  devices = devices.filter(d => d.id !== id);
+  saveData();
+  renderDevicesList();
+  showUndoToast('Device deleted — tap Undo within 6s', 'fa-trash');
 }
 
 // ── Branches ("houses") ─────────────────────────────────────
@@ -5446,7 +5802,8 @@ async function promptAddBranch() {
     types: DEFAULT_TYPES.slice(),
     healthDiary: [],
     ownerProfiles: {},
-    quantityLog: []
+    quantityLog: [],
+    devices: []
   };
   branchOrder.push(id);
   saveAllBranches();
@@ -5655,7 +6012,8 @@ function pushUndo(msg) {
       owners: customOwners,
       types: customTypes,
       healthDiary,
-      ownerProfiles
+      ownerProfiles,
+      devices
     }))
   };
 }
@@ -5721,6 +6079,7 @@ function commitUndo() {
   customTypes      = s.types || customTypes;
   healthDiary      = s.healthDiary || healthDiary;
   ownerProfiles    = s.ownerProfiles || ownerProfiles;
+  devices          = s.devices || devices;
   _undoStack = null;
   clearTimeout(_undoTimer);
   clearInterval(_undoCountdownInterval);
@@ -5733,6 +6092,8 @@ function commitUndo() {
   if (healthModal && !healthModal.classList.contains('hidden')) renderHealthDiaryList();
   const profileModal = document.getElementById('ownerProfileModal');
   if (profileModal && !profileModal.classList.contains('hidden')) renderOwnerProfileContent();
+  const devicesModal = document.getElementById('devicesModal');
+  if (devicesModal && !devicesModal.classList.contains('hidden')) renderDevicesList();
   renderOwnerHealthCarousel();
   showToast('Undone ✓', 'success');
 }
