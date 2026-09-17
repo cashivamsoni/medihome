@@ -216,6 +216,9 @@
                 <button class="menu-flyout-option" onclick="closeAppMenu(); openOwnerProfile();">
                   <i class="fa-solid fa-heart-pulse"></i> Owner Health Profiles
                 </button>
+                <button class="menu-flyout-option" onclick="closeAppMenu(); openDevicesModal();">
+                  <i class="fa-solid fa-kit-medical"></i> Devices
+                </button>
                 <button class="menu-flyout-option" id="menuBranchBtn" onclick="closeAppMenu(); openBranchModal();">
                   <i class="fa-solid fa-house"></i> <span id="menuBranchLabel">Home</span>
                 </button>
@@ -976,6 +979,50 @@
       </div>
     </div>
 
+    <!-- ── Devices Modal ─────────────────────────────────────── -->
+    <div id="devicesModal" class="hidden mgmt-modal-overlay">
+      <div class="mgmt-modal-box">
+        <div class="mgmt-modal-header">
+          <h3>Devices</h3>
+          <div class="mgmt-modal-header-actions">
+            <div id="deviceSelectBar" class="trash-header-bar hidden">
+              <button class="trash-header-btn" onclick="toggleDeviceSelectAll()" title="Select all"><i class="fa-solid fa-check-double"></i><span id="deviceSelectAllLabel" class="sr-only">Select all</span></button>
+              <button class="trash-header-btn trash-header-btn-delete" onclick="deleteSelectedDevices()" title="Delete selected"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <button id="deviceSelectBtn" class="qty-log-select-btn" onclick="toggleDeviceSelectMode()">Select</button>
+            <button
+              class="modal-close"
+              onclick="closeDevicesModal()"
+              aria-label="Close"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mgmt-modal-body">
+          <div class="mgmt-add-row">
+            <div class="mgmt-search-wrap">
+              <input
+                type="text"
+                id="deviceSearchInput"
+                class="form-input"
+                placeholder="Search devices…"
+                autocomplete="off"
+                spellcheck="false"
+                oninput="renderDevicesList()"
+              />
+              <button type="button" class="mgmt-search-clear hidden" id="deviceSearchClear" onclick="clearModalSearch('deviceSearchInput', renderDevicesList)" title="Clear search" aria-label="Clear search">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+          <p class="branch-modal-hint mgmt-hint-tight">Medical devices available at this branch.</p>
+          <div class="mgmt-list health-diary-list" id="devicesListContainer"></div>
+        </div>
+        <button class="mgmt-fab" onclick="promptAddDevice()" title="Add device" aria-label="Add device">+</button>
+      </div>
+    </div>
+
     <!-- ── Quantity Log Modal ──────────────────────────────── -->
     <div id="quantityLogModal" class="hidden mgmt-modal-overlay">
       <div class="mgmt-modal-box">
@@ -1223,6 +1270,156 @@
         <div class="modal-footer">
           <button class="btn-cancel" onclick="_healthFormResolve(null)">Cancel</button>
           <button class="btn-save" onclick="_healthFormResolve(true)">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Device Entry Form (Add/Edit) ─────────────────────────── -->
+    <div id="deviceFormOverlay" class="hidden">
+      <div
+        class="dlg-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deviceFormTitle"
+        onclick="event.stopPropagation()"
+      >
+        <div class="modal-header">
+          <h2 class="modal-title" id="deviceFormTitle">Add Device</h2>
+          <button
+            class="modal-close"
+            onclick="_deviceFormResolve(null)"
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="devName"
+              >Device Name <span class="req">*</span></label
+            >
+            <input
+              class="form-input"
+              type="text"
+              id="devName"
+              placeholder="e.g. Blood Pressure Monitor"
+            />
+          </div>
+
+          <div class="form-group" id="devImageGroup">
+            <label class="form-label"
+              >Device Image
+              <span
+                style="
+                  font-weight: 400;
+                  color: var(--text-muted);
+                  font-size: 0.7rem;
+                "
+                >(optional)</span
+              ></label
+            >
+            <div class="img-upload-tabs">
+              <button
+                type="button"
+                class="img-tab active"
+                id="devImgTabUpload"
+                onclick="switchDevImgTab('upload')"
+              >
+                <i class="fa-solid fa-upload"></i> Upload File
+              </button>
+              <button
+                type="button"
+                class="img-tab"
+                id="devImgTabUrl"
+                onclick="switchDevImgTab('url')"
+              >
+                <i class="fa-solid fa-link"></i> Image URL
+              </button>
+            </div>
+            <div id="devImgPanelUpload" class="img-panel">
+              <label
+                class="img-drop-zone"
+                id="devImgDropZone"
+                for="devImageFile"
+              >
+                <div id="devImgDropContent">
+                  <span class="img-drop-icon"><i class="fa-solid fa-image"></i></span>
+                  <span class="img-drop-text"
+                    >Click to upload or drag & drop</span
+                  >
+                  <span class="img-drop-sub">PNG, JPG, WEBP (max 1 MB)</span>
+                </div>
+                <img
+                  id="devImgPreviewUpload"
+                  class="img-preview hidden"
+                  alt="Preview"
+                />
+              </label>
+              <input
+                type="file"
+                id="devImageFile"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                class="hidden"
+                onchange="handleDeviceImageFile(event)"
+              />
+              <button
+                type="button"
+                class="img-clear-btn hidden"
+                id="devImgClearUpload"
+                onclick="clearDeviceImage()"
+              >
+                <i class="fa-solid fa-xmark"></i> Remove image
+              </button>
+            </div>
+            <div id="devImgPanelUrl" class="img-panel hidden">
+              <input
+                class="form-input"
+                type="url"
+                id="devImageUrl"
+                placeholder="https://example.com/device.jpg"
+                oninput="handleDeviceImageUrl()"
+              />
+              <img
+                id="devImgPreviewUrl"
+                class="img-preview-url hidden"
+                alt="Preview"
+              />
+              <button
+                type="button"
+                class="img-clear-btn hidden"
+                id="devImgClearUrl"
+                onclick="clearDeviceImageUrl()"
+              >
+                <i class="fa-solid fa-xmark"></i> Remove URL
+              </button>
+            </div>
+            <input type="hidden" id="devImageData" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="devDesc">Description</label>
+            <textarea
+              class="form-textarea"
+              id="devDesc"
+              rows="2"
+              placeholder="e.g. Model, serial number, location…"
+            ></textarea>
+          </div>
+
+          <div class="form-group full">
+            <div class="form-checkrow">
+              <label class="check-label">
+                <input type="checkbox" id="devWorking" checked />
+                <i class="fa-solid fa-check"></i> Device is Working
+              </label>
+            </div>
+          </div>
+
+          <span class="dlg-error hidden" id="deviceFormError"></span>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="_deviceFormResolve(null)">Cancel</button>
+          <button class="btn-save" onclick="_deviceFormResolve(true)">Save</button>
         </div>
       </div>
     </div>
