@@ -3385,6 +3385,80 @@ body.bulk-mode .timer-panel {
   transform: scale(1.06);
 }
 
+/* ── Devices modal ───────────────────────────────────────── */
+.device-entry {
+  align-items: center;
+}
+.device-entry-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+.device-entry-thumb-has-img {
+  cursor: pointer;
+}
+.device-entry-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.device-entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.device-entry-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.device-entry-desc {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.device-toggle-btn {
+  font-size: 0.95rem;
+}
+.device-working {
+  color: var(--green-600);
+}
+.device-working:hover {
+  background: var(--green-100);
+  color: var(--green-600);
+}
+[data-theme="dark"] .device-working:hover {
+  background: rgba(22, 163, 74, 0.18);
+}
+.device-not-working {
+  color: var(--red-600);
+}
+.device-not-working:hover {
+  background: var(--red-100);
+  color: var(--red-600);
+}
+[data-theme="dark"] .device-not-working:hover {
+  background: rgba(225, 29, 72, 0.18);
+}
+/* Working-status checkbox row inside the Device add/edit form — reuses
+   .form-checkrow/.check-label from the medicine form's Frequent/Low Stock row. */
+#deviceFormOverlay .form-checkrow {
+  gap: 12px;
+}
+
 /* ── Branches modal ──────────────────────────────────────── */
 .branch-modal-hint {
   font-size: 0.78rem;
