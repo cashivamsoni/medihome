@@ -5216,7 +5216,7 @@ function renderHealthDiaryList() {
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getTodayLocalStr();
 
   container.innerHTML = entries.map(e => {
     const daysTracked = e.checkInCount || 1;
@@ -5258,6 +5258,21 @@ function renderHealthDiaryList() {
     </div>
   `;
   }).join('');
+}
+
+// `new Date().toISOString()` is UTC, not the device's local calendar day —
+// in IST (UTC+5:30) that means anywhere from midnight to 5:30am, "today"
+// per that method is still yesterday, so a Health Diary entry checked in
+// yesterday evening (local) would still compare equal to "today" during
+// that early-morning window and look already checked in. This builds the
+// date string from the local Y/M/D fields instead, so it always matches
+// the calendar day the device is actually showing.
+function getTodayLocalStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatHealthDate(d) {
@@ -5477,7 +5492,7 @@ function getCheckInDates(entry) {
 function checkInHealthEntry(id) {
   const entry = healthDiary.find(e => e.id === id);
   if (!entry || entry.cured) return;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getTodayLocalStr();
   const dates = getCheckInDates(entry);
   const todayIdx = dates.indexOf(todayStr);
 
@@ -5621,7 +5636,7 @@ async function mergeDuplicateHealthEntries() {
 
 async function promptAddHealthEntry() {
   if (!currentHealthOwner) { showToast('Add an owner first via Manage.', 'error'); return; }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayLocalStr();
   const result = await openHealthEntryForm({ title: 'Add Health Diary Entry', date: today });
   if (!result) return;
 
