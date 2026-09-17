@@ -3207,8 +3207,11 @@ body.bulk-mode .timer-panel {
 }
 /* Save sits in the shared slide-reveal bar (see #healthOwnerTabs/#mgmtTabs
    comment above) but holds a full text+icon pill rather than bare icon
-   circles, so it needs more room than that bar's default 110px. */
-#profileSaveBar {
+   circles, so it needs more room than that bar's default 110px. Scoped to
+   :not(.hidden) — an ID selector otherwise outranks .trash-header-bar.hidden's
+   max-width:0 (ID beats two classes), which was keeping this bar's collapsed
+   width stuck at 130px while hidden and shoving Edit/PDF/Close rightward. */
+#profileSaveBar:not(.hidden) {
   max-width: 130px;
 }
 /* Edit/Cancel is one button whose label crossfades between the two states
