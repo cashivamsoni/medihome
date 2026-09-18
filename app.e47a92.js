@@ -7509,23 +7509,65 @@ function appendAssistantMessage(text, sender, isLoading = false) {
   const el = document.createElement('div');
   el.className = `assistant-msg assistant-msg-${sender}${isLoading ? ' assistant-msg-loading' : ''}`;
   if (sender === 'bot' && !isLoading) {
-    // escHtml first so nothing in the reply can inject real markup, THEN add
-    // our own <strong> tags for **bold** — safe because the only tags that
-    // can exist afterward are ones we just added ourselves.
-    el.innerHTML = escHtml(text)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<span class="assistant-emphasis">$1</span>');
+    el.innerHTML = _formatAssistantReplyHtml(text);
   } else {
     el.textContent = text;
   }
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
   if (sender === 'bot' && !isLoading) {
-    const plain = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+    const plain = _stripAssistantReplyMarkdown(text);
     _lastReplyPlainText = plain; // kept independent of active playback state, for Replay
     speakAssistantReply(plain);
   }
   return el;
+}
+
+// escHtml first so nothing in the reply can inject real markup, THEN add our
+// own tags for **bold**/*emphasis* — done per line (not on the whole reply
+// at once), because a "*" that starts one bullet could otherwise pair up
+// with the "*" that starts the NEXT bullet and swallow everything between
+// them into one giant emphasis span.
+function _formatAssistantInline(escapedLine) {
+  return escapedLine
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<span class="assistant-emphasis">$1</span>');
+}
+
+// The reply arrives as plain text with real newlines between points, but
+// HTML collapses those to a single space unless converted explicitly — that
+// plus no list handling at all is what left "* " sitting in the text as a
+// literal asterisk instead of becoming a bullet. This turns lines that
+// start with "* " or "- " into a real <ul>, and every other non-blank line
+// into its own paragraph, so line breaks are preserved either way.
+function _formatAssistantReplyHtml(text) {
+  const lines = escHtml(text).split('\n');
+  let html = '';
+  let inList = false;
+  lines.forEach(line => {
+    const bullet = /^\s*[*-]\s+(.*)$/.exec(line);
+    if (bullet && bullet[1].trim()) {
+      if (!inList) { html += '<ul class="assistant-list">'; inList = true; }
+      html += `<li>${_formatAssistantInline(bullet[1])}</li>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line.trim()) html += `<p>${_formatAssistantInline(line)}</p>`;
+    }
+  });
+  if (inList) html += '</ul>';
+  return html;
+}
+
+// Plain-text version for the "Replay"/text-to-speech reading of the reply —
+// strips the same markers/emphasis asterisks so the voice never reads them
+// aloud as "asterisk" or "dash".
+function _stripAssistantReplyMarkdown(text) {
+  return text
+    .split('\n')
+    .map(line => line.replace(/^\s*[*-]\s+/, ''))
+    .join('\n')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1');
 }
 
 // ── Voice input (speech-to-text) ────────────────────────────
