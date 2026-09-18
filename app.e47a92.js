@@ -1299,7 +1299,7 @@ function maybeShowWelcomePopup() {
     const overlay = document.getElementById('welcomePopupOverlay');
     if (!overlay || !overlay.classList.contains('hidden')) return; // already shown/dismissed — ignore
     overlay.classList.remove('hidden');
-    requestAnimationFrame(() => overlay.classList.add('active'));
+    setTimeout(() => overlay.classList.add('active'), 10);
     lockBodyScroll();
   }, 500);
 }
