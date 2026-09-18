@@ -98,7 +98,10 @@ export default async function handler(req, res) {
     'pharmacist rather than diagnosing or recommending dosages. You may wrap ' +
     'important keywords in double asterisks like **this** for strong emphasis ' +
     '(renders bold), or single asterisks like *this* for lighter emphasis ' +
-    '(renders semi-bold) — use both sparingly, only for genuinely key terms.\n\n' +
+    '(renders semi-bold) — use both sparingly, only for genuinely key terms. ' +
+    'If listing multiple items, put each on its own line starting with "- " ' +
+    '(a real line break before each one, not run together in one paragraph) — ' +
+    'that renders as an actual bullet list; don\'t use "*" at the start of a line, since it\'s reserved for emphasis here.\n\n' +
     'Current data:\n' + (safeContext || 'No data provided.');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
