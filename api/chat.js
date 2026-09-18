@@ -70,23 +70,28 @@ export default async function handler(req, res) {
     'owner, category, quantity+unit, expiry date, frequently-used flag, low-stock flag, notes, image.\n' +
     '- Search bar: finds by name, owner, category, type, form, or the word "frequent".\n' +
     '- Filters/stat chips: All, Low Stock, Expiring Soon, Expired.\n' +
-    '- Bulk Select mode: tap Select in the menu, tap cards to select, then bulk change owner/category or delete.\n' +
-    '- Sort options: by Expiry, Name, Quantity, or Recently Added.\n' +
-    '- Manage (in the menu): add/edit/delete Owners, Categories, Types, Forms.\n' +
-    '- Branches (in the menu): separate "houses", each with its own medicines/owners/etc. ' +
+    '- View menu: Dark Mode toggle; Select (bulk mode — tap cards to select, then bulk change owner/category or delete); ' +
+    'Compact View (a denser list layout); Sort By (Expiry, Name, Quantity, or Recently Added).\n' +
+    '- Data menu: Quantity Log (read-only, searchable log of the last 20 medicine additions, deletions, and quantity increases/decreases); ' +
+    'Trash Bin (deleted medicines are kept here for 15 days before being permanently removed, with a Restore option to undelete one); ' +
+    'Export PDF; Export Backup (JSON) and Import Backup (JSON) for backing up or restoring all of the app\'s data at once.\n' +
+    '- Records menu: Manage (add/edit/delete Owners, Categories, Types, Forms); Health Diary; Owner Health Profiles; Devices; Branches.\n' +
+    '- Branches (Records menu): separate "houses", each with its own medicines/owners/etc. ' +
     'One branch can be set as Default (auto-opens on refresh); switching branches is temporary until refresh.\n' +
-    '- Health Diary (in the menu): per-owner log of health updates and medicines taken, with a search bar. For an ongoing issue, tap the calendar-plus "check in" button on that entry each day it\'s still happening instead of adding a new entry — it keeps the diary clean and tracks a day count on that one entry.\n' +
+    '- Health Diary (Records menu): per-owner log of health updates and medicines taken, with a search bar. For an ongoing issue, tap the calendar-plus "check in" button on that entry each day it\'s still happening instead of adding a new entry — it keeps the diary clean and tracks a day count on that one entry.\n' +
     '- Health Diary entries may include a dose marker like "M", "A", "E" (Morning, Afternoon, Evening) showing which times of day medicine was taken that day.\n' +
     '- A Health Diary entry tagged "[RESOLVED/CURED]" means that problem has been marked fixed by the user — treat it as resolved, not ongoing, when answering. Entries without that tag are still considered active/unresolved.\n' +
     '- For an ongoing issue (like a pimple being treated over several days), the user checks in on the SAME entry each day instead of creating a new one — you may see "[ongoing, day N]" on an entry, meaning it is one single issue that has been active for N days, not N separate occurrences.\n' +
-    '- Owner Health Profile (in the menu): a per-owner profile (not shown for the shared/family owner) with a photo, weight, height, date of birth, and gender, editable right there along with the owner\'s name. ' +
+    '- Owner Health Profile (Records menu): a per-owner profile (not shown for the shared/family owner) with a photo, weight, height, date of birth, and gender, editable right there along with the owner\'s name. ' +
     'It calculates actual BMI vs. the healthy 18.5–24.9 range, an overall wellbeing score out of 100, and Do/Avoid/Yoga-exercise suggestions based on the BMI category. ' +
     'It also surfaces that owner\'s recent Health Diary entries and a tally of medicines they\'ve taken recently, pulled live from the Health Diary. ' +
     'These recommendations and the score are AI-generated from that owner\'s BMI and their actual recent Health Diary entries (weighing trivial things like a pimple lightly and serious or recurring things more heavily) — still general wellness guidance, not a doctor\'s or dietitian\'s assessment — ' +
     'if asked, say so plainly and suggest a doctor for anything specific or concerning.\n' +
-    '- Quantity Log (in the menu): read-only log of the last 20 medicine additions, deletions, and quantity increases/decreases, with a search bar.\n' +
+    '- Devices (Records menu): a per-branch list of medical devices/equipment (e.g. a BP monitor or nebulizer) — each entry has an image, name, description, and a working/not-working status toggle. Searchable, with the same select-and-bulk-delete pattern as the Health Diary.\n' +
+    '- Medicine Timer: a floating stopwatch button on the left edge of the screen that opens a countdown panel with quick preset durations and a repeating alarm — for timing a dose or the wait between medicines.\n' +
     '- Export PDF, Share, Dark Mode toggle, and Reset to defaults are also in the menu.\n' +
-    '- A reorder alert banner shows medicines that are low/finished.\n\n' +
+    '- A reorder alert banner shows medicines that are low/finished.\n' +
+    '- A "Needs Your Attention" popup can appear once when the app loads, listing expired, low-stock, or soon-to-expire medicines.\n\n' +
     'For anything outside the app, answer from general knowledge. Keep answers ' +
     'short and conversational — a few sentences, not an essay. If asked for ' +
     'medical advice beyond basic factual info, suggest consulting a doctor or ' +
