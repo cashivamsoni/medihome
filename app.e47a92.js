@@ -159,14 +159,50 @@ document.addEventListener('keydown', (e) => {
     }
   }
   const hf = document.getElementById('healthFormOverlay');
-  if (hf && hf.classList.contains('active') && e.key === 'Escape') {
-    e.preventDefault();
-    _healthFormResolve(null);
+  if (hf && hf.classList.contains('active')) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      _healthFormResolve(null);
+    } else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.id !== 'hfMedInput') {
+      // hfMedInput has its own Enter behaviour (add medicine chip / pick a
+      // suggestion) via _hfMedsKeydown — Enter there must not also save.
+      e.preventDefault();
+      _healthFormResolve(true);
+    }
   }
   const df = document.getElementById('deviceFormOverlay');
-  if (df && df.classList.contains('active') && e.key === 'Escape') {
+  if (df && df.classList.contains('active')) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      _deviceFormResolve(null);
+    } else if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      _deviceFormResolve(true);
+    }
+  }
+  // Owner Health Profile — Enter saves the vitals form while it's in edit
+  // mode (mirrors the Add/Edit Medicine modal's Enter-to-save).
+  const op = document.getElementById('ownerProfileModal');
+  if (op && op.classList.contains('active') && ownerProfileEditMode &&
+      e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
     e.preventDefault();
-    _deviceFormResolve(null);
+    saveProfileEditMode();
+  }
+  // Profile Photo picker/cropper — Enter in the URL field loads it (same as
+  // tapping "Load"); Enter elsewhere while the cropper's Save button is
+  // showing saves the photo.
+  const ae = document.getElementById('avatarEditOverlay');
+  if (ae && ae.classList.contains('active') && e.key === 'Enter') {
+    if (e.target.id === 'avUrlInput') {
+      e.preventDefault();
+      _avLoadUrl();
+    } else if (e.target.tagName !== 'TEXTAREA') {
+      const avSaveBtn = document.getElementById('avSaveBtn');
+      if (avSaveBtn && !avSaveBtn.classList.contains('hidden')) {
+        e.preventDefault();
+        _avSaveCrop();
+      }
+    }
   }
 });
 
@@ -3143,6 +3179,7 @@ function manageField(fieldType) {
   const modal = document.getElementById('mgmtModal');
   if (modal && modal.classList.contains('hidden')) {
     modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('active'), 10);
     lockBodyScroll();
   }
 }
@@ -3150,14 +3187,15 @@ function manageField(fieldType) {
 function closeMgmtModal() {
   const modal = document.getElementById('mgmtModal');
   if (!modal || modal.classList.contains('hidden')) return; // already closed — ignore duplicate call
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
   // Refresh the underlying add/edit form dropdowns to reflect any changes made
   populateAllDropdowns();
   if (bulkMode) populateBulkDropdowns(); // keep the bulk-bar selects in sync too
   renderOwnerNavChips();
   renderAll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 
 // Lightweight fuzzy match: true if every typed character appears in order
@@ -3493,14 +3531,16 @@ function openDevicesModal() {
   if (dsBar) dsBar.classList.add('hidden');
   renderDevicesList();
   modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeDevicesModal() {
   const modal = document.getElementById('devicesModal');
   if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('devicesModal'), closeDevicesModal);
 
@@ -3842,15 +3882,17 @@ function openBranchModal() {
   const modal = document.getElementById('branchModal');
   if (modal && modal.classList.contains('hidden')) {
     modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('active'), 10);
     lockBodyScroll();
   }
 }
 function closeBranchModal() {
   const modal = document.getElementById('branchModal');
   if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('branchModal'), closeBranchModal);
 
@@ -3875,14 +3917,16 @@ function openHealthDiary() {
   renderHealthOwnerTabs();
   renderHealthDiaryList();
   modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeHealthDiary() {
   const modal = document.getElementById('healthDiaryModal');
   if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
 
@@ -3906,15 +3950,17 @@ function openOwnerProfile() {
   renderOwnerProfileContent();
   _setProfileEditButtonsVisibility();
   modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeOwnerProfile() {
   const modal = document.getElementById('ownerProfileModal');
   if (!modal || modal.classList.contains('hidden')) return;
   _discardProfileEditIfActive();
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('ownerProfileModal'), closeOwnerProfile);
 bindOverlayClose(document.getElementById('avatarEditOverlay'), closeAvatarEditModal);
@@ -4832,14 +4878,16 @@ function openQuantityLog() {
   if (qBar) qBar.classList.add('hidden');
   renderQuantityLogList();
   modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeQuantityLog() {
   const modal = document.getElementById('quantityLogModal');
   if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('quantityLogModal'), closeQuantityLog);
 
@@ -4980,14 +5028,16 @@ function openTrashBin() {
   if (bar) bar.classList.add('hidden');
   renderTrashBinList();
   modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.add('active'), 10);
   lockBodyScroll();
 }
 function closeTrashBin() {
   const modal = document.getElementById('trashBinModal');
   if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('hidden');
+  modal.classList.remove('active');
+  setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
-  setTimeout(reconcileBodyScrollLock, 50);
+  setTimeout(reconcileBodyScrollLock, 300);
 }
 bindOverlayClose(document.getElementById('trashBinModal'), closeTrashBin);
 
