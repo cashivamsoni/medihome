@@ -2663,6 +2663,11 @@ body.bulk-mode .timer-panel {
   justify-content: center;
   z-index: 1100;
   padding: 20px;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.mgmt-modal-overlay.active {
+  opacity: 1;
 }
 .mgmt-modal-overlay.hidden {
   display: none;
@@ -2683,7 +2688,12 @@ body.bulk-mode .timer-panel {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  transform: translateY(20px);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+.mgmt-modal-overlay.active .mgmt-modal-box {
+  transform: translateY(0);
 }
 .mgmt-modal-header {
   padding: 14px 18px;
@@ -5612,6 +5622,7 @@ body.compact-view.bulk-mode .medicine-card {
 }
 #dlgOverlay.active .dlg-box,
 #healthFormOverlay.active .dlg-box,
+#deviceFormOverlay.active .dlg-box,
 #avatarEditOverlay.active .dlg-box {
   transform: translateY(0);
 }
