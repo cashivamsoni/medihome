@@ -1587,10 +1587,12 @@ body.bulk-mode .assistant-panel {
 }
 
 /* ── Modal ───────────────────────────────────────────────── */
-/* Modal overlay — inset reserves space for top header */
+/* Modal overlay — full-screen, same sizing/position as the other modals
+   (.mgmt-modal-overlay etc.) so the header is fully covered and blurred
+   underneath it rather than sitting exposed above a partially-blurred gap. */
 #modal {
   position: fixed;
-  top: var(--header-h, 0px); /* start below sticky header */
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0px;
@@ -4374,13 +4376,9 @@ body.bulk-mode .timer-panel {
    1250 is the deepest layer in that chain), so this needs to sit above all
    of it rather than the old flat 1000, which only worked while it was only
    ever opened directly from the medicine card list.
-   top:0 instead of the var(--header-h) skip other top-level modals (#modal,
-   #histModal) use: that skip is meant to keep the header visible/usable
-   above a modal opened straight from the main page, but this viewer can now
-   also open from inside another modal, and the header-skip left the site
-   header (and the parent modal's own title bar near it) showing through
-   un-dimmed above the overlay in that case. Full coverage matches how the
-   other nested overlays (#avatarEditOverlay, #dlgOverlay) already behave. */
+   Full coverage (top:0) matches every other overlay (#modal, #histModal,
+   #avatarEditOverlay, #dlgOverlay, .mgmt-modal-overlay) now that #modal and
+   #histModal no longer skip past the header either. */
 #imgViewerModal {
   position: fixed;
   top: 0;
@@ -5521,9 +5519,10 @@ body.compact-view.bulk-mode .medicine-card {
   transform: translateY(0) rotate(-45deg);
 }
 /* ── Quantity History Modal ──────────────────────────────── */
+/* Full-screen like #modal above, for the same reason (see its comment). */
 #histModal {
   position: fixed;
-  top: var(--header-h, 0px);
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
