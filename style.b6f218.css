@@ -1197,6 +1197,26 @@ body.bulk-mode .assistant-panel {
 .assistant-msg-bot .assistant-emphasis {
   font-weight: 600; /* noticeably lighter than <strong> for double-asterisk */
 }
+.assistant-msg-bot p {
+  margin: 0 0 6px;
+}
+.assistant-msg-bot p:last-child,
+.assistant-msg-bot ul:last-child {
+  margin-bottom: 0;
+}
+.assistant-list {
+  list-style-position: inside; /* "outside" was letting the disc marker hang
+    further left than the padding accounted for, past the bubble's own text
+    edge — inside keeps the bullet flush with the paragraph text above it */
+  margin: 0 0 6px;
+  padding-left: 2px;
+}
+.assistant-list li {
+  margin-bottom: 4px;
+}
+.assistant-list li:last-child {
+  margin-bottom: 0;
+}
 .assistant-msg-user {
   align-self: flex-end;
   background: var(--teal-600);
