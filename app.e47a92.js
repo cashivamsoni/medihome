@@ -1385,13 +1385,47 @@ function hasEverBeenTaken(entry, med) {
   return Object.keys(entry.doseLog).some(d => getDoseTimesForDay(entry, d, med).length > 0);
 }
 
+// Local YYYY-MM-DD for any timestamp/Date (toISOString() is UTC, which shifts
+// the day in IST during the early morning hours).
+function localDateStrOf(input) {
+  const d = new Date(input);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function computeOwnerHealthReminder(key) {
-  const active = healthDiary.filter(e => e.owner === key && !e.cured);
+  const now = new Date();
+  const todayStr = getTodayLocalStr();
+  const yesterdayStr = localDateStrOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+
+  // A problem that has since been resolved must not keep generating reminders
+  // from the doses taken while it was still active. Cured entries are already
+  // skipped, but the same issue can also exist as a separate, still-uncured
+  // entry (e.g. logged again on another day). So: for each issue, find the
+  // latest day it was marked cured; any uncured entry of that same issue whose
+  // last activity is on/before that day is treated as resolved too. An entry
+  // logged AFTER the cure is a genuine recurrence and still counts.
+  const issueKey = e => (e.issue || '').toLowerCase().trim();
+  const resolvedOn = {};
+  healthDiary.forEach(c => {
+    if (c.owner !== key || !c.cured) return;
+    const k = issueKey(c);
+    if (!k) return;
+    const d = c.curedAt ? localDateStrOf(c.curedAt) : (c.lastActiveDate || c.date || '');
+    if (d && (!resolvedOn[k] || d > resolvedOn[k])) resolvedOn[k] = d;
+  });
+
+  const active = healthDiary.filter(e => {
+    if (e.owner !== key || e.cured) return false;
+    const k = issueKey(e);
+    if (k && resolvedOn[k]) {
+      const dates = getCheckInDates(e);
+      const lastActivity = dates[dates.length - 1] || e.lastActiveDate || e.date || '';
+      if (resolvedOn[k] >= lastActivity) return false; // issue resolved after this entry's last activity
+    }
+    return true;
+  });
   if (!active.length) return { text: 'No active health concerns', ok: true };
 
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
   const hour = now.getHours();
   const dueSlots = DOSE_TIME_ORDER.filter(t => hour >= DOSE_DUE_HOUR[t]);
 
