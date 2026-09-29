@@ -2466,6 +2466,30 @@ function reconcileBodyScrollLock() {
   }
 }
 
+// Every modal reopens at the top. The overlays are only hidden (never
+// rebuilt), so a scroll container inside one (.mgmt-modal-body, .modal-body,
+// lists, the box itself) would otherwise keep whatever scroll position it had
+// when it was last closed. Watching the 'hidden' class in one place covers
+// every modal, present and future, without touching each open function.
+const MODAL_OVERLAY_IDS = ['modal', 'mgmtModal', 'imgViewerModal', 'branchModal', 'healthDiaryModal', 'ownerProfileModal', 'quantityLogModal', 'trashBinModal', 'devicesModal', 'dlgOverlay', 'healthFormOverlay', 'deviceFormOverlay', 'avatarEditOverlay', 'welcomePopupOverlay'];
+function resetModalScrollToTop(overlay) {
+  overlay.scrollTop = 0;
+  overlay.querySelectorAll('*').forEach(el => { if (el.scrollTop) el.scrollTop = 0; });
+}
+(function watchModalsForScrollReset() {
+  const obs = new MutationObserver(muts => {
+    muts.forEach(m => {
+      const el = m.target;
+      const wasHidden = (m.oldValue || '').split(/\s+/).includes('hidden');
+      if (wasHidden && !el.classList.contains('hidden')) resetModalScrollToTop(el);
+    });
+  });
+  MODAL_OVERLAY_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+  });
+})();
+
 function openModal() {
   const modal = document.getElementById('modal');
   if (!modal.classList.contains('hidden')) return; // already open — ignore duplicate call
