@@ -745,6 +745,55 @@ body.modal-open {
   padding: 3px;
   background: conic-gradient(var(--score-color, var(--teal-500)) calc(var(--score-pct, 0) * 1%), var(--slate-200) 0);
 }
+/* Same two-layer glow as the Owner Health Profile avatar (.profile-avatar-wrap),
+   scaled to the snapshot ring: a soft static halo (::before) plus a dim ring
+   with a bright comet head sweeping around it (::after). The ring is
+   deliberately NOT a stacking context (no z-index/isolation), so the
+   z-index:-1 pseudo-elements fall behind the ring's own score-arc background
+   instead of painting over it. Reuses the mh-avatar-glow-spin keyframes. */
+.owner-health-ring::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(45, 212, 191, 0.4) 0%,
+    rgba(45, 212, 191, 0.15) 55%,
+    transparent 75%
+  );
+  filter: blur(8px);
+}
+.owner-health-ring::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    rgba(45, 212, 191, 0.22) 0deg,
+    rgba(45, 212, 191, 0.22) 230deg,
+    rgba(94, 234, 212, 0.65) 264deg,
+    rgba(240, 253, 250, 0.98) 300deg,
+    rgba(94, 234, 212, 0.65) 336deg,
+    rgba(45, 212, 191, 0.22) 360deg
+  );
+  filter: blur(5px);
+  animation: mh-avatar-glow-spin 5s linear infinite;
+}
+/* Off-screen (non-active) carousel slides don't need to animate. */
+.owner-health-slide:not(.active) .owner-health-ring::after {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .owner-health-ring::after {
+    animation: none;
+  }
+}
 .owner-health-ring-inner {
   width: 100%;
   height: 100%;
@@ -876,6 +925,14 @@ body.modal-open {
   .owner-health-ring {
     width: 54px;
     height: 54px;
+  }
+  .owner-health-ring::before {
+    inset: -9px;
+    filter: blur(6px);
+  }
+  .owner-health-ring::after {
+    inset: -5px;
+    filter: blur(4px);
   }
   .owner-health-score-badge {
     min-width: 18px;
