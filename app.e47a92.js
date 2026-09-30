@@ -1179,7 +1179,75 @@ function autoIsLow(m) {
 }
 function effectiveLowStock(m) {
   if (isCountableUnit(m.quantityUnit)) return autoIsLow(m) || m.quantity === 0;
-  return m.lowStock || m.quantity === 0;
+  return m.lowStock || m.quantity === 0 || dropTrackIsLow(m);
+}
+
+// ── Auto low-stock for bottles / drops (usage counted from the Health Diary) ──
+// A bottle can't be counted like tablets, so instead the medicine records how
+// long one bottle lasts (days x doses/day). Every M/A/E tick logged for that
+// medicine in the Health Diary since the bottle was started uses up one dose,
+// so a medicine prescribed for the evening only is counted as 1 dose a day,
+// not 3. m.dropTrack = { days, perDay, startDate, startQty }:
+//   remaining doses = startQty x (days x perDay) - doses ticked since startDate
+// startQty moves with quantity +/- (see rebaseDropTrack), so buying a spare
+// bottle adds a full bottle of doses and using one up removes it.
+function normMedName(s) {
+  return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function getDropTrackUsage(m) {
+  const t = m && m.dropTrack;
+  if (!t || isCountableUnit(m.quantityUnit)) return null;
+  const days = Number(t.days), perDay = Number(t.perDay);
+  if (!(days > 0) || !(perDay > 0)) return null;
+  const total = days * perDay;
+  const key = normMedName(m.name);
+  // A shared medicine is used by anyone; an owned one only by its owner.
+  // One tick per owner+day+slot, so the same dose logged on two entries
+  // (e.g. duplicate problems) is not counted twice.
+  const seen = new Set();
+  healthDiary.forEach(e => {
+    if (m.owner !== 'shared' && e.owner !== m.owner) return;
+    getEntryMedicineList(e).forEach(entryMed => {
+      if (normMedName(entryMed) !== key) return;
+      const dates = e.doseLog && typeof e.doseLog === 'object' ? Object.keys(e.doseLog) : [e.date];
+      dates.forEach(d => {
+        if (t.startDate && d < t.startDate) return;
+        getDoseTimesForDay(e, d, entryMed).forEach(slot => seen.add(`${e.owner}|${d}|${slot}`));
+      });
+    });
+  });
+  const used = seen.size;
+  const startQty = t.startQty != null ? Number(t.startQty) : (m.quantity || 0);
+  let remaining = startQty * total - used;
+  remaining = Math.max(0, Math.min(remaining, (m.quantity || 0) * total));
+  const daysLeft = Math.ceil(remaining / perDay);
+  // Flag low with a few days to spare (~15% of a bottle, between 1 and 3 days).
+  const warnDays = Math.min(3, Math.max(1, Math.round(days * 0.15)));
+  return { total, used, remaining, daysLeft, perDay, low: (m.quantity || 0) > 0 && remaining <= warnDays * perDay };
+}
+function dropTrackIsLow(m) {
+  const u = getDropTrackUsage(m);
+  return !!(u && u.low);
+}
+// Keeps the tracked bottle count in step when quantity is changed by hand.
+function rebaseDropTrack(m, oldQty, newQty) {
+  const t = m.dropTrack;
+  if (!t) return t;
+  if (newQty <= 0) return t; // finished — quantity 0 already reads as Finished
+  if (!(oldQty > 0)) return { ...t, startDate: getTodayLocalStr(), startQty: newQty }; // restocked from empty: fresh bottle
+  return { ...t, startQty: Math.max(0, (t.startQty != null ? Number(t.startQty) : oldQty) + (newQty - oldQty)) };
+}
+// "3 bottle left" for normal medicines, "≈ 2 days left" for tracked ones.
+function stockLeftText(m) {
+  const u = getDropTrackUsage(m);
+  if (u) return `≈ ${u.daysLeft} day${u.daysLeft === 1 ? '' : 's'} left`;
+  return `${m.quantity} ${m.quantityUnit} left`;
+}
+function setDropTrackFields(t) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('medTrackDays', t && t.days ? t.days : '');
+  set('medTrackPerDay', t && t.perDay ? t.perDay : '');
+  set('medTrackStart', t && t.startDate ? t.startDate : '');
 }
 
 // ── Render ────────────────────────────────────────────────
@@ -1251,7 +1319,7 @@ function renderReorderAlert(list) {
       <div class="reorder-info">
         <div class="reorder-name">${m.name}</div>
         <div class="reorder-meta">
-          ${ownerLabel(m.owner)} · ${m.quantity === 0 ? '<span class="badge-critical">Finished</span>' : `${m.quantity} ${m.quantityUnit} left`}
+          ${ownerLabel(m.owner)} · ${m.quantity === 0 ? '<span class="badge-critical">Finished</span>' : stockLeftText(m)}
         </div>
       </div>
     </div>`).join('');
@@ -1321,7 +1389,7 @@ function renderWelcomePopup(items) {
     const cfg = ATTENTION_REASON_CONFIG[reason];
     const detail = (reason === 'expired' || reason === 'expiring')
       ? formatExpiry(m.expiryDate)
-      : (m.quantity === 0 ? 'Finished' : `${m.quantity} ${m.quantityUnit} left`);
+      : (m.quantity === 0 ? 'Finished' : stockLeftText(m));
     return `
     <div class="welcome-popup-item" onclick="dismissWelcomePopup(); scrollToMedicine('${m.id}');">
       <span class="welcome-popup-item-icon">${getFormIcon(m.form)}</span>
@@ -1739,6 +1807,7 @@ function initCardRevealObserver() {
 
 function renderMedicineCard(m, serialNum) {
   const isLow = effectiveLowStock(m);
+  const drop = getDropTrackUsage(m);
   const isExpired = isExpiredMed(m.expiryDate);
   const isExpiringSoon = isExpiringSoonMed(m.expiryDate);
   const serial = serialNum ? `<span class="card-serial">#${String(serialNum).padStart(2,'0')}</span>` : '';
@@ -1793,6 +1862,7 @@ function renderMedicineCard(m, serialNum) {
         ${m.notes?`<p class="card-notes"><i class="fa-solid fa-lightbulb"></i> ${m.notes}</p>`:''}
         <div class="card-meta">
           <span class="meta-item ${isLow?'meta-low':''}"><i class="fa-solid fa-box"></i> ${m.quantity===0?'<strong>Finished</strong>':`${m.quantity} ${m.quantityUnit}`}</span>
+          ${drop && m.quantity>0 ? `<span class="meta-item ${drop.low?'meta-low':''}" title="Estimated from doses ticked in the Health Diary"><i class="fa-solid fa-hourglass-half"></i> ≈ ${drop.daysLeft} day${drop.daysLeft===1?'':'s'} left</span>` : ''}
           <span class="meta-item ${isExpired?'meta-expired':isExpiringSoon?'meta-expiring':''}"><i class="fa-solid fa-calendar"></i> ${formatExpiry(m.expiryDate)}</span>
           <span class="meta-item">${formInfo.icon}${formInfo.text}</span>
         </div>
@@ -2586,6 +2656,9 @@ function syncLowStockUI() {
     lowRow.classList.remove('hidden');
     autoLabel.classList.add('hidden');
   }
+  // Diary-based tracking only makes sense for bottles/drops, not countables
+  const trackRow = document.getElementById('dropTrackRow');
+  if (trackRow) trackRow.classList.toggle('hidden', isCountableUnit(unit));
 }
 
 // ── Dropdown population (category / owner / form) ─────────
@@ -2751,6 +2824,7 @@ function openAdd() {
 
   document.getElementById('medFrequent').checked = false;
   document.getElementById('medLowStock').checked = false;
+  setDropTrackFields(null);
   document.getElementById('medNotes').value = '';
   document.getElementById('lowStockRow').classList.remove('hidden');
   document.getElementById('autoLowLabel').classList.add('hidden');
@@ -2814,6 +2888,7 @@ function openEdit(id) {
   document.getElementById('medOwner').value = m.owner;
   document.getElementById('medFrequent').checked = m.frequentlyUsed;
   document.getElementById('medLowStock').checked = m.lowStock;
+  setDropTrackFields(m.dropTrack);
   document.getElementById('medNotes').value = m.notes || '';
   syncLowStockUI();
 
@@ -3008,6 +3083,8 @@ function prefillFromExistingMedicine(existing) {
   document.getElementById('medQuantityUnit').value = existing.quantityUnit || '';
   document.getElementById('medFrequent').checked = existing.frequentlyUsed;
   document.getElementById('medLowStock').checked = existing.lowStock;
+  // A copied medicine is usually a new bottle: keep the schedule, start fresh
+  setDropTrackFields(existing.dropTrack ? { ...existing.dropTrack, startDate: '' } : null);
   document.getElementById('medNotes').value = existing.notes || '';
   syncLowStockUI();
 
@@ -3083,6 +3160,23 @@ function saveMedicine() {
     return;
   }
 
+  // Diary-based low-stock tracking (bottles/drops only). Both fields or none.
+  let dropTrack = null;
+  if (!isCountableUnit(quantityUnit)) {
+    const tDays   = parseFloat(document.getElementById('medTrackDays').value);
+    const tPerDay = parseFloat(document.getElementById('medTrackPerDay').value);
+    const anyTrack = !isNaN(tDays) || !isNaN(tPerDay);
+    if (anyTrack && !(tDays > 0 && tPerDay > 0)) {
+      showToast('For auto low-stock, fill both "Lasts (days)" and "Doses / day" — or clear both.', 'error');
+      highlightInvalidField('medTrackDays', !(tDays > 0));
+      highlightInvalidField('medTrackPerDay', !(tPerDay > 0));
+      return;
+    }
+    if (anyTrack) {
+      dropTrack = { days: tDays, perDay: tPerDay, startDate: document.getElementById('medTrackStart').value || getTodayLocalStr(), startQty: quantity };
+    }
+  }
+
   // Serial ID: user-entered value always wins; otherwise auto-assign the
   // next available number (or keep the existing one when editing). A
   // duplicate ID blocks saving entirely — it's never silently swapped,
@@ -3123,7 +3217,13 @@ function saveMedicine() {
       const oldQty = medicines[idx].quantity;
       const oldUnit = medicines[idx].quantityUnit;
       const oldName = medicines[idx].name;
-      medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId };
+      // Same bottle (start date unchanged): keep its progress and just follow
+      // any quantity change; a new start date or newly-enabled tracking begins fresh.
+      const prevTrack = medicines[idx].dropTrack;
+      if (dropTrack && prevTrack && prevTrack.startDate === dropTrack.startDate) {
+        dropTrack = rebaseDropTrack({ dropTrack: { ...prevTrack, days: dropTrack.days, perDay: dropTrack.perDay } }, oldQty, quantity);
+      }
+      medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId, dropTrack };
       // The quantity field in this form doubles as a manual stock update, so
       // treat a changed value the same as the quick +/- adjuster does —
       // otherwise edits like "1 → 2" never show up in the Quantity Log.
@@ -3139,7 +3239,7 @@ function saveMedicine() {
     }
     showUndoToast(`"${name}" updated — tap Undo within 6s`, 'fa-pen');
   } else {
-    medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId });
+    medicines.push({ id:'m'+Date.now(), name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId, dropTrack });
     logQuantityChange('added', name, `${quantity} ${quantityUnit}`);
     showToast('Medicine added ✓', 'success');
   }
@@ -3181,7 +3281,7 @@ function adjustQuantity(id, delta) {
     ? autoIsLow({ quantity: newQty, quantityUnit: m.quantityUnit })
     : m.lowStock;
   const oldQty = m.quantity || 0;
-  medicines[idx] = { ...m, quantity: newQty, lowStock };
+  medicines[idx] = { ...m, quantity: newQty, lowStock, dropTrack: rebaseDropTrack(m, oldQty, newQty) };
   logQuantityChange(delta > 0 ? 'increased' : 'decreased', m.name, `${oldQty} → ${newQty} ${m.quantityUnit}`);
   saveData();
   // Partial re-render: just replace this card's HTML in place
@@ -3978,6 +4078,10 @@ function closeHealthDiary() {
   setTimeout(() => modal.classList.add('hidden'), 250);
   unlockBodyScroll();
   setTimeout(reconcileBodyScrollLock, 300);
+  // Dose ticks may have changed how much of a tracked bottle is left
+  if (medicines.some(m => m.dropTrack)) {
+    setTimeout(() => { if (searchMode) runSearch(); else renderAll(); }, 280);
+  }
 }
 bindOverlayClose(document.getElementById('healthDiaryModal'), closeHealthDiary);
 
