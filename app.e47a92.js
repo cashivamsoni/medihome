@@ -1376,15 +1376,6 @@ const OWNER_HEALTH_INTERVAL = 9000; // 8–10s, per spec
 // 7:05am page load doesn't immediately flag the morning dose as missed.
 const DOSE_DUE_HOUR = { morning: 8, afternoon: 13, evening: 19 };
 
-// True if this medicine has ever had at least one dose logged, on any day,
-// for this entry. Used to tell a genuinely brand-new medicine (which should
-// still get an initial "take your first dose" nudge) apart from one that
-// was taken before and has since gone quiet.
-function hasEverBeenTaken(entry, med) {
-  if (!entry.doseLog || typeof entry.doseLog !== 'object') return false;
-  return Object.keys(entry.doseLog).some(d => getDoseTimesForDay(entry, d, med).length > 0);
-}
-
 // Local YYYY-MM-DD for any timestamp/Date (toISOString() is UTC, which shifts
 // the day in IST during the early morning hours).
 function localDateStrOf(input) {
@@ -1429,27 +1420,30 @@ function computeOwnerHealthReminder(key) {
   const hour = now.getHours();
   const dueSlots = DOSE_TIME_ORDER.filter(t => hour >= DOSE_DUE_HOUR[t]);
 
-  let missed = 0;
+  // Expected doses come ONLY from what was actually ticked yesterday, per
+  // medicine, slot by slot:
+  // - taken yesterday in the evening only -> exactly one evening dose is
+  //   expected today (never M/A/E just because it's a medicine)
+  // - not ticked yesterday (planned for later, casual / as-needed, or simply
+  //   not scheduled) -> nothing is expected, so it never shows as pending
+  // Each (medicine, slot) pair is counted once even if the same medicine
+  // appears on more than one active entry.
+  const pending = new Set();
   active.forEach(e => {
     const meds = getEntryMedicineList(e);
     const rows = meds.length ? meds : [''];
     rows.forEach(med => {
-      // Only yesterday's actual pattern decides what's expected today:
-      // - taken yesterday  -> expect the same slot(s) again today
-      // - never taken at all (brand-new) -> nudge for a first dose, all slots
-      // - taken before but NOT yesterday -> treat as discontinued (a one-time
-      //   medicine that was only ever meant for a single dose), expect
-      //   nothing, so it stops being flagged from the day after the first
-      //   skipped day onward.
-      const yesterdayPattern = getDoseTimesForDay(e, yesterdayStr, med);
-      let expectedSlots;
-      if (yesterdayPattern.length) expectedSlots = yesterdayPattern;
-      else if (hasEverBeenTaken(e, med)) expectedSlots = [];
-      else expectedSlots = DOSE_TIME_ORDER;
+      const expectedSlots = getDoseTimesForDay(e, yesterdayStr, med);
+      if (!expectedSlots.length) return;
       const takenToday = new Set(getDoseTimesForDay(e, todayStr, med));
-      dueSlots.forEach(slot => { if (expectedSlots.includes(slot) && !takenToday.has(slot)) missed++; });
+      dueSlots.forEach(slot => {
+        if (expectedSlots.includes(slot) && !takenToday.has(slot)) {
+          pending.add(`${(med || e.issue || '').toLowerCase().trim()}|${slot}`);
+        }
+      });
     });
   });
+  const missed = pending.size;
 
   if (missed > 0) return { text: `${missed} dose${missed > 1 ? 's' : ''} pending today`, ok: false };
   if (!dueSlots.length) {
