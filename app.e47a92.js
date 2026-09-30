@@ -1370,11 +1370,10 @@ let ownerHealthSlideIndex = 0;
 let ownerHealthTimer = null;
 const OWNER_HEALTH_INTERVAL = 9000; // 8–10s, per spec
 
-// Due-by hours for each dose slot — a slot only counts as "missed" once its
-// usual window has actually passed. Usual dose times are ~7am / 12pm / 6pm,
-// with a 1-hour grace period on each before it's flagged as pending, so a
-// 7:05am page load doesn't immediately flag the morning dose as missed.
-const DOSE_DUE_HOUR = { morning: 8, afternoon: 13, evening: 19 };
+// Due-by hours (24h clock) for each dose slot — a slot only counts as
+// "pending" once its time has been reached: morning 6:00 AM, afternoon
+// 12:00 PM, evening 5:00 PM.
+const DOSE_DUE_HOUR = { morning: 6, afternoon: 12, evening: 17 };
 
 // Local YYYY-MM-DD for any timestamp/Date (toISOString() is UTC, which shifts
 // the day in IST during the early morning hours).
