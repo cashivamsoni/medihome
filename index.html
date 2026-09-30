@@ -764,6 +764,43 @@
               </div>
             </div>
 
+            <!-- Auto low-stock for bottles/drops: usage is counted from the Health Diary dose ticks -->
+            <div class="form-group full" id="dropTrackRow">
+              <label class="form-label"
+                ><i class="fa-solid fa-hourglass-half"></i> Auto low-stock from Health Diary
+                <span style="font-weight: 400; color: var(--text-muted)">(optional)</span></label
+              >
+              <div class="form-row">
+                <input
+                  class="form-input"
+                  type="number"
+                  id="medTrackDays"
+                  min="1"
+                  step="1"
+                  placeholder="Lasts (days) e.g. 21"
+                />
+                <input
+                  class="form-input"
+                  type="number"
+                  id="medTrackPerDay"
+                  min="1"
+                  step="1"
+                  placeholder="Doses / day e.g. 3"
+                />
+                <input
+                  class="form-input"
+                  type="date"
+                  id="medTrackStart"
+                  title="Date this bottle was started (blank = today)"
+                />
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px">
+                Fill days &amp; doses/day (e.g. 21 days × 3 = 63 doses) and the medicine is flagged
+                low automatically as its M/A/E ticks in the Health Diary use the bottle up. Date =
+                when this bottle was started (blank = today). Leave days empty to turn it off.
+              </div>
+            </div>
+
             <div class="form-group full">
               <label class="form-label" for="medNotes"
                 >Notes / Storage Info</label
