@@ -1234,7 +1234,7 @@ function dropTrackIsLow(m) {
 // Keeps the tracked bottle count in step when quantity is changed by hand.
 function rebaseDropTrack(m, oldQty, newQty) {
   const t = m.dropTrack;
-  if (!t) return t;
+  if (!t) return null;
   if (newQty <= 0) return t; // finished — quantity 0 already reads as Finished
   if (!(oldQty > 0)) return { ...t, startDate: getTodayLocalStr(), startQty: newQty }; // restocked from empty: fresh bottle
   return { ...t, startQty: Math.max(0, (t.startQty != null ? Number(t.startQty) : oldQty) + (newQty - oldQty)) };
@@ -3299,7 +3299,9 @@ function adjustQuantity(id, delta) {
     ? autoIsLow({ quantity: newQty, quantityUnit: m.quantityUnit })
     : m.lowStock;
   const oldQty = m.quantity || 0;
-  medicines[idx] = { ...m, quantity: newQty, lowStock, dropTrack: rebaseDropTrack(m, oldQty, newQty) };
+  // Only touch dropTrack when the medicine has one: Firebase's set() rejects
+  // undefined values, so never write `dropTrack: undefined` into the data.
+  medicines[idx] = { ...m, quantity: newQty, lowStock, ...(m.dropTrack ? { dropTrack: rebaseDropTrack(m, oldQty, newQty) } : {}) };
   logQuantityChange(delta > 0 ? 'increased' : 'decreased', m.name, `${oldQty} → ${newQty} ${m.quantityUnit}`);
   saveData();
   // Partial re-render: just replace this card's HTML in place
