@@ -2253,7 +2253,10 @@ body.bulk-mode .timer-btn {
   bottom: calc(var(--bulk-bar-h, 130px) + 14px + 60px);
 }
 .timer-btn.panel-open {
-  display: none;
+  /* Same exit as .assistant-btn.hidden: fade + shrink rather than vanishing */
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
 }
 .timer-btn.ringing {
   background: var(--red-500);
@@ -2298,9 +2301,30 @@ body.bulk-mode .timer-btn {
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: contain;
-  transition: bottom 0.25s ease;
+  /* Same open/close animation as .assistant-panel: fades and scales out of
+     the corner nearest its button (bottom-left here, bottom-right there). */
+  transform-origin: bottom left;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition: bottom 0.25s ease,
+              opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0s;
 }
-.timer-panel.hidden { display: none; }
+.timer-panel.hidden {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+  pointer-events: none;
+  /* visibility flips only after the fade-out finishes, so the closed panel's
+     inputs/buttons can't be reached by keyboard while it stays in the layout */
+  visibility: hidden;
+  transition: bottom 0.25s ease,
+              opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0s linear 0.18s;
+}
 .timer-panel.ringing {
   border-color: var(--red-500);
   box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.25), var(--shadow-lg);
