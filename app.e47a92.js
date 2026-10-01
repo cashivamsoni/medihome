@@ -1178,7 +1178,7 @@ function autoIsLow(m) {
   return m.quantity <= threshold;
 }
 function effectiveLowStock(m) {
-  if (isCountableUnit(m.quantityUnit)) return autoIsLow(m) || m.quantity === 0;
+  if (isCountableUnit(m.quantityUnit)) return autoIsLow(m) || m.quantity === 0 || dropTrackIsLow(m); // dropTrackIsLow only when forced
   return m.lowStock || m.quantity === 0 || dropTrackIsLow(m);
 }
 
@@ -1196,7 +1196,9 @@ function normMedName(s) {
 }
 function getDropTrackUsage(m) {
   const t = m && m.dropTrack;
-  if (!t || isCountableUnit(m.quantityUnit)) return null;
+  // Countable units (tablets…) have their own auto threshold; diary tracking
+  // only applies to them when "Track via Health Diary" was ticked (t.force).
+  if (!t || (isCountableUnit(m.quantityUnit) && !t.force)) return null;
   const days = Number(t.days), perDay = Number(t.perDay);
   if (!(days > 0) || !(perDay > 0)) return null;
   const total = days * perDay;
@@ -1248,6 +1250,8 @@ function setDropTrackFields(t) {
   set('medTrackDays', t && t.days ? t.days : '');
   set('medTrackPerDay', t && t.perDay ? t.perDay : '');
   set('medTrackStart', t && t.startDate ? t.startDate : '');
+  const force = document.getElementById('medTrackForce');
+  if (force) force.checked = !!(t && t.force);
 }
 
 // ── Render ────────────────────────────────────────────────
@@ -2656,36 +2660,15 @@ function syncLowStockUI() {
     lowRow.classList.remove('hidden');
     autoLabel.classList.add('hidden');
   }
-  // Diary-based tracking only makes sense for bottle/drop-type forms (not
-  // tablets, creams, bandages…). Stays visible if values are already filled in
-  // so existing tracking can always be seen and switched off.
+  // Diary-based tracking: hidden by default, shown for non-countable units
+  // (bottle, ml, tube…) or whenever "Track via Health Diary" is ticked.
   const trackRow = document.getElementById('dropTrackRow');
   if (trackRow) trackRow.classList.toggle('hidden', !dropTrackSectionVisible(unit));
 }
-
-// Forms that come in a bottle and are used up by doses: Drops, Edible Drops,
-// Eye Drops, Gel/Liquid, Tonic, Hair Oil, Spray, Roll On, syrups, tinctures…
-// Matched by keyword so custom forms like "Homeopathic Drops" work too.
-const DROP_TRACK_FORM_RE = /drop|liquid|tonic|syrup|tincture|dilution|oil|spray|roll[\s-]*on/i;
-function isDropTrackForm(form) {
-  return DROP_TRACK_FORM_RE.test(splitFormIcon(form || '').text);
-}
-function getSelectedFormText() {
-  const sel = document.getElementById('medFormField');
-  if (!sel) return '';
-  if (sel.value === '__new__') {
-    const custom = document.getElementById('medFormCustom');
-    return custom ? custom.value.trim() : '';
-  }
-  return sel.value;
-}
 function dropTrackSectionVisible(unit) {
-  if (isCountableUnit(unit)) return false;
-  const filled = ['medTrackDays', 'medTrackPerDay'].some(id => {
-    const el = document.getElementById(id);
-    return el && el.value !== '';
-  });
-  return filled || isDropTrackForm(getSelectedFormText());
+  const force = document.getElementById('medTrackForce');
+  if (force && force.checked) return true;
+  return !!unit && !isCountableUnit(unit);
 }
 
 // ── Dropdown population (category / owner / form) ─────────
@@ -3190,8 +3173,8 @@ function saveMedicine() {
 
   // Diary-based low-stock tracking (bottles/drops only). Both fields or none.
   let dropTrack = null;
-  const trackRowEl = document.getElementById('dropTrackRow');
-  if (!isCountableUnit(quantityUnit) && trackRowEl && !trackRowEl.classList.contains('hidden')) {
+  const forceTrack = document.getElementById('medTrackForce').checked;
+  if (!isCountableUnit(quantityUnit) || forceTrack) {
     const tDays   = parseFloat(document.getElementById('medTrackDays').value);
     const tPerDay = parseFloat(document.getElementById('medTrackPerDay').value);
     const anyTrack = !isNaN(tDays) || !isNaN(tPerDay);
@@ -3202,7 +3185,7 @@ function saveMedicine() {
       return;
     }
     if (anyTrack) {
-      dropTrack = { days: tDays, perDay: tPerDay, startDate: document.getElementById('medTrackStart').value || getTodayLocalStr(), startQty: quantity };
+      dropTrack = { days: tDays, perDay: tPerDay, force: forceTrack, startDate: document.getElementById('medTrackStart').value || getTodayLocalStr(), startQty: quantity };
     }
   }
 
@@ -3250,7 +3233,7 @@ function saveMedicine() {
       // any quantity change; a new start date or newly-enabled tracking begins fresh.
       const prevTrack = medicines[idx].dropTrack;
       if (dropTrack && prevTrack && prevTrack.startDate === dropTrack.startDate) {
-        dropTrack = rebaseDropTrack({ dropTrack: { ...prevTrack, days: dropTrack.days, perDay: dropTrack.perDay } }, oldQty, quantity);
+        dropTrack = rebaseDropTrack({ dropTrack: { ...prevTrack, days: dropTrack.days, perDay: dropTrack.perDay, force: dropTrack.force } }, oldQty, quantity);
       }
       medicines[idx] = { ...medicines[idx], name, description:desc, type, form, quantity, quantityUnit, expiryDate, category, owner, frequentlyUsed, lowStock, notes, image, serialId, dropTrack };
       // The quantity field in this form doubles as a manual stock update, so
