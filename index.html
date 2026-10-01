@@ -761,11 +761,16 @@
                 <span class="auto-low-label hidden" id="autoLowLabel"
                   ><i class="fa-solid fa-triangle-exclamation"></i> <span id="autoLowLabelText">Low stock auto-detected by quantity</span></span
                 >
+                <!-- Force the Health Diary low-stock tracking on, even for countable units -->
+                <label class="check-label" title="Show and use Health Diary low-stock tracking for this medicine, whatever its unit">
+                  <input type="checkbox" id="medTrackForce" onchange="syncLowStockUI()" />
+                  <i class="fa-solid fa-hourglass-half"></i> Track via Health Diary
+                </label>
               </div>
             </div>
 
             <!-- Auto low-stock for bottles/drops: usage is counted from the Health Diary dose ticks -->
-            <div class="form-group full" id="dropTrackRow">
+            <div class="form-group full hidden" id="dropTrackRow">
               <label class="form-label"
                 ><i class="fa-solid fa-hourglass-half"></i> Auto low-stock from Health Diary
                 <span style="font-weight: 400; color: var(--text-muted)">(optional)</span></label
@@ -795,9 +800,10 @@
                 />
               </div>
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px">
-                Fill days &amp; doses/day (e.g. 21 days × 3 = 63 doses) and the medicine is flagged
-                low automatically as its M/A/E ticks in the Health Diary use the bottle up. Date =
-                when this bottle was started (blank = today). Leave days empty to turn it off.
+                Shown automatically for bottle/drop-type units (or tick "Track via Health Diary" for
+                any unit). Fill days &amp; doses/day (e.g. 21 days × 3 = 63 doses) and the medicine
+                is flagged low automatically as its M/A/E ticks in the Health Diary use it up. Date
+                = when this bottle was started (blank = today). Leave days empty to turn it off.
               </div>
             </div>
 
