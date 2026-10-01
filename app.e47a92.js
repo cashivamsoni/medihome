@@ -2656,9 +2656,36 @@ function syncLowStockUI() {
     lowRow.classList.remove('hidden');
     autoLabel.classList.add('hidden');
   }
-  // Diary-based tracking only makes sense for bottles/drops, not countables
+  // Diary-based tracking only makes sense for bottle/drop-type forms (not
+  // tablets, creams, bandages…). Stays visible if values are already filled in
+  // so existing tracking can always be seen and switched off.
   const trackRow = document.getElementById('dropTrackRow');
-  if (trackRow) trackRow.classList.toggle('hidden', isCountableUnit(unit));
+  if (trackRow) trackRow.classList.toggle('hidden', !dropTrackSectionVisible(unit));
+}
+
+// Forms that come in a bottle and are used up by doses: Drops, Edible Drops,
+// Eye Drops, Gel/Liquid, Tonic, Hair Oil, Spray, Roll On, syrups, tinctures…
+// Matched by keyword so custom forms like "Homeopathic Drops" work too.
+const DROP_TRACK_FORM_RE = /drop|liquid|tonic|syrup|tincture|dilution|oil|spray|roll[\s-]*on/i;
+function isDropTrackForm(form) {
+  return DROP_TRACK_FORM_RE.test(splitFormIcon(form || '').text);
+}
+function getSelectedFormText() {
+  const sel = document.getElementById('medFormField');
+  if (!sel) return '';
+  if (sel.value === '__new__') {
+    const custom = document.getElementById('medFormCustom');
+    return custom ? custom.value.trim() : '';
+  }
+  return sel.value;
+}
+function dropTrackSectionVisible(unit) {
+  if (isCountableUnit(unit)) return false;
+  const filled = ['medTrackDays', 'medTrackPerDay'].some(id => {
+    const el = document.getElementById(id);
+    return el && el.value !== '';
+  });
+  return filled || isDropTrackForm(getSelectedFormText());
 }
 
 // ── Dropdown population (category / owner / form) ─────────
@@ -2828,6 +2855,7 @@ function openAdd() {
   document.getElementById('medNotes').value = '';
   document.getElementById('lowStockRow').classList.remove('hidden');
   document.getElementById('autoLowLabel').classList.add('hidden');
+  syncLowStockUI(); // hides the diary auto low-stock section until a drops/bottle form is chosen
   resetImageFields();
   openModal();
 }
@@ -3162,7 +3190,8 @@ function saveMedicine() {
 
   // Diary-based low-stock tracking (bottles/drops only). Both fields or none.
   let dropTrack = null;
-  if (!isCountableUnit(quantityUnit)) {
+  const trackRowEl = document.getElementById('dropTrackRow');
+  if (!isCountableUnit(quantityUnit) && trackRowEl && !trackRowEl.classList.contains('hidden')) {
     const tDays   = parseFloat(document.getElementById('medTrackDays').value);
     const tPerDay = parseFloat(document.getElementById('medTrackPerDay').value);
     const anyTrack = !isNaN(tDays) || !isNaN(tPerDay);
