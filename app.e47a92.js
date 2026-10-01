@@ -6892,7 +6892,8 @@ function exportQuantityLogPDF() {
         when: formatQtyLogTime(e.ts),
         action: QTY_LOG_LABELS[e.action] || e.action,
         medName: stripEmoji(e.medName || ''),
-        detail: stripEmoji(e.detail || '')
+        detail: stripEmoji(e.detail || ''),
+        detailRaw: e.detail || '' // kept unstripped: stripEmoji() removes the "→" in "4 → 3 pieces"
       }));
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -6956,13 +6957,50 @@ function exportQuantityLogPDF() {
       doc.text('No quantity changes logged yet.', pageW / 2, y + 10, { align: 'center' });
     }
 
+    // jsPDF's built-in Times font has no "→" glyph, so "4 → 3 pieces" is laid
+    // out as text / drawn arrow / text. The arrow is a small vector line with a
+    // filled head, which renders identically on every device.
+    const ARROW_W = 6; // mm, including a little breathing room either side
+    function layoutDetail(raw, maxW) {
+      const parts = String(raw).split('→').map(p => stripEmoji(p));
+      if (parts.length < 2) {
+        return doc.splitTextToSize(stripEmoji(raw) || '—', maxW).map(str => [{ t: 'text', str }]);
+      }
+      const single = [];
+      parts.forEach((p, i) => { if (i) single.push({ t: 'arrow' }); if (p) single.push({ t: 'text', str: p }); });
+      const totalW = parts.reduce((w, p) => w + doc.getTextWidth(p), 0) + (parts.length - 1) * ARROW_W;
+      if (totalW <= maxW) return [single];
+      // too wide for one line: one segment per line, arrow leading each continuation
+      return parts.map((p, i) => i ? [{ t: 'arrow' }, ...(p ? [{ t: 'text', str: p }] : [])] : [{ t: 'text', str: p }]);
+    }
+    function drawDetailLayout(layout, x0, baseY, pitch) {
+      layout.forEach((line, li) => {
+        const by = baseY + li * pitch;
+        let x = x0;
+        line.forEach(it => {
+          if (it.t === 'text') {
+            doc.text(it.str, x, by);
+            x += doc.getTextWidth(it.str);
+          } else {
+            const midY = by - fontSize * 0.352778 * 0.3; // roughly the x-height centre
+            const x1 = x + 1.2, x2 = x + ARROW_W - 1.2, head = 1.3, halfH = 0.85;
+            doc.setDrawColor(0); doc.setFillColor(0); doc.setLineWidth(0.25);
+            doc.line(x1, midY, x2 - head, midY);
+            doc.triangle(x2, midY, x2 - head, midY - halfH, x2 - head, midY + halfH, 'F');
+            doc.setLineWidth(0.3); // back to the cell-border width
+            x += ARROW_W;
+          }
+        });
+      });
+    }
+
     entries.forEach(e => {
       doc.setFont(FONT, 'normal'); doc.setFontSize(fontSize);
       const whenLines = doc.splitTextToSize(e.when, whenW - 3);
       const actionLines = doc.splitTextToSize(e.action, actionW - 3);
       const medLines = doc.splitTextToSize(e.medName, medW - 3);
-      const detailLines = doc.splitTextToSize(e.detail || '—', detailW - 3);
-      const lineCount = Math.max(whenLines.length, actionLines.length, medLines.length, detailLines.length, 1);
+      const detailLayout = layoutDetail(e.detailRaw, detailW - 3);
+      const lineCount = Math.max(whenLines.length, actionLines.length, medLines.length, detailLayout.length, 1);
       const linePitch = fontSize * 0.352778 * 1.15;
       const blockHeight = lineCount * linePitch;
       const thisRowHeight = Math.max(rowHeight, blockHeight + 3);
@@ -6983,7 +7021,7 @@ function exportQuantityLogPDF() {
       doc.text(whenLines, cols.when + 1.5, firstBaselineY);
       doc.text(actionLines, cols.action + 1.5, firstBaselineY);
       doc.text(medLines, cols.med + 1.5, firstBaselineY);
-      doc.text(detailLines, cols.detail + 1.5, firstBaselineY);
+      drawDetailLayout(detailLayout, cols.detail + 1.5, firstBaselineY, linePitch);
       y += thisRowHeight;
     });
 
