@@ -2663,7 +2663,13 @@ function syncLowStockUI() {
   // Diary-based tracking: hidden by default, shown for non-countable units
   // (bottle, ml, tube…) or whenever "Track via Health Diary" is ticked.
   const trackRow = document.getElementById('dropTrackRow');
-  if (trackRow) trackRow.classList.toggle('hidden', !dropTrackSectionVisible(unit));
+  if (trackRow) {
+    // The stylesheet has no global .hidden rule (each element gets its own), so
+    // toggle display directly as well as the class.
+    const show = dropTrackSectionVisible(unit);
+    trackRow.classList.toggle('hidden', !show);
+    trackRow.style.display = show ? '' : 'none';
+  }
 }
 function dropTrackSectionVisible(unit) {
   const force = document.getElementById('medTrackForce');
