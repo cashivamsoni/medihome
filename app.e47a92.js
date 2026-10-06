@@ -5,8 +5,8 @@
 let medicines = [];
 let editingId = null;
 // Remembers a "no, this is a different medicine" dismissal from the
-// duplicate-medicine prompt below, keyed by "name|owner" (lowercased), so
-// re-blurring the same fields without changing them doesn't re-nag.
+// duplicate-medicine prompt below, keyed by the lowercased name, so
+// re-blurring the same field without changing it doesn't re-nag.
 let _dupMedIgnoredKey = null;
 let searchTimeout = null;
 let activeFilter = 'all';   // 'all' | 'low' | 'expiring' | 'expired'
@@ -1945,7 +1945,6 @@ function bindEvents() {
   // name + owner are both known, before the rest of the form gets filled
   // in by hand — see checkDuplicateMedicineOnAdd().
   document.getElementById('medName').addEventListener('blur', checkDuplicateMedicineOnAdd);
-  document.getElementById('medOwner').addEventListener('change', checkDuplicateMedicineOnAdd);
 
   // Live filter as user types
   inp.addEventListener('input', () => {
@@ -3002,18 +3001,20 @@ function highlightInvalidField(id, isInvalid) {
   el.classList.toggle('input-error', !!isInvalid);
 }
 
-// Fires on medName blur / medOwner change while adding a brand-new
-// medicine (never while editing one — that can't create a duplicate of
-// itself). Only meaningful once both fields are known, since owner sits
-// further down the form than name and may still be at its default value.
+// Fires on medName blur while adding a brand-new medicine (never while
+// editing one — that can't create a duplicate of itself). Matches by name
+// only, regardless of owner and of expiry/stock. If the same name exists
+// under several owners, the one for the currently selected owner is
+// preferred, otherwise the first one found.
 function checkDuplicateMedicineOnAdd() {
   if (editingId) return;
   const name = document.getElementById('medName').value.trim();
+  if (!name) return;
+  const key = name.toLowerCase();
+  if (_dupMedIgnoredKey === key) return; // already said "this is different" for this exact name
   const owner = document.getElementById('medOwner').value;
-  if (!name || !owner) return;
-  const key = name.toLowerCase() + '|' + owner;
-  if (_dupMedIgnoredKey === key) return; // already said "this is different" for this exact pair
-  const existing = medicines.find(m => m.name.trim().toLowerCase() === name.toLowerCase() && m.owner === owner);
+  const sameName = medicines.filter(m => (m.name || '').trim().toLowerCase() === key);
+  const existing = sameName.find(m => m.owner === owner) || sameName[0];
   if (!existing) return;
   promptDuplicateMedicine(existing, key);
 }
@@ -3049,7 +3050,7 @@ async function promptDuplicateMedicine(existing, key) {
     prefillFromExistingMedicine(existing);
   } else {
     // 'ignore', or dismissed via backdrop/X — don't ask again for this
-    // exact name+owner pair unless one of them changes.
+    // exact name unless it changes.
     _dupMedIgnoredKey = key;
   }
 }
@@ -3095,8 +3096,8 @@ function prefillFromExistingMedicine(existing) {
     catCustom.value = existing.category;
   }
 
-  // Owner already matches — that's how this duplicate was found — so it's
-  // left as-is.
+  // Owner is left as whatever was chosen in the Add form — the existing
+  // medicine may belong to someone else.
   document.getElementById('medQuantityUnit').value = existing.quantityUnit || '';
   document.getElementById('medFrequent').checked = existing.frequentlyUsed;
   document.getElementById('medLowStock').checked = existing.lowStock;
