@@ -1816,6 +1816,44 @@ body.bulk-mode .assistant-panel {
 .field-error.hidden {
   display: none;
 }
+/* Slim "already in inventory" strip under the Add Medicine name field —
+   tapping it reopens the duplicate-medicine options. */
+.dup-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--amber-600);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+.dup-hint:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+.dup-hint.hidden {
+  display: none;
+}
+.dup-hint i {
+  flex-shrink: 0;
+}
+.dup-hint .dup-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+.dup-hint .dup-hint-cta {
+  flex-shrink: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .form-input.input-error,
 .form-select.input-error,
 .form-textarea.input-error {
