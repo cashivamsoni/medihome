@@ -1945,6 +1945,11 @@ function bindEvents() {
   // name + owner are both known, before the rest of the form gets filled
   // in by hand — see checkDuplicateMedicineOnAdd().
   document.getElementById('medName').addEventListener('blur', checkDuplicateMedicineOnAdd);
+  // The slim hint under the name field updates live while typing and when
+  // the owner changes (owner only affects which same-named medicine is
+  // shown first) — it never opens the popup by itself.
+  document.getElementById('medName').addEventListener('input', updateDuplicateHint);
+  document.getElementById('medOwner').addEventListener('change', updateDuplicateHint);
 
   // Live filter as user types
   inp.addEventListener('input', () => {
@@ -2816,6 +2821,7 @@ function openAdd() {
   document.getElementById('medSerialId').classList.remove('input-error');
   document.getElementById('saveBtn').disabled = false;
   document.getElementById('medName').value = '';
+  updateDuplicateHint();
   document.getElementById('medDesc').value = '';
   populateTypeDropdown('');
   document.getElementById('medType').value = customTypes[0] || FALLBACK_TYPE;
@@ -2861,6 +2867,7 @@ function openEdit(id) {
   document.getElementById('medSerialId').classList.remove('input-error');
   document.getElementById('saveBtn').disabled = false;
   document.getElementById('medName').value = m.name;
+  updateDuplicateHint(); // editing — hides the hint
   document.getElementById('medDesc').value = m.description;
   populateTypeDropdown(m.type);
 
@@ -3011,12 +3018,56 @@ function checkDuplicateMedicineOnAdd() {
   const name = document.getElementById('medName').value.trim();
   if (!name) return;
   const key = name.toLowerCase();
+  const found = findDuplicateMedicine(name);
+  updateDuplicateHint();
   if (_dupMedIgnoredKey === key) return; // already said "this is different" for this exact name
+  if (!found) return;
+  promptDuplicateMedicine(found.existing, key);
+}
+
+// Same-name lookup shared by the popup and the hint strip. Returns
+// { existing, extra } (extra = how many more medicines share the name) or
+// null. Prefers the one for the owner currently picked in the form.
+function findDuplicateMedicine(name) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return null;
   const owner = document.getElementById('medOwner').value;
   const sameName = medicines.filter(m => (m.name || '').trim().toLowerCase() === key);
+  if (!sameName.length) return null;
   const existing = sameName.find(m => m.owner === owner) || sameName[0];
-  if (!existing) return;
-  promptDuplicateMedicine(existing, key);
+  return { existing, extra: sameName.length - 1 };
+}
+
+// Slim tappable strip under the name field: always shown while the typed
+// name matches an existing medicine (even after the popup was dismissed),
+// so the options can always be reopened. Hidden while editing.
+function updateDuplicateHint() {
+  const el = document.getElementById('medDupHint');
+  if (!el) return;
+  const found = editingId ? null : findDuplicateMedicine(document.getElementById('medName').value);
+  if (!found) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+  const { existing, extra } = found;
+  const expiryText = existing.expiryDate ? formatExpiry(existing.expiryDate) : 'no expiry set';
+  const more = extra > 0 ? ` · +${extra} more` : '';
+  el.innerHTML =
+    '<i class="fa-solid fa-circle-info"></i>' +
+    `<span class="dup-hint-text">Already in inventory: ${escHtml(existing.name)} · ${escHtml(ownerLabel(existing.owner))} · ${escHtml(expiryText)}${more}</span>` +
+    '<span class="dup-hint-cta">Options</span>';
+  el.classList.remove('hidden');
+}
+
+// Tapping the hint strip reopens the same popup, regardless of any earlier
+// dismissal.
+function reopenDuplicatePrompt() {
+  if (editingId) return;
+  const name = document.getElementById('medName').value.trim();
+  const found = findDuplicateMedicine(name);
+  if (!found) { updateDuplicateHint(); return; }
+  promptDuplicateMedicine(found.existing, name.toLowerCase());
 }
 
 async function promptDuplicateMedicine(existing, key) {
