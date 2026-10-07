@@ -5,7 +5,7 @@
 let medicines = [];
 let editingId = null;
 // Remembers a "no, this is a different medicine" dismissal from the
-// duplicate-medicine prompt below, keyed by the lowercased name, so
+// duplicate-medicine prompt below, keyed by the normalised name, so
 // re-blurring the same field without changing it doesn't re-nag.
 let _dupMedIgnoredKey = null;
 let searchTimeout = null;
@@ -3009,78 +3009,118 @@ function highlightInvalidField(id, isInvalid) {
 }
 
 // Fires on medName blur while adding a brand-new medicine (never while
-// editing one — that can't create a duplicate of itself). Matches by name
-// only, regardless of owner and of expiry/stock. If the same name exists
-// under several owners, the one for the currently selected owner is
-// preferred, otherwise the first one found.
+// editing one — that can't create a duplicate of itself). Only an EXACT
+// match (after normalising case, spaces and punctuation) opens the popup;
+// merely similar names only get the quiet hint strip.
 function checkDuplicateMedicineOnAdd() {
   if (editingId) return;
   const name = document.getElementById('medName').value.trim();
   if (!name) return;
-  const key = name.toLowerCase();
+  const key = dupNameKey(name);
   const found = findDuplicateMedicine(name);
   updateDuplicateHint();
   if (_dupMedIgnoredKey === key) return; // already said "this is different" for this exact name
-  if (!found) return;
+  if (!found || found.kind !== 'exact') return;
   promptDuplicateMedicine(found.existing, key);
 }
 
-// Same-name lookup shared by the popup and the hint strip. Returns
-// { existing, extra } (extra = how many more medicines share the name) or
-// null. Prefers the one for the owner currently picked in the form.
-function findDuplicateMedicine(name) {
-  const key = (name || '').trim().toLowerCase();
-  if (!key) return null;
-  const owner = document.getElementById('medOwner').value;
-  const sameName = medicines.filter(m => (m.name || '').trim().toLowerCase() === key);
-  if (!sameName.length) return null;
-  const existing = sameName.find(m => m.owner === owner) || sameName[0];
-  return { existing, extra: sameName.length - 1 };
+// Lowercase, strip everything except letters and digits — so "Vicks-Inhaler",
+// "vicks inhaler" and "VICKSINHALER" all normalise to the same string.
+function dupNameKey(s) {
+  return (s || '').toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
-// Slim tappable strip under the name field: always shown while the typed
-// name matches an existing medicine (even after the popup was dismissed),
-// so the options can always be reopened. Hidden while editing.
+// True when a and b (already normalised) differ by exactly one inserted,
+// deleted, substituted or adjacent-swapped letter.
+function oneLetterApart(a, b) {
+  if (a === b) return false;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i++;
+  if (la === lb) {
+    if (a.slice(i + 1) === b.slice(i + 1)) return true;                       // substitution
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2); // swap
+  }
+  const [lo, sh] = la > lb ? [a, b] : [b, a];
+  return lo.slice(i + 1) === sh.slice(i);                                      // insertion/deletion
+}
+
+// "Similar" = one letter off, with strict guards against false alarms:
+// both names at least 6 characters, and the digits must be identical
+// (R37 vs R95, "(2)" vs "(3)" are different medicines, never "similar").
+function isSimilarMedName(a, b) {
+  if (a.length < 6 || b.length < 6) return false;
+  if (a.replace(/\D/g, '') !== b.replace(/\D/g, '')) return false;
+  return oneLetterApart(a, b);
+}
+
+// Same-name lookup shared by the popup and the hint strip. Returns
+// { existing, extra, kind } or null. kind is 'exact' (same name after
+// normalising) or 'similar' (one letter off). Exact beats similar; within
+// a kind, the medicine for the owner currently picked in the form is
+// preferred. extra = how many more medicines match the same way.
+function findDuplicateMedicine(name) {
+  const key = dupNameKey(name);
+  if (!key) return null;
+  const owner = document.getElementById('medOwner').value;
+  const pick = (list, kind) => {
+    if (!list.length) return null;
+    return { existing: list.find(m => m.owner === owner) || list[0], extra: list.length - 1, kind };
+  };
+  const exact = medicines.filter(m => dupNameKey(m.name) === key);
+  if (exact.length) return pick(exact, 'exact');
+  return pick(medicines.filter(m => isSimilarMedName(dupNameKey(m.name), key)), 'similar');
+}
+
+// Slim tappable strip under the name field: shown while the typed name
+// matches (or is similar to) an existing medicine, even after the popup
+// was dismissed, so the options can always be reopened. Hidden while editing.
 function updateDuplicateHint() {
   const el = document.getElementById('medDupHint');
   if (!el) return;
   const found = editingId ? null : findDuplicateMedicine(document.getElementById('medName').value);
   if (!found) {
     el.classList.add('hidden');
+    el.classList.remove('similar');
     el.innerHTML = '';
     return;
   }
-  const { existing, extra } = found;
+  const { existing, extra, kind } = found;
   const expiryText = existing.expiryDate ? formatExpiry(existing.expiryDate) : 'no expiry set';
   const more = extra > 0 ? ` · +${extra} more` : '';
+  const lead = kind === 'exact' ? 'Already in inventory' : 'Similar to';
+  el.classList.toggle('similar', kind === 'similar');
   el.innerHTML =
     '<i class="fa-solid fa-circle-info"></i>' +
-    `<span class="dup-hint-text">Already in inventory: ${escHtml(existing.name)} · ${escHtml(ownerLabel(existing.owner))} · ${escHtml(expiryText)}${more}</span>` +
+    `<span class="dup-hint-text">${lead}: ${escHtml(existing.name)} · ${escHtml(ownerLabel(existing.owner))} · ${escHtml(expiryText)}${more}</span>` +
     '<span class="dup-hint-cta">Options</span>';
   el.classList.remove('hidden');
 }
 
-// Tapping the hint strip reopens the same popup, regardless of any earlier
+// Tapping the hint strip reopens the popup, regardless of any earlier
 // dismissal.
 function reopenDuplicatePrompt() {
   if (editingId) return;
   const name = document.getElementById('medName').value.trim();
   const found = findDuplicateMedicine(name);
   if (!found) { updateDuplicateHint(); return; }
-  promptDuplicateMedicine(found.existing, name.toLowerCase());
+  promptDuplicateMedicine(found.existing, dupNameKey(name), found.kind === 'similar');
 }
 
-async function promptDuplicateMedicine(existing, key) {
+async function promptDuplicateMedicine(existing, key, similar = false) {
   const stockText = existing.quantity === 0 ? 'Finished' : `${existing.quantity} ${existing.quantityUnit} left`;
   const expiryText = existing.expiryDate ? formatExpiry(existing.expiryDate) : 'no expiry set';
   const choice = await customChoice(
-    `You already have "${existing.name}" for ${ownerLabel(existing.owner)} — ${stockText}, ${expiryText}. What's this new one?`,
+    similar
+      ? `You have a similar medicine, "${existing.name}", for ${ownerLabel(existing.owner)} — ${stockText}, ${expiryText}. What's this new one?`
+      : `You already have "${existing.name}" for ${ownerLabel(existing.owner)} — ${stockText}, ${expiryText}. What's this new one?`,
     [
       { label: 'Same batch — top up this stock', value: 'topup' },
       { label: 'New batch — copy its details', value: 'prefill' },
       { label: 'No, this is a different medicine', value: 'ignore' },
     ],
-    { title: 'Already have this medicine?' }
+    { title: similar ? 'Similar medicine found' : 'Already have this medicine?' }
   );
   if (choice === 'topup') {
     // Hands off to the existing record's own Edit form rather than trying
