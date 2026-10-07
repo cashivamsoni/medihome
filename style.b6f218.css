@@ -1842,6 +1842,15 @@ body.bulk-mode .assistant-panel {
 .dup-hint.hidden {
   display: none;
 }
+/* Quieter variant for "similar, not identical" names */
+.dup-hint.similar {
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.dup-hint.similar:hover {
+  background: var(--border);
+}
 .dup-hint i {
   flex-shrink: 0;
 }
